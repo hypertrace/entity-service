@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.v1.servicetype;
+
+enum ServiceType {
+  UNKNOWN_SERVICE_TYPE = 0;
+
+  K8S_SERVICE = 1;
+  JAEGER_SERVICE = 2;
+  K8S_DEPLOYMENT = 3;
+  HOSTNAME = 4;
+}

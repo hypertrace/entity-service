@@ -1,0 +1,16 @@
+build:
+  roots:
+    - entity-service-api/src/main/proto
+lint:
+  use:
+    - DEFAULT
+  ignore:
+    - deprecated
+    - org/hypertrace/entity/data
+    - org/hypertrace/entity/query
+    - org/hypertrace/entity/type
+    - org/hypertrace/entity/v1
+breaking:
+  use:
+    - PACKAGE
+    - WIRE_JSON

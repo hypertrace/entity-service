@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.type.service.v1;
+
+enum RelationshipKind {
+  CONTAINS = 0; // i.e. a namespace contains a service
+  // TODO we'll need other relationships, but starting simple
+}
+
+enum MultiplicityKind {
+  UNKNOWN = 0;
+  ONE_TO_ONE = 1;
+  ONE_TO_MANY = 2;
+  MANY_TO_ONE = 3;
+  MANY_TO_MANY = 4;
+}
+
+// TODO: Add more types and support maps and complex types next.
+enum AttributeKind {
+  TYPE_DOUBLE = 0;
+  TYPE_INT64 = 1;
+  TYPE_BOOL = 2;
+  TYPE_STRING = 3;
+  TYPE_BYTES = 4;
+}
+
+message AttributeType {
+  string name = 2;
+  AttributeKind value_kind = 3;
+  bool materialized = 4;
+  bool identifyingAttribute = 5;
+}
+
+message EntityType {
+  string name = 1; // For example Kubernetes ---> Cluster ---> Namespace
+  repeated AttributeType attribute_type = 2; // Attributes that define the Entity.
+  string tenant_id = 3;
+}
+
+message EntityRelationshipType {
+  string name = 1;
+  RelationshipKind relationship_kind = 2;
+  MultiplicityKind multiplicity_kind = 3;
+  string from_entity_type = 4;
+  string to_entity_type = 5;
+  string tenant_id = 6;
+}
+
+message EntityTypeFilter {
+  repeated string name = 2;
+}
+
+message EntityRelationshipTypeFilter {
+  repeated string name = 1;
+  RelationshipKind relationship_kind = 2;
+  MultiplicityKind multiplicity_kind = 3;
+  string from_entity_type = 4;
+  string to_entity_type = 5;
+}
+
+message Empty {
+}

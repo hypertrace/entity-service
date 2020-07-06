@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.data.service.v1;
+import "google/protobuf/any.proto";
+
+message Value {
+  oneof type {
+    string string = 1;
+    bool boolean = 2;
+    int32 int = 3;
+    int64 long = 4;
+    float float = 5;
+    double double = 6;
+    bytes bytes = 7;
+    sfixed64 timestamp = 8;
+    //allows custom types such Log, StackTrace etc
+    google.protobuf.Any custom = 9;
+  }
+}
+
+message AttributeValueList {
+  repeated AttributeValue values = 1;
+}
+
+message AttributeValueMap {
+  map<string, AttributeValue> values = 1;
+}
+
+message AttributeValue {
+  oneof type {
+    Value value = 1;
+    AttributeValueList value_list = 2;
+    AttributeValueMap value_map = 3;
+  }
+}
+
+message Entity {
+  string tenant_id = 1;
+  string entity_id = 2;
+  string version = 3;
+  string entity_type = 4;
+  string entity_name = 5;
+  //attributes that uniquely identify the entity
+  map<string, AttributeValue> identifying_attributes = 6;
+
+  //attributes that describe the entity (e.g. service labels, service version, lang etc)
+  map<string, AttributeValue> attributes = 7;
+}
+
+message Entities {
+  repeated Entity entity = 1;
+}
+
+message EntityRelationship {
+  string tenant_id = 1;
+  string entity_relationship_type = 2;
+  string version = 3;
+  string from_entity_id = 4;
+  string to_entity_id = 5;
+}
+
+message EntityRelationships {
+  repeated EntityRelationship relationship = 1;
+}

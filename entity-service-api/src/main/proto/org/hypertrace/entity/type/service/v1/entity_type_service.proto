@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+package org.hypertrace.entity.type.service.v1;
+import "org/hypertrace/entity/type/service/v1/entity_type_request.proto";
+
+service EntityTypeService {
+  rpc upsertEntityType (EntityType) returns (EntityType) {
+  }
+  rpc upsertEntityRelationshipType (EntityRelationshipType) returns (EntityRelationshipType) {
+  }
+  rpc deleteEntityTypes (EntityTypeFilter) returns (Empty) {
+  }
+  rpc deleteEntityRelationshipTypes (EntityRelationshipTypeFilter) returns (Empty) {
+  }
+  rpc queryEntityTypes (EntityTypeFilter) returns (stream EntityType) {
+  }
+  rpc queryRelationshipTypes (EntityRelationshipTypeFilter) returns (stream EntityRelationshipType) {
+  }
+}

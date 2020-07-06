@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.entityServiceConfig.name }}
+  labels:
+    release: {{ .Release.Name }}
+data:
+  application.conf: |-
+    entity.service.config = {
+      entity-service {
+        mongo {
+          {{- if .Values.entityServiceConfig.data.mongoUrl }}
+          url = {{ .Values.entityServiceConfig.data.mongoUrl | quote }}
+          {{- else }}
+          host = {{ .Values.entityServiceConfig.data.mongoHost }}
+          {{- end }}
+        }
+      }
+    }
+  {{- if .Values.attributes }}
+    entity.service.attributeMap = [
+  {{- range $i, $v := .Values.attributes }}
+  {{- if gt $i 0 }},{{- end}}
+      {
+        "scope": {{ $v.scope | quote }},
+        "name": {{ $v.name | quote }},
+        "subDocPath": {{ $v.subDocPath | quote }}
+      }
+  {{- end }}
+  {{- range $i, $v := .Values.extraAttributes }}
+  {{- if or ($.Values.attributes) (gt $i 0) }},{{- end}}
+      {
+        "scope": {{ $v.scope | quote }},
+        "name": {{ $v.name | quote }},
+        "subDocPath": {{ $v.subDocPath | quote }}
+      }
+  {{- end }}
+    ]
+  {{- end -}}

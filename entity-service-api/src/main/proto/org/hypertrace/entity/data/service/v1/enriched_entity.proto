@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.data.service.v1;
+
+import "org/hypertrace/entity/data/service/v1/entity.proto";
+
+message EnrichedEntity {
+  // The tenant id should be passed in headers, not in the message. Hence deprecated.
+  string tenant_id = 1 [deprecated = true];
+  string entity_id = 2;
+  string entity_type = 3;
+  string entity_name = 4;
+
+  // attributes that uniquely identify the entity
+  map<string, AttributeValue> identifying_attributes = 5;
+
+  // materialized attributes for this entity
+  map<string, AttributeValue> attributes = 6;
+
+  // Map of entity type to entities which are related to this entity.
+  map<string, EnrichedEntities> related_entities = 7;
+}
+
+message EnrichedEntities {
+  repeated EnrichedEntity entities = 1;
+}

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.v1.entitytype;
+
+enum EntityType {
+  UNKNOWN = 0;
+
+  // K8s specific types
+  K8S_SERVICE = 1;
+  K8S_POD = 2;
+  K8S_DEPLOYMENT = 4;
+  K8S_DAEMON_SET = 5;
+  K8S_REPLICA_SET = 6;
+  K8S_NODE = 7;
+  K8S_NAMESPACE = 8;
+  K8S_STATEFUL_SET = 9;
+  K8S_ENDPOINT = 10;
+  K8S_CONFIG_MAP = 11;
+  K8S_CLUSTER = 12;
+  K8S_JOB = 13;
+  K8S_CRONJOB = 14;
+
+  // Docker types
+  DOCKER_CONTAINER = 3;
+
+  // Domain model entities
+  SERVICE = 50;
+  API = 51;
+  API_GATEWAY = 52;
+  BACKEND = 53;
+  TRANSACTION = 54;
+  ACTOR = 55; // identifying attribute is Actor ID
+}

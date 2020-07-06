@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.query.service.v1;
+
+import "org/hypertrace/entity/query/service/v1/request.proto";
+import "org/hypertrace/entity/query/service/v1/response.proto";
+import "org/hypertrace/entity/query/service/v1/value.proto";
+import "org/hypertrace/entity/query/service/v1/entity_query_request.proto";
+
+service EntityQueryService {
+  rpc execute (EntityQueryRequest) returns (stream ResultSetChunk) {
+  }
+  rpc update (EntityUpdateRequest) returns (stream ResultSetChunk) {
+  }
+}

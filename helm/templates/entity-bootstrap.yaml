@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ index .Values "config-bootstrapper" "job" "prefix" }}-bootstrap-configs
+  labels:
+    release: {{ .Release.Name }}
+data:
+{{- range $path, $bytes := .Files.Glob "configs/**" }}
+{{- $name := base ($path) }}
+{{ tpl ($.Files.Glob (printf "configs/%s" $name)).AsConfig $ | indent 2 }}
+{{- end }}
+{{- if .Values.configurationCommands }}
+  {{ uuidv4 }}: |
+{{- range $key, $value := .Values.configurationCommands }}
+{{ $value | indent 4 }}
+{{- end }}
+{{- end }}

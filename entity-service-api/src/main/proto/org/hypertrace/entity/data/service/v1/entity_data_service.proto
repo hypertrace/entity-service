@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.data.service.v1;
+import "org/hypertrace/entity/data/service/v1/entity.proto";
+import "org/hypertrace/entity/data/service/v1/enriched_entity.proto";
+import "org/hypertrace/entity/data/service/v1/entity_data_request.proto";
+
+service EntityDataService {
+  rpc upsert (Entity) returns (Entity) {
+  }
+  rpc upsertEntities (Entities) returns (Empty) {
+  }
+  rpc delete (ByIdRequest) returns (Empty) {
+  }
+  rpc getById (ByIdRequest) returns (Entity) {
+  }
+  rpc getByTypeAndIdentifyingProperties (ByTypeAndIdentifyingAttributes) returns (Entity) {
+  }
+  rpc query (Query) returns (stream Entity) {
+  }
+
+  rpc upsertRelationships (EntityRelationships) returns (Empty) {
+  }
+  rpc getRelationships (RelationshipsQuery) returns (stream EntityRelationship) {
+  }
+
+  rpc upsertEnrichedEntity (EnrichedEntity) returns (EnrichedEntity) {
+  }
+  rpc upsertEnrichedEntities (EnrichedEntities) returns (Empty) {
+  }
+  rpc getEnrichedEntityById (ByIdRequest) returns (EnrichedEntity) {
+  }
+  rpc getEnrichedEntityByTypeAndIdentifyingProps (ByTypeAndIdentifyingAttributes) returns (EnrichedEntity) {
+  }
+}

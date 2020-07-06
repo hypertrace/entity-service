@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.query.service.v1;
+
+import "org/hypertrace/entity/query/service/v1/request.proto";
+import "org/hypertrace/entity/query/service/v1/response.proto";
+import "org/hypertrace/entity/query/service/v1/value.proto";
+
+message EntityQueryRequest {
+  string entityType = 2;
+  Filter filter = 3;
+  repeated Expression selection = 4;
+
+  int32 limit = 5;
+  int32 offset = 6;
+}
+
+message EntityUpdateRequest {
+  string entityType = 1;
+  repeated string entityIds = 2;
+  UpdateOperation operation = 3;
+  // attribute selection of updated entities
+  repeated Expression selection = 4;
+}
+
+message UpdateOperation {
+  oneof operation {
+    SetAttribute setAttribute = 1;
+    // more update operations in the future
+  }
+}
+
+message SetAttribute {
+  ColumnIdentifier attribute = 1;
+  LiteralConstant value = 2;
+}

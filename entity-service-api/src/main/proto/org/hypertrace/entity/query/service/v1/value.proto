@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.query.service.v1;
+
+enum ValueType {
+  STRING = 0;
+  LONG = 1;
+  INT = 2;
+  FLOAT = 3;
+  DOUBLE = 4;
+  BYTES = 5;
+  BOOL = 6;
+  TIMESTAMP = 7;
+  STRING_ARRAY = 8;
+  LONG_ARRAY = 9;
+  INT_ARRAY = 10;
+  FLOAT_ARRAY = 11;
+  DOUBLE_ARRAY = 12;
+  BYTES_ARRAY = 13;
+  BOOLEAN_ARRAY = 14;
+  // assumes that key is always string
+  STRING_MAP = 15;
+}
+
+message Value {
+  ValueType valueType = 1;
+
+  string string = 3;
+  int64 long = 4;
+  int32 int = 5;
+  float float = 6;
+  double double = 7;
+  bytes bytes = 8;
+  bool boolean = 9;
+  sfixed64 timestamp = 15;
+  repeated string string_array = 16;
+  repeated int64 long_array = 17;
+  repeated int32 int_array = 18;
+  repeated float float_array = 19;
+  repeated double double_array = 20;
+  repeated bytes bytes_array = 21;
+  repeated bool boolean_array = 22;
+  map<string, string> string_map = 23;
+}

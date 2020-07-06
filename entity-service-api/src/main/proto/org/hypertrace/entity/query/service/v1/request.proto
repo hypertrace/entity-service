@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.query.service.v1;
+
+import "org/hypertrace/entity/query/service/v1/value.proto";
+
+message Expression {
+  oneof value {
+    ColumnIdentifier columnIdentifier = 1;
+    LiteralConstant literal = 2;
+    Function function = 3;
+    OrderByExpression orderBy = 4;
+  }
+}
+
+message Filter {
+
+  Expression lhs = 1;
+  Operator operator = 2;
+  Expression rhs = 3;
+  repeated Filter childFilter = 4;
+}
+
+enum Operator {
+  AND = 0;
+  OR = 1;
+  NOT = 2;
+  EQ = 3;
+  NEQ = 4;
+  IN = 5;
+  NOT_IN = 6;
+  RANGE = 7;
+  GT = 8;
+  LT = 9;
+  GE = 10;
+  LE = 11;
+  LIKE = 12;
+}
+
+
+message Function {
+  string functionName = 1;
+  repeated Expression arguments = 2;
+  string alias = 3;
+}
+
+message LiteralConstant {
+  Value value = 1;
+}
+
+message ColumnIdentifier {
+
+  string columnName = 1;
+  string alias = 2;
+}
+
+message OrderByExpression {
+  Expression expression = 1;
+  SortOrder order = 2;
+}
+
+enum SortOrder {
+  ASC = 0;
+  DESC = 1;
+}
+
+

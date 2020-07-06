@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+package org.hypertrace.entity.query.service.v1;
+
+import "org/hypertrace/entity/query/service/v1/value.proto";
+
+
+message ColumnMetadata {
+  string column_name = 1;
+  ValueType value_type = 2;
+  //is the value of type array
+  bool is_repeated = 3;
+}
+
+message ResultSetMetadata {
+  repeated ColumnMetadata column_metadata = 1;
+}
+
+message ResultSetChunk {
+  int32 chunk_id = 1;
+  bool is_last_chunk = 3;
+  //only present in the first chunk
+  ResultSetMetadata result_set_metadata = 4;
+  repeated Row row = 5;
+
+  //can be in any chunk.
+  bool hasError = 6;
+  string errorMessage = 7;
+}
+
+
+message Row {
+  repeated Value column = 1;
+}
+

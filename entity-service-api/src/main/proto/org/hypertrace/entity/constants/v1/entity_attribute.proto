@@ -1,0 +1,100 @@
+syntax = "proto3";
+option java_multiple_files = true;
+package org.hypertrace.entity.constants.v1;
+
+import "org/hypertrace/entity/constants/v1/enum_extension.proto";
+
+// This file contains constants that are used to maintain attributes on entities and use
+// them at different places in the platform.
+
+enum CommonAttribute {
+  COMMON_ATTRIBUTE_UNSPECIFIED = 0 [(string_value) = "UNSPECIFIED"];
+  COMMON_ATTRIBUTE_LINKED_ENTITY = 1 [(string_value) = "linked_entity"];
+  COMMON_ATTRIBUTE_FQN = 2 [(string_value) = "FQN"];
+  COMMON_ATTRIBUTE_EXTERNAL_ID = 3 [(string_value) = "EXTERNAL_ID"];
+}
+
+enum ServiceAttribute {
+  SERVICE_ATTRIBUTE_UNSPECIFIED = 0 [(string_value) = "UNSPECIFIED"];
+  SERVICE_ATTRIBUTE_NAME = 1 [(string_value) = "SERVICE_NAME"];
+  SERVICE_ATTRIBUTE_ID = 2 [(string_value) = "SERVICE_ID"];
+  SERVICE_ATTRIBUTE_SERVICE_TYPE = 3 [(string_value) = "service_type"];
+}
+
+enum ApiAttribute {
+  API_ATTRIBUTE_UNSPECIFIED = 0 [(string_value) = "UNSPECIFIED"];
+  API_ATTRIBUTE_NAME = 1 [(string_value) = "API_NAME"];
+  API_ATTRIBUTE_ID = 2 [(string_value) = "API_ID"];
+  API_ATTRIBUTE_URL_PATTERN = 3 [(string_value) = "API_URL_PATTERN"];
+  API_ATTRIBUTE_API_TYPE = 4 [(string_value) = "API_TYPE"];
+  API_ATTRIBUTE_HTTP_METHOD = 5 [(string_value) = "http_method"];
+  API_ATTRIBUTE_PATH_PARAMS_SCHEMA = 6 [(string_value) = "path_params_schema"];
+  API_ATTRIBUTE_QUERY_PARAMS_SCHEMA = 7 [(string_value) = "query_params_schema"];
+  API_ATTRIBUTE_REQUEST_HEADERS = 8 [(string_value) = "request_headers"];
+  API_ATTRIBUTE_RESPONSE_HEADERS = 9 [(string_value) = "response_headers"];
+  API_ATTRIBUTE_REQUEST_BODY_SCHEMA = 10 [(string_value) = "request_body_schema"];
+  API_ATTRIBUTE_RESPONSE_BODY_SCHEMA = 11 [(string_value) = "response_body_schema"];
+  API_ATTRIBUTE_DEFINITION_TYPE = 12 [(string_value) = "api_definition_type"]; //deprecated. Use API_ATTRIBUTE_DISCOVERY_TYPE
+  API_ATTRIBUTE_DEFINITION = 13 [(string_value) = "api_definition"];
+  API_ATTRIBUTE_HTTP_PATH_PARAMS_TYPE = 14 [(string_value) = "http_path_params_type"];
+  API_ATTRIBUTE_HTTP_QUERY_PARAMS_TYPE = 15 [(string_value) = "http_query_params_type"];
+  API_ATTRIBUTE_HTTP_REQUEST_HEADERS_TYPE = 16 [(string_value) = "http_request_headers_type"];
+  API_ATTRIBUTE_HTTP_RESPONSE_HEADERS_TYPE = 17 [(string_value) = "http_response_headers_type"];
+  API_ATTRIBUTE_IS_EXTERNAL_API = 18 [(string_value) = "IS_EXTERNAL_API"];
+  API_ATTRIBUTE_DEFINITION_FROM = 19 [(string_value) = "API_DEFINITION_FROM"]; //deprecated. Use API_ATTRIBUTE_DISCOVERY_FROM
+  API_ATTRIBUTE_HTTP_PATH_PARAMS_PII = 20 [(string_value) = "http_path_params_pii"];
+  API_ATTRIBUTE_HTTP_QUERY_PARAMS_PII = 21 [(string_value) = "http_query_params_pii"];
+  API_ATTRIBUTE_IS_PII = 22 [(string_value) = "api_is_pii"];
+  API_ATTRIBUTE_DISCOVERY_TYPE = 23 [(string_value) = "api_discovery_type"];
+  API_ATTRIBUTE_DISCOVERY_FROM = 24 [(string_value) = "api_discovery_from"];
+  API_ATTRIBUTE_DISCOVERY_STATE = 25 [(string_value) = "api_discovery_state"];
+}
+
+enum BackendAttribute {
+  BACKEND_ATTRIBUTE_UNSPECIFIED = 0 [(string_value) = "UNSPECIFIED"];
+  BACKEND_ATTRIBUTE_ID = 1 [(string_value) = "BACKEND_ENTITY_ID"];
+  BACKEND_ATTRIBUTE_NAME = 2 [(string_value) = "BACKEND_ENTITY_NAME"];
+  BACKEND_ATTRIBUTE_PROTOCOL = 3 [(string_value) = "BACKEND_PROTOCOL"];
+  BACKEND_ATTRIBUTE_HOST = 4 [(string_value) = "BACKEND_HOST"];
+  BACKEND_ATTRIBUTE_PORT = 5 [(string_value) = "BACKEND_PORT"];
+  BACKEND_ATTRIBUTE_PATH = 6 [(string_value) = "BACKEND_PATH"];
+}
+
+enum K8sEntityAttribute {
+  // Collected attributes. We have to be careful in choosing what attributes
+  // should be getting the field numbers <16 since they take a single byte.
+  // So, put the most frequently used attributes first.
+  K8S_ENTITY_ATTRIBUTE_UNSPECIFIED = 0 [(string_value) = "UNSPECIFIED"];
+  K8S_ENTITY_ATTRIBUTE_POD_NAME = 1 [(string_value) = "POD_NAME"];
+  K8S_ENTITY_ATTRIBUTE_POD_ID = 2 [(string_value) = "POD_ID"];
+  K8S_ENTITY_ATTRIBUTE_CONTAINER_NAME = 3 [(string_value) = "CONTAINER_NAME"];
+  K8S_ENTITY_ATTRIBUTE_CONTAINER_ID = 4 [(string_value) = "CONTAINER_ID"];
+  K8S_ENTITY_ATTRIBUTE_SERVICE_NAME = 5 [(string_value) = "K8S_SERVICE_NAME"];
+  K8S_ENTITY_ATTRIBUTE_SERVICE_ID = 6 [(string_value) = "K8S_SERVICE_ID"];
+  K8S_ENTITY_ATTRIBUTE_CLUSTER_ID = 7 [(string_value) = "CLUSTER_ID"];
+  K8S_ENTITY_ATTRIBUTE_CLUSTER_NAME = 8 [(string_value) = "CLUSTER_NAME"];
+  K8S_ENTITY_ATTRIBUTE_DEPLOYMENT_NAME = 9 [(string_value) = "DEPLOYMENT_NAME"];
+  K8S_ENTITY_ATTRIBUTE_DEPLOYMENT_ID = 10 [(string_value) = "DEPLOYMENT_ID"];
+  K8S_ENTITY_ATTRIBUTE_NODE_NAME = 11 [(string_value) = "NODE_NAME"];
+  K8S_ENTITY_ATTRIBUTE_NODE_ID = 12 [(string_value) = "NODE_ID"];
+  K8S_ENTITY_ATTRIBUTE_NAMESPACE_ID = 13 [(string_value) = "NAMESPACE_ID"];
+  K8S_ENTITY_ATTRIBUTE_NAMESPACE_NAME = 14 [(string_value) = "NAMESPACE_NAME"];
+  K8S_ENTITY_ATTRIBUTE_REPLICASET_NAME = 15 [(string_value) = "REPLICASET_NAME"];
+  K8S_ENTITY_ATTRIBUTE_REPLICASET_ID = 16 [(string_value) = "REPLICASET_ID"];
+  K8S_ENTITY_ATTRIBUTE_DAEMONSET_NAME = 17 [(string_value) = "DAEMONSET_NAME"];
+  K8S_ENTITY_ATTRIBUTE_DAEMONSET_ID = 18 [(string_value) = "DAEMONSET_ID"];
+  K8S_ENTITY_ATTRIBUTE_STATEFULSET_NAME = 19 [(string_value) = "STATEFULSET_NAME"];
+  K8S_ENTITY_ATTRIBUTE_STATEFULSET_ID = 20 [(string_value) = "STATEFULSET_ID"];
+
+  // K8s service specific attributes.
+  K8S_ENTITY_ATTRIBUTE_CLUSTER_IP = 21 [(string_value) = "CLUSTER_IP"];
+  K8S_ENTITY_ATTRIBUTE_EXTERNAL_IPS = 22 [(string_value) = "EXTERNAL_IPS"];
+  K8S_ENTITY_ATTRIBUTE_LOADBALANCER_IP = 23 [(string_value) = "LOADBALANCER_IP"];
+  K8S_ENTITY_ATTRIBUTE_EXTERNAL_NAME = 24 [(string_value) = "EXTERNAL_NAME"];
+  K8S_ENTITY_ATTRIBUTE_SERVICE_TYPE = 25 [(string_value) = "SERVICE_TYPE"];
+  K8S_ENTITY_ATTRIBUTE_LOADBALANCER_INGRESS_HOSTS = 26 [(string_value) = "LOADBALANCER_INGRESS_HOSTS"];
+  K8S_ENTITY_ATTRIBUTE_LOADBALANCER_INGRESS_IPS = 27 [(string_value) = "LOADBALANCER_INGRESS_IPS"];
+  K8S_ENTITY_ATTRIBUTE_SELECTOR = 28 [(string_value) = "selector"];
+  K8S_ENTITY_ATTRIBUTE_LABELS = 29 [(string_value) = "labels"];
+}
+
