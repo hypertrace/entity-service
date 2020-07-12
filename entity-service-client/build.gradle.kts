@@ -6,10 +6,6 @@ plugins {
   id("org.hypertrace.jacoco-report-plugin")
 }
 
-hypertracePublish {
-  license.set(APACHE_2_0)
-}
-
 tasks.test {
   useJUnitPlatform()
 }
