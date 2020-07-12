@@ -1,5 +1,4 @@
 import com.google.protobuf.gradle.*
-import org.hypertrace.gradle.publishing.License.APACHE_2_0
 
 plugins {
   `java-library`

@@ -1,5 +1,3 @@
-import org.hypertrace.gradle.publishing.License.APACHE_2_0
-
 plugins {
   `java-library`
   id("org.hypertrace.publish-plugin")
