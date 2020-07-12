@@ -1,14 +1,9 @@
 import com.google.protobuf.gradle.*
-import org.hypertrace.gradle.publishing.License.APACHE_2_0
 
 plugins {
   `java-library`
   id("com.google.protobuf") version "0.8.12"
   id("org.hypertrace.publish-plugin")
-}
-
-hypertracePublish {
-  license.set(APACHE_2_0)
 }
 
 val generateLocalGoGrpcFiles = false
