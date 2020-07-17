@@ -32,13 +32,14 @@ public class EdsCacheClient implements EdsClient {
   private final EntityDataServiceClient client;
 
   EdsCacheClient(EntityServiceClientConfig entityServiceClientConfig) {
-    this(new EntityDataServiceClient(entityServiceClientConfig));
-    initCache(entityServiceClientConfig.getCacheConfig());
+    this(new EntityDataServiceClient(entityServiceClientConfig),
+        entityServiceClientConfig.getCacheConfig());
   }
 
-  public EdsCacheClient(EntityDataServiceClient client) {
+  public EdsCacheClient(EntityDataServiceClient client,
+      EntityServiceClientCacheConfig cacheConfig) {
     this.client = client;
-    initCache(EntityServiceClientCacheConfig.DEFAULT);
+    initCache(cacheConfig);
   }
 
   private void initCache(EntityServiceClientCacheConfig cacheConfig) {
