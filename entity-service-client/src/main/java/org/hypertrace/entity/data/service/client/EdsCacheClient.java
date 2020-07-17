@@ -92,8 +92,8 @@ public class EdsCacheClient implements EdsClient {
     EdsTypeAndIdAttributesCacheKey key = new EdsTypeAndIdAttributesCacheKey(tenantId,
         byIdentifyingAttributes);
     try {
-      String entityId = entityIdsCache.get(key).orElse(null);
-      return (entityId != null) ? getById(tenantId, entityId) : null;
+      Optional<String> entityId = entityIdsCache.get(key);
+      return (entityId.isPresent()) ? getById(tenantId, entityId.get()) : null;
     } catch (ExecutionException e) {
       LOG.error("Failed to fetch entity of tenantId: {}, entityId: {}",
           key.tenantId, key.byTypeAndIdentifyingAttributes, e);
