@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
+import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.service.client.config.EntityServiceClientCacheConfig;
@@ -31,9 +32,9 @@ public class EdsCacheClientTest {
   }
 
   @Test
-  public void testByTypeAndIdentifyingAttributes() {
+  public void testGetByTypeAndIdentifyingAttributes() {
     String tenantId = "tenant";
-    String entityId = "e12345";
+    String entityId = "entity-12345";
 
     Map<String, AttributeValue> identifyingAttributesMap = new HashMap<>();
     identifyingAttributesMap.put("entity_name", AttributeValue.newBuilder()
@@ -64,6 +65,63 @@ public class EdsCacheClientTest {
     verify(entityDataServiceClient, times(1)).
         getByTypeAndIdentifyingAttributes("tenant", attributes);
     verify(entityDataServiceClient, never()).
-        getById("tenant", "e12345");
+        getById("tenant", "entity-12345");
   }
+
+  @Test
+  public void testGetEnrichedEntityById() {
+    String tenantId = "tenant";
+    String enrichedEntityId = "enriched-12345";
+
+    Map<String, AttributeValue> identifyingAttributesMap = new HashMap<>();
+    identifyingAttributesMap.put("entity_name", AttributeValue.newBuilder()
+        .setValue(Value.newBuilder().setString("GET /products").build()).build());
+    identifyingAttributesMap.put("is_active", AttributeValue.newBuilder()
+        .setValue(Value.newBuilder().setBoolean(true).build()).build());
+
+    EnrichedEntity enrichedEntity = EnrichedEntity.newBuilder()
+        .setEntityId(enrichedEntityId)
+        .setEntityType("API")
+        .setEntityName("GET /products")
+        .putAllIdentifyingAttributes(identifyingAttributesMap)
+        .build();
+
+    when(entityDataServiceClient.getEnrichedEntityById(anyString(), anyString()))
+        .thenReturn(enrichedEntity);
+
+    edsCacheClient.getEnrichedEntityById(tenantId, enrichedEntityId);
+    edsCacheClient.getEnrichedEntityById(tenantId, enrichedEntityId);
+
+    verify(entityDataServiceClient, times(1)).
+        getEnrichedEntityById("tenant", "enriched-12345");
+  }
+
+  @Test
+  public void testGetById() {
+    String tenantId = "tenant";
+    String entityId = "entity-12346";
+
+    Map<String, AttributeValue> identifyingAttributesMap = new HashMap<>();
+    identifyingAttributesMap.put("entity_name", AttributeValue.newBuilder()
+        .setValue(Value.newBuilder().setString("GET /products").build()).build());
+    identifyingAttributesMap.put("is_active", AttributeValue.newBuilder()
+        .setValue(Value.newBuilder().setBoolean(true).build()).build());
+
+    Entity entity = Entity.newBuilder()
+        .setTenantId(tenantId)
+        .setEntityId(entityId)
+        .setEntityType("API")
+        .setEntityName("GET /products")
+        .putAllIdentifyingAttributes(identifyingAttributesMap)
+        .build();
+
+    when(entityDataServiceClient.getById(anyString(), anyString())).thenReturn(entity);
+
+    edsCacheClient.getById(tenantId, entityId);
+    edsCacheClient.getById(tenantId, entityId);
+
+    verify(entityDataServiceClient, times(1)).
+        getById("tenant", "entity-12346");
+  }
+
 }
