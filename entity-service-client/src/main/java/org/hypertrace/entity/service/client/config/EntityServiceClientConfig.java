@@ -13,13 +13,16 @@ import com.typesafe.config.Config;
 public class EntityServiceClientConfig {
 
   private static final String ENTITY_SERVICE_CONFIG_KEY = "entity.service.config";
-
   private String host;
   private int port;
+  private final EntityServiceClientCacheConfig cacheConfig;
 
-  private EntityServiceClientConfig(String host, int port) {
-    this.host = host;
-    this.port = port;
+  private EntityServiceClientConfig(Config clientConfig) {
+    this.host = clientConfig.getString("host");
+    this.port = clientConfig.getInt("port");
+    this.cacheConfig = clientConfig.hasPath("cache") ?
+        new EntityServiceClientCacheConfig(clientConfig.getConfig("cache"))
+        : EntityServiceClientCacheConfig.DEFAULT;
   }
 
   public String getHost() {
@@ -30,10 +33,12 @@ public class EntityServiceClientConfig {
     return port;
   }
 
+  public EntityServiceClientCacheConfig getCacheConfig() {
+    return cacheConfig;
+  }
+
   public static EntityServiceClientConfig from(Config config) {
-    Config entityServiceConfig = config.getConfig(ENTITY_SERVICE_CONFIG_KEY);
-    return new EntityServiceClientConfig(
-        entityServiceConfig.getString("host"), entityServiceConfig.getInt("port"));
+    return new EntityServiceClientConfig(config.getConfig(ENTITY_SERVICE_CONFIG_KEY));
   }
 
   @Override

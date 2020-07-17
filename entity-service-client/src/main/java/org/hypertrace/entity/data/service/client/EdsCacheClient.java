@@ -17,6 +17,7 @@ import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.EntityRelationship;
 import org.hypertrace.entity.data.service.v1.EntityRelationships;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.service.client.config.EntityServiceClientCacheConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,19 +25,27 @@ import org.slf4j.LoggerFactory;
 public class EdsCacheClient implements EdsClient {
 
   private static final Logger LOG = LoggerFactory.getLogger(EdsCacheClient.class);
-  private final LoadingCache<EdsCacheKey, Optional<EnrichedEntity>> enrichedEntityCache;
-  private final LoadingCache<EdsCacheKey, Optional<Entity>> entityCache;
+  private LoadingCache<EdsCacheKey, Optional<EnrichedEntity>> enrichedEntityCache;
+  private LoadingCache<EdsCacheKey, Optional<Entity>> entityCache;
+  private LoadingCache<EdsTypeAndIdAttributesCacheKey, Optional<String>> entityIdsCache;
 
   private final EntityDataServiceClient client;
 
   EdsCacheClient(EntityServiceClientConfig entityServiceClientConfig) {
     this(new EntityDataServiceClient(entityServiceClientConfig));
+    initCache(entityServiceClientConfig.getCacheConfig());
   }
 
   public EdsCacheClient(EntityDataServiceClient client) {
     this.client = client;
+    initCache(EntityServiceClientCacheConfig.DEFAULT);
+  }
+
+  private void initCache(EntityServiceClientCacheConfig cacheConfig) {
     this.enrichedEntityCache =
-        CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(1000)
+        CacheBuilder.newBuilder()
+            .expireAfterWrite(cacheConfig.getEnrichedEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
+            .maximumSize(cacheConfig.getEnrichedEntityMaxCacheSize())
             .build(new CacheLoader<>() {
               public Optional<EnrichedEntity> load(@Nonnull EdsCacheKey key) {
                 return Optional
@@ -45,12 +54,31 @@ public class EdsCacheClient implements EdsClient {
             });
 
     this.entityCache =
-        CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(1000)
+        CacheBuilder.newBuilder()
+            .expireAfterWrite(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
+            .maximumSize(cacheConfig.getEntityMaxCacheSize())
             .build(new CacheLoader<>() {
               public Optional<Entity> load(@Nonnull EdsCacheKey key) {
                 return Optional.ofNullable(client.getById(key.tenantId, key.entityId));
               }
             });
+
+    this.entityIdsCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS)
+        .maximumSize(cacheConfig.getEntityIdsMaxCacheSize())
+        .build(new CacheLoader<>() {
+          public Optional<String> load(@Nonnull EdsTypeAndIdAttributesCacheKey key) {
+            Entity entity = client.getByTypeAndIdentifyingAttributes(key.tenantId,
+                key.byTypeAndIdentifyingAttributes);
+            String entityId = null;
+            if (entity != null) {
+              entityId = entity.getEntityId();
+              entityCache.put(new EdsCacheKey(entity.getTenantId(), entity.getEntityId()),
+                  Optional.of(entity));
+            }
+            return Optional.ofNullable(entityId);
+          }
+        });
   }
 
   @Override
@@ -61,7 +89,16 @@ public class EdsCacheClient implements EdsClient {
   @Override
   public Entity getByTypeAndIdentifyingAttributes(String tenantId,
       ByTypeAndIdentifyingAttributes byIdentifyingAttributes) {
-    return client.getByTypeAndIdentifyingAttributes(tenantId, byIdentifyingAttributes);
+    EdsTypeAndIdAttributesCacheKey key = new EdsTypeAndIdAttributesCacheKey(tenantId,
+        byIdentifyingAttributes);
+    try {
+      String entityId = entityIdsCache.get(key).orElse(null);
+      return (entityId != null) ? getById(tenantId, entityId) : null;
+    } catch (ExecutionException e) {
+      LOG.error("Failed to fetch entity of tenantId: {}, entityId: {}",
+          key.tenantId, key.byTypeAndIdentifyingAttributes, e);
+      return null;
+    }
   }
 
   @Override
