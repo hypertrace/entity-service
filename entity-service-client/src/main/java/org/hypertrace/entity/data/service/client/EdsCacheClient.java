@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
+import org.hypertrace.entity.data.service.client.exception.NotFoundException;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
 import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
@@ -17,6 +18,7 @@ import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.EntityRelationship;
 import org.hypertrace.entity.data.service.v1.EntityRelationships;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.service.client.config.EntityServiceClientCacheConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,33 +26,67 @@ import org.slf4j.LoggerFactory;
 public class EdsCacheClient implements EdsClient {
 
   private static final Logger LOG = LoggerFactory.getLogger(EdsCacheClient.class);
-  private final LoadingCache<EdsCacheKey, Optional<EnrichedEntity>> enrichedEntityCache;
-  private final LoadingCache<EdsCacheKey, Optional<Entity>> entityCache;
+  private LoadingCache<EdsCacheKey, EnrichedEntity> enrichedEntityCache;
+  private LoadingCache<EdsCacheKey, Entity> entityCache;
+  private LoadingCache<EdsTypeAndIdAttributesCacheKey, String> entityIdsCache;
 
   private final EntityDataServiceClient client;
 
   EdsCacheClient(EntityServiceClientConfig entityServiceClientConfig) {
-    this(new EntityDataServiceClient(entityServiceClientConfig));
+    this(new EntityDataServiceClient(entityServiceClientConfig),
+        entityServiceClientConfig.getCacheConfig());
   }
 
-  public EdsCacheClient(EntityDataServiceClient client) {
+  public EdsCacheClient(EntityDataServiceClient client,
+      EntityServiceClientCacheConfig cacheConfig) {
     this.client = client;
+    initCache(cacheConfig);
+  }
+
+  private void initCache(EntityServiceClientCacheConfig cacheConfig) {
     this.enrichedEntityCache =
-        CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(1000)
+        CacheBuilder.newBuilder()
+            .expireAfterWrite(cacheConfig.getEnrichedEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
+            .maximumSize(cacheConfig.getEnrichedEntityMaxCacheSize())
             .build(new CacheLoader<>() {
-              public Optional<EnrichedEntity> load(@Nonnull EdsCacheKey key) {
-                return Optional
-                    .ofNullable(client.getEnrichedEntityById(key.tenantId, key.entityId));
+              public EnrichedEntity load(@Nonnull EdsCacheKey key) throws Exception {
+                EnrichedEntity enrichedEntity = client
+                    .getEnrichedEntityById(key.tenantId, key.entityId);
+                if (enrichedEntity == null) {
+                  throw new NotFoundException("Enriched entity not found");
+                }
+                return enrichedEntity;
               }
             });
 
     this.entityCache =
-        CacheBuilder.newBuilder().expireAfterWrite(5, TimeUnit.MINUTES).maximumSize(1000)
+        CacheBuilder.newBuilder()
+            .expireAfterWrite(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
+            .maximumSize(cacheConfig.getEntityMaxCacheSize())
             .build(new CacheLoader<>() {
-              public Optional<Entity> load(@Nonnull EdsCacheKey key) {
-                return Optional.ofNullable(client.getById(key.tenantId, key.entityId));
+              public Entity load(@Nonnull EdsCacheKey key) throws Exception {
+                Entity entity = client.getById(key.tenantId, key.entityId);
+                if (entity == null) {
+                  throw new NotFoundException("Entity not found");
+                }
+                return entity;
               }
             });
+
+    this.entityIdsCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS)
+        .maximumSize(cacheConfig.getEntityIdsMaxCacheSize())
+        .build(new CacheLoader<>() {
+          public String load(@Nonnull EdsTypeAndIdAttributesCacheKey key) throws Exception {
+            Entity entity = client.getByTypeAndIdentifyingAttributes(key.tenantId,
+                key.byTypeAndIdentifyingAttributes);
+            if (entity == null) {
+              throw new NotFoundException("Entity not found!!");
+            }
+            entityCache.put(new EdsCacheKey(entity.getTenantId(), entity.getEntityId()), entity);
+            return entity.getEntityId();
+          }
+        });
   }
 
   @Override
@@ -61,7 +97,15 @@ public class EdsCacheClient implements EdsClient {
   @Override
   public Entity getByTypeAndIdentifyingAttributes(String tenantId,
       ByTypeAndIdentifyingAttributes byIdentifyingAttributes) {
-    return client.getByTypeAndIdentifyingAttributes(tenantId, byIdentifyingAttributes);
+    EdsTypeAndIdAttributesCacheKey key = new EdsTypeAndIdAttributesCacheKey(tenantId,
+        byIdentifyingAttributes);
+    try {
+      return getById(tenantId, entityIdsCache.get(key));
+    } catch (ExecutionException e) {
+      LOG.error("Failed to fetch entity of tenantId: {}, entityId: {}",
+          key.tenantId, key.byTypeAndIdentifyingAttributes, e);
+      return null;
+    }
   }
 
   @Override
@@ -78,7 +122,7 @@ public class EdsCacheClient implements EdsClient {
   public Entity getById(String tenantId, String entityId) {
     EdsCacheKey key = new EdsCacheKey(tenantId, entityId);
     try {
-      return entityCache.get(key).orElse(null);
+      return entityCache.get(key);
     } catch (ExecutionException e) {
       LOG.error("Failed to fetch entity of tenantId: {}, entityId: {}",
           key.tenantId, key.entityId, e);
@@ -102,7 +146,7 @@ public class EdsCacheClient implements EdsClient {
   public EnrichedEntity getEnrichedEntityById(String tenantId, String entityId) {
     EdsCacheKey edsCacheKey = new EdsCacheKey(tenantId, entityId);
     try {
-      return enrichedEntityCache.get(edsCacheKey).orElse(null);
+      return enrichedEntityCache.get(edsCacheKey);
     } catch (ExecutionException e) {
       LOG.error("Failed to fetch enriched entity of tenantId: {}, entityId: {}",
           edsCacheKey.tenantId, edsCacheKey.entityId, e);
