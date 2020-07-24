@@ -5,7 +5,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -102,7 +101,7 @@ public class EdsCacheClient implements EdsClient {
     try {
       return getById(tenantId, entityIdsCache.get(key));
     } catch (ExecutionException e) {
-      LOG.error("Failed to fetch entity of tenantId: {}, entityId: {}",
+      LOG.warn("Failed to fetch entity of tenantId: {}, entityId: {}",
           key.tenantId, key.byTypeAndIdentifyingAttributes, e);
       return null;
     }
@@ -124,7 +123,7 @@ public class EdsCacheClient implements EdsClient {
     try {
       return entityCache.get(key);
     } catch (ExecutionException e) {
-      LOG.error("Failed to fetch entity of tenantId: {}, entityId: {}",
+      LOG.warn("Failed to fetch entity of tenantId: {}, entityId: {}",
           key.tenantId, key.entityId, e);
       return null;
     }
@@ -148,7 +147,7 @@ public class EdsCacheClient implements EdsClient {
     try {
       return enrichedEntityCache.get(edsCacheKey);
     } catch (ExecutionException e) {
-      LOG.error("Failed to fetch enriched entity of tenantId: {}, entityId: {}",
+      LOG.warn("Failed to fetch enriched entity of tenantId: {}, entityId: {}",
           edsCacheKey.tenantId, edsCacheKey.entityId, e);
       return null;
     }
