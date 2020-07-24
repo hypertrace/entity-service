@@ -56,7 +56,7 @@ tasks.integrationTest {
 dependencies {
   implementation(project(":entity-service-impl"))
 
-  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.1.0")
+  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.1.3")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.2")
   implementation("org.hypertrace.core.documentstore:document-store:0.1.0")
 
