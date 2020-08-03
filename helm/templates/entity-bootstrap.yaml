@@ -1,3 +1,4 @@
+{{- if ( index .Values "config-bootstrapper" "configurationCommands" ) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -5,13 +6,8 @@ metadata:
   labels:
     release: {{ .Release.Name }}
 data:
-{{- range $path, $bytes := .Files.Glob "configs/**" }}
-{{- $name := base ($path) }}
-{{ tpl ($.Files.Glob (printf "configs/%s" $name)).AsConfig $ | indent 2 }}
-{{- end }}
-{{- if .Values.configurationCommands }}
-  {{ uuidv4 }}: |
-{{- range $key, $value := .Values.configurationCommands }}
+{{- range $key, $value := ( index .Values "config-bootstrapper" "configurationCommands" ) }}
+  {{ $key }}: |
 {{ $value | indent 4 }}
 {{- end }}
 {{- end }}
