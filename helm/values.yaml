@@ -80,38 +80,7 @@ entityServiceConfig:
     mongoHost: mongo
     mongoUrl: ""
 
-attributes:
-  - scope: API
-    name: API.id
-    subDocPath: entityId
-  - scope: API
-    name: API.name
-    subDocPath: entityName
-  - scope: API
-    name: API.apiType
-    subDocPath: attributes.API_TYPE
-  - scope: API
-    name: API.httpMethod
-    subDocPath: attributes.http_method
-  - scope: API
-    name: API.httpUrl
-    subDocPath: attributes.API_NAME
-  - scope: API
-    name: API.serviceId
-    subDocPath: attributes.SERVICE_ID
-  - scope: API
-    name: API.createdTime
-    subDocPath: createdTime
-  - scope: API
-    name: API.apiDiscoveryState
-    subDocPath: attributes.api_discovery_state
-  - scope: SERVICE
-    name: SERVICE.id
-    subDocPath: entityId
-  - scope: SERVICE
-    name: SERVICE.name
-    subDocPath: entityName
-
+attributes: []
 extraAttributes: []
 
 logConfig:
@@ -126,5 +95,4 @@ logConfig:
 config-bootstrapper:
   job:
     prefix: entity
-
-configurationCommands: {}
+  configurationCommands: {}
