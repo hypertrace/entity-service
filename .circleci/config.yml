@@ -87,7 +87,7 @@ jobs:
     steps:
       - checkout
       - run: buf check lint
-      # - run: buf check breaking --against-input "ssh://${CIRCLE_REPOSITORY_URL/://}#branch=master"
+      # - run: buf check breaking --against-input "ssh://${CIRCLE_REPOSITORY_URL/://}#branch=main"
   publish:
     executor: gradle_docker
     steps:
@@ -147,7 +147,7 @@ workflows:
           filters:
             branches:
               ignore:
-                - master
+                - main
       - snyk-scan:
           context: hypertrace-vulnerability-scanning
       - publish:
@@ -160,7 +160,7 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - main
       - package-charts:
           context: hypertrace-publishing
           requires:
@@ -168,4 +168,4 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - main
