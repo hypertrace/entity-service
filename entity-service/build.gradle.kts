@@ -57,7 +57,7 @@ dependencies {
   implementation(project(":entity-service-impl"))
 
   implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.1.3")
-  implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.9")
+  implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.10")
   implementation("org.hypertrace.core.documentstore:document-store:0.1.0")
 
   runtimeOnly("io.grpc:grpc-netty:1.30.2")
@@ -71,7 +71,7 @@ dependencies {
 
   integrationTestImplementation(project(":entity-service-client"))
   integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
-  integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.9")
+  integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.10")
 }
 
 application {
