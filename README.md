@@ -7,7 +7,7 @@ Service that provides CRUD operations for differently identified entities of obs
 
 ## How do we use Entity service?
 
-| ![space-1.jpg](https://hypertrace-docs.s3.amazonaws.com/HT-query-architecture.png) | 
+| ![space-1.jpg](https://hypertrace-docs.s3.amazonaws.com/HT-query-arch.png) | 
 |:--:| 
 | *Hypertrace Query Architecture* |
 
