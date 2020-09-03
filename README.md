@@ -11,7 +11,7 @@ Service that provides CRUD operations for differently identified entities of obs
 |:--:| 
 | *Hypertrace Query Architecture* |
 
-- Core concepts like relationships between entities, their attributes are defined in this layer but this layer is generic and doesn't really care about what's inside each entity. 
+- A service layer manages a life cycle of the identified entities of observed applications.
 - Entity service is also responsible for scalability of entity persistence and CRUD APIs.
 
 ## Building locally
