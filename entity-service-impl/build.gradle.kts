@@ -7,7 +7,7 @@ plugins {
 dependencies {
   api(project(":entity-service-api"))
   implementation("org.hypertrace.core.documentstore:document-store:0.1.0")
-  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.1.3")
+  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.2.0")
 
   implementation("com.google.protobuf:protobuf-java-util:3.12.2")
   implementation("com.github.f4b6a3:uuid-creator:2.5.1")
