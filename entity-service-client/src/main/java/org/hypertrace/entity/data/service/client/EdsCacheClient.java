@@ -101,8 +101,10 @@ public class EdsCacheClient implements EdsClient {
     try {
       return getById(tenantId, entityIdsCache.get(key));
     } catch (ExecutionException e) {
-      LOG.warn("Failed to fetch entity of tenantId: {}, entityId: {}",
-          key.tenantId, key.byTypeAndIdentifyingAttributes, e);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Failed to fetch entity of tenantId: {}, entityId: {}",
+                key.tenantId, key.byTypeAndIdentifyingAttributes, e);
+      }
       return null;
     }
   }
@@ -123,8 +125,10 @@ public class EdsCacheClient implements EdsClient {
     try {
       return entityCache.get(key);
     } catch (ExecutionException e) {
-      LOG.warn("Failed to fetch entity of tenantId: {}, entityId: {}",
-          key.tenantId, key.entityId, e);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Failed to fetch entity of tenantId: {}, entityId: {}",
+                key.tenantId, key.entityId, e);
+      }
       return null;
     }
   }
@@ -147,8 +151,10 @@ public class EdsCacheClient implements EdsClient {
     try {
       return enrichedEntityCache.get(edsCacheKey);
     } catch (ExecutionException e) {
-      LOG.warn("Failed to fetch enriched entity of tenantId: {}, entityId: {}",
-          edsCacheKey.tenantId, edsCacheKey.entityId, e);
+      if(LOG.isDebugEnabled()) {
+        LOG.debug("Failed to fetch enriched entity of tenantId: {}, entityId: {}",
+                edsCacheKey.tenantId, edsCacheKey.entityId, e);
+      }
       return null;
     }
   }
