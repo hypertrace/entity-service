@@ -5,9 +5,9 @@
 
 Service that provides CRUD operations for differently identified entities of observed applications.
 
-## How do we use Entity service?
+## Description
 
-| ![space-1.jpg](https://hypertrace-docs.s3.amazonaws.com/HT-query-arch.png) | 
+| ![space-1.jpg](https://hypertrace-docs.s3.amazonaws.com/hypertrace-query-arch.png) | 
 |:--:| 
 | *Hypertrace Query Architecture* |
 
@@ -20,6 +20,27 @@ The Entity service uses gradlew to compile/install/distribute. Gradle wrapper is
 ```
 ./gradlew clean build dockerBuildImages
 ```
+## Testing
+
+### Running unit tests
+Run `./gradlew test` to execute unit tests. 
+
+
+### Testing image
+
+You can test the image you built after modification by running docker-compose or helm setup. 
+
+#### docker-compose
+Change the tag for `entity-service` from `:main` to `:test` in [docker-compose file](https://github.com/hypertrace/hypertrace/blob/main/docker/docker-compose.yml) like this.
+
+```yaml
+  entity-service:
+    image: hypertrace/entity-service:test
+    container_name: entity-service
+    ...
+```
+
+and then run `docker-compose up` to test the setup.
 
 ## Docker Image Source:
 - [DockerHub > Entity service](https://hub.docker.com/r/hypertrace/entity-service)
