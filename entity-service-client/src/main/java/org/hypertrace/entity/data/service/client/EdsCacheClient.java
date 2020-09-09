@@ -103,7 +103,7 @@ public class EdsCacheClient implements EdsClient {
     } catch (ExecutionException e) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Failed to fetch entity of tenantId: {}, entityId: {}",
-                key.tenantId, key.byTypeAndIdentifyingAttributes, e);
+                key.tenantId, key.byTypeAndIdentifyingAttributes);
       }
       return null;
     }
