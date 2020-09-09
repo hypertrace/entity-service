@@ -18,7 +18,7 @@ Service that provides CRUD operations for differently identified entities of obs
 The Entity service uses gradlew to compile/install/distribute. Gradle wrapper is already part of the source code. To build Entity Service, run:
 
 ```
-./gradlew clean build dockerBuildImages
+./gradlew dockerBuildImages
 ```
 ## Testing
 
