@@ -31,12 +31,16 @@ Run `./gradlew test` to execute unit tests.
 You can test the image you built after modification by running docker-compose or helm setup. 
 
 #### docker-compose
-Change the tag for `entity-service` from `:main` to `:test` in [docker-compose file](https://github.com/hypertrace/hypertrace/blob/main/docker/docker-compose.yml) like this.
+
+`Note:` 
+- For docker-compose setup we use [hypertrace-service](https://github.com/hypertrace/hypertrace-service) which contains `entity-service`. So to test changes with docker-compose you can checkout branch with your changes for `entity-service` in [hypertrace-service](https://github.com/hypertrace/hypertrace-service) repo and build a new image to use with docker-compose setup. [This issue will be gone ones we switch to using macro-repo]
+
+After that just Change the tag for `hypertrace-service` from `:main` to `:test` in [docker-compose file](https://github.com/hypertrace/hypertrace/blob/main/docker/docker-compose.yml) like this.
 
 ```yaml
-  entity-service:
-    image: hypertrace/entity-service:test
-    container_name: entity-service
+  hypertrace-service:
+    image: hypertrace/hypertrace-service:test
+    container_name: hypertrace-service
     ...
 ```
 
