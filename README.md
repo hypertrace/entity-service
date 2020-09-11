@@ -48,3 +48,6 @@ and then run `docker-compose up` to test the setup.
 
 ## Docker Image Source:
 - [DockerHub > Entity service](https://hub.docker.com/r/hypertrace/entity-service)
+
+## Contributing
+see [CONTRIBUTING](/CONTRIBUTING.md).
