@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.data.service.v1;
+
+message EntityLabel {
+  string id = 1;
+  string name = 2;
+  // TODO: This is up for debate.
+  string color = 3;
+}
+
+message EntityLabelByIdRequest {
+  string id = 1;
+}
+
+//message Empty {
+//}
