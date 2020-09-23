@@ -47,6 +47,8 @@ message Entity {
 
   //attributes that describe the entity (e.g. service labels, service version, lang etc)
   map<string, AttributeValue> attributes = 7;
+  // entity labels
+  repeated string entity_label_ids = 8;
 }
 
 message Entities {
