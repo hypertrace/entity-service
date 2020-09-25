@@ -9,6 +9,8 @@ message EntityLabel {
   string name = 2;
   // TODO: This is up for debate.
   string color = 3;
+  // TODO: I don't like having this here in the data transfer object. Will deal with it after.
+  string tenant_id = 4;
 }
 
 message EntityLabelByIdRequest {

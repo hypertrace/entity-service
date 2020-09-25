@@ -30,16 +30,16 @@ public class DocStoreConverter {
   private static DocStoreJsonFormat.Printer JSONFORMAT_PRINTER = DocStoreJsonFormat.printer();
 
   /**
-   * Transforms entity to JSONDocument
+   * Transforms protoMessage to JSONDocument
    *
-   * @param entity
+   * @param protoMessage
    * @return
    */
-  public static <T extends GeneratedMessageV3> JSONDocument transform(T entity) throws IOException {
+  public static <T extends GeneratedMessageV3> JSONDocument transform(T protoMessage) throws IOException {
     // We need to use patched json converter because
     // the one from protobuf serializes 64 bit numbers into strings.
     // See https://github.com/protocolbuffers/protobuf/issues/1823
-    String json = JSONFORMAT_PRINTER.print(entity);
+    String json = JSONFORMAT_PRINTER.print(protoMessage);
 
     return new JSONDocument(json);
   }
