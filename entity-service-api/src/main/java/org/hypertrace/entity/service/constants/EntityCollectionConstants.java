@@ -10,4 +10,5 @@ public class EntityCollectionConstants {
   public static final String RAW_ENTITIES_COLLECTION = "raw_entities";
   public static final String ENRICHED_ENTITIES_COLLECTION = "enriched_entities";
   public static final String ENTITY_RELATIONSHIPS_COLLECTION = "entity_relationships";
+  public static final String ENTITY_LABELS_COLLECTION = "entity_labels";
 }

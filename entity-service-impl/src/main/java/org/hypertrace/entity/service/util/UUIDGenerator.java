@@ -38,6 +38,10 @@ public class UUIDGenerator {
     return getUUIDWithVersion3(transform(attributes).toString()).toString();
   }
 
+  public static String getRandomUUID() {
+    return java.util.UUID.randomUUID().toString();
+  }
+
   /**
    * Explicitly set the version of UUID to UUIDv3
    * <p>
