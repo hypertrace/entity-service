@@ -174,7 +174,7 @@ public class EntityQueryConverter {
     }
   }
 
-  private static AttributeValue.Builder convertToAttributeValue(
+  public static AttributeValue.Builder convertToAttributeValue(
       LiteralConstant literal) {
     AttributeValue.Builder builder = AttributeValue.newBuilder();
     org.hypertrace.entity.query.service.v1.Value value = literal.getValue();
