@@ -221,8 +221,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       String subDocPath = attributeFqnMap.get(attributeFqn);
       // Convert setAttribute LiteralConstant to AttributeValue. Need to be able to store an array
       // literal constant as an array
-      AttributeValue.Builder attributeValueBuilder = EntityQueryConverter.convertToAttributeValue(setAttribute.getValue());
-      String jsonValue = DocStoreJsonFormat.printer().print(attributeValueBuilder);
+      AttributeValue attributeValue = EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
+      String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
 
       for (String entityId : request.getEntityIdsList()) {
         SingleValueKey key = new SingleValueKey(tenantId, entityId);
