@@ -219,7 +219,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         throw new IllegalArgumentException("Unknown attribute FQN " + attributeFqn);
       }
       String subDocPath = attributeFqnMap.get(attributeFqn);
-      String jsonValue = DocStoreJsonFormat.printer().print(setAttribute.getValue());
+      // Convert setAttribute LiteralConstant to AttributeValue. Need to be able to store an array
+      // literal constant as an array
+      AttributeValue attributeValue = EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
+      String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
 
       for (String entityId : request.getEntityIdsList()) {
         SingleValueKey key = new SingleValueKey(tenantId, entityId);
