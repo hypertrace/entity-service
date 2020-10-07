@@ -11,6 +11,13 @@ public interface EntityLabelsClient {
                                         Map<String, String> headers,
                                         String tenantId);
 
+  void refreshEntityLabelsForEntity(String idColumnName,
+                                    String labelsColumnName,
+                                    String id,
+                                    String type,
+                                    Map<String, String> headers,
+                                    String tenantId);
+
   Map<String, List<String>> getEntityLabelsForEntities(String idColumnName,
                                                        String labelsColumnName,
                                                        List<String> ids,
@@ -18,10 +25,10 @@ public interface EntityLabelsClient {
                                                        Map<String, String> headers,
                                                        String tenantId);
 
-  List<String> getEntitiesWithLabels(String idColumnName,
-                                     String labelsColumnName,
-                                     List<String> labels,
-                                     String type,
-                                     Map<String, String> headers,
-                                     String tenantId);
+  List<String> getEntityIdsByLabels(String idColumnName,
+                                    String labelsColumnName,
+                                    List<String> labels,
+                                    String type,
+                                    Map<String, String> headers,
+                                    String tenantId);
 }

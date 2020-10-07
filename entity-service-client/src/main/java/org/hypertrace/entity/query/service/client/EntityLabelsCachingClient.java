@@ -3,6 +3,9 @@ package org.hypertrace.entity.query.service.client;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -10,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
@@ -25,17 +30,26 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 
 public class EntityLabelsCachingClient implements EntityLabelsClient {
-  public EntityQueryServiceClient entityQueryServiceClient;
+  private static final int THREAD_COUNT = 20;
+  private static final ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT);
+  private static final ListeningExecutorService listeningExecutorService = MoreExecutors.listeningDecorator(executorService);
+
+  private EntityQueryServiceClient entityQueryServiceClient;
 
   private final CacheLoader<EntityCacheKey<EntityTypeAndId>, List<String>> loader = new CacheLoader<>() {
     @Override
     public List<String> load(EntityCacheKey<EntityTypeAndId> key) {
-      return loadEntityLabelsForKeys3(List.of(key)).get(key);
+      return loadEntityLabelsForKeys(List.of(key)).get(key);
     }
 
     @Override
     public Map<EntityCacheKey<EntityTypeAndId>, List<String>> loadAll(Iterable<? extends EntityCacheKey<EntityTypeAndId>> keys) {
-      return loadEntityLabelsForKeys3(keys);
+      return loadEntityLabelsForKeys(keys);
+    }
+
+    @Override
+    public ListenableFuture<List<String>> reload(EntityCacheKey<EntityTypeAndId> key, List<String> oldValue) {
+      return listeningExecutorService.submit(() -> load(key));
     }
   };
 
@@ -86,6 +100,21 @@ public class EntityLabelsCachingClient implements EntityLabelsClient {
   }
 
   @Override
+  public void refreshEntityLabelsForEntity(String idColumnName,
+                                           String labelsColumnName,
+                                           String id,
+                                           String type,
+                                           Map<String, String> headers,
+                                           String tenantId) {
+    entityIdsToLabelsCache.refresh(
+        new EntityCacheKey<>(new EntityTypeAndId(type, id, idColumnName, labelsColumnName),
+            tenantId,
+            headers
+        )
+    );
+  }
+
+  @Override
   public Map<String, List<String>> getEntityLabelsForEntities(String idColumnName,
                                                               String labelsColumnName,
                                                               List<String> ids,
@@ -107,7 +136,7 @@ public class EntityLabelsCachingClient implements EntityLabelsClient {
     }
   }
 
-  private Map<EntityCacheKey<EntityTypeAndId>, List<String>> loadEntityLabelsForKeys3(Iterable<? extends EntityCacheKey<EntityTypeAndId>> keys) {
+  private Map<EntityCacheKey<EntityTypeAndId>, List<String>> loadEntityLabelsForKeys(Iterable<? extends EntityCacheKey<EntityTypeAndId>> keys) {
     Iterator<? extends EntityCacheKey<EntityTypeAndId>> iter = keys.iterator();
     if (!iter.hasNext()) {
       return Map.of();
@@ -175,12 +204,12 @@ public class EntityLabelsCachingClient implements EntityLabelsClient {
   }
 
   @Override
-  public List<String> getEntitiesWithLabels(String idColumnName,
-                                            String labelsColumnName,
-                                            List<String> labels,
-                                            String type,
-                                            Map<String, String> headers,
-                                            String tenantId) {
-    throw new UnsupportedOperationException("getEntitiesWithLabels not implemented yet");
+  public List<String> getEntityIdsByLabels(String idColumnName,
+                                           String labelsColumnName,
+                                           List<String> labels,
+                                           String type,
+                                           Map<String, String> headers,
+                                           String tenantId) {
+    throw new UnsupportedOperationException("getEntityIdsByLabels not implemented yet");
   }
 }
