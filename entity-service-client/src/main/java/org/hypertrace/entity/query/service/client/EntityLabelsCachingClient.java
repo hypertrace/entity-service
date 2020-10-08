@@ -65,19 +65,8 @@ public class EntityLabelsCachingClient implements EntityLabelsClient {
     this.entityQueryServiceClient = new EntityQueryServiceClient(entityServiceClientConfig);
   }
 
-  private static Expression.Builder createColumnExpression(String columnName) {
-    return Expression.newBuilder()
-        .setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName(columnName));
-  }
-
-  private static Expression.Builder createStringArrayLiteralExpression(List<String> strList) {
-    return Expression.newBuilder().setLiteral(
-        LiteralConstant.newBuilder().setValue(
-            Value.newBuilder()
-                .setValueType(ValueType.STRING_ARRAY)
-                .addAllStringArray(strList)
-        )
-    );
+  public EntityLabelsCachingClient(EntityQueryServiceClient entityQueryServiceClient) {
+    this.entityQueryServiceClient = entityQueryServiceClient;
   }
 
   @Override
@@ -201,6 +190,21 @@ public class EntityLabelsCachingClient implements EntityLabelsClient {
     }
 
     return entityLabelsByEntityIdMap;
+  }
+
+  private static Expression.Builder createColumnExpression(String columnName) {
+    return Expression.newBuilder()
+        .setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName(columnName));
+  }
+
+  private static Expression.Builder createStringArrayLiteralExpression(List<String> strList) {
+    return Expression.newBuilder().setLiteral(
+        LiteralConstant.newBuilder().setValue(
+            Value.newBuilder()
+                .setValueType(ValueType.STRING_ARRAY)
+                .addAllStringArray(strList)
+        )
+    );
   }
 
   @Override
