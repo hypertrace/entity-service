@@ -30,16 +30,18 @@ public class EntityLabelsCachingClientTest {
 
   @Mock
   private EntityQueryServiceClient entityQueryServiceClient;
+  private EntityLabelsCachingClientConfig entityLabelsCachingClientConfig;
+  private EntityLabelsCachingClient entityLabelsCachingClient;
 
   @BeforeEach
   public void setUp() {
     entityQueryServiceClient = mock(EntityQueryServiceClient.class);
+    entityLabelsCachingClientConfig = new EntityLabelsCachingClientConfig(100, 5);
+    entityLabelsCachingClient = new EntityLabelsCachingClient(entityQueryServiceClient, entityLabelsCachingClientConfig);
   }
 
   @Test
   public void testGetEntityIdsByLabels() {
-    EntityLabelsCachingClient entityLabelsCachingClient = new EntityLabelsCachingClient(entityQueryServiceClient);
-
     Assertions.assertThrows(UnsupportedOperationException.class, () -> {
       entityLabelsCachingClient.getEntityIdsByLabels(
           "API.id",
@@ -74,8 +76,6 @@ public class EntityLabelsCachingClientTest {
     );
     when(entityQueryServiceClient.execute(entityQueryRequest, TEST_REQUEST_HEADERS))
         .thenReturn(resultSetChunkIterator);
-
-    EntityLabelsCachingClient entityLabelsCachingClient = new EntityLabelsCachingClient(entityQueryServiceClient);
 
     Map<String, List<String>> entityLabelsForEntityIds = entityLabelsCachingClient.getEntityLabelsForEntities(
         idColumnName,
@@ -144,8 +144,6 @@ public class EntityLabelsCachingClientTest {
     when(entityQueryServiceClient.execute(entityQueryRequest, TEST_REQUEST_HEADERS))
         .thenReturn(resultSetChunkIterator);
 
-    EntityLabelsCachingClient entityLabelsCachingClient = new EntityLabelsCachingClient(entityQueryServiceClient);
-
     Map<String, List<String>> entityLabelsForEntityIds = entityLabelsCachingClient.getEntityLabelsForEntities(
         idColumnName,
         labelsColumnName,
@@ -176,8 +174,6 @@ public class EntityLabelsCachingClientTest {
     );
     when(entityQueryServiceClient.execute(entityQueryRequest, TEST_REQUEST_HEADERS))
         .thenReturn(resultSetChunkIterator);
-
-    EntityLabelsCachingClient entityLabelsCachingClient = new EntityLabelsCachingClient(entityQueryServiceClient);
 
     List<String> entityLabelsForEntityId = entityLabelsCachingClient.getEntityLabelsForEntity(
         idColumnName,

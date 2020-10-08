@@ -27,10 +27,11 @@ import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
-import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 
 public class EntityLabelsCachingClient implements EntityLabelsClient {
   private static final int THREAD_COUNT = 20;
+  private static final int CACHE_INITIAL_CAPACITY = 200;
+
   private static final ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT);
   private static final ListeningExecutorService listeningExecutorService = MoreExecutors.listeningDecorator(executorService);
 
@@ -53,20 +54,16 @@ public class EntityLabelsCachingClient implements EntityLabelsClient {
     }
   };
 
-  // TODO: Make these builder parameters configurable and move this to the constructor?
-  private final LoadingCache<EntityCacheKey<EntityTypeAndId>, List<String>> entityIdsToLabelsCache =
-      CacheBuilder.newBuilder()
-          .initialCapacity(500)
-          .maximumSize(10000)
-          .expireAfterWrite(10, TimeUnit.MINUTES)
-          .build(loader);
+  private final LoadingCache<EntityCacheKey<EntityTypeAndId>, List<String>> entityIdsToLabelsCache;
 
-  public EntityLabelsCachingClient(EntityServiceClientConfig entityServiceClientConfig) {
-    this.entityQueryServiceClient = new EntityQueryServiceClient(entityServiceClientConfig);
-  }
-
-  public EntityLabelsCachingClient(EntityQueryServiceClient entityQueryServiceClient) {
+  public EntityLabelsCachingClient(EntityQueryServiceClient entityQueryServiceClient,
+                                   EntityLabelsCachingClientConfig entityLabelsCachingClientConfig) {
     this.entityQueryServiceClient = entityQueryServiceClient;
+    this.entityIdsToLabelsCache = CacheBuilder.newBuilder()
+        .initialCapacity(CACHE_INITIAL_CAPACITY)
+        .maximumSize(entityLabelsCachingClientConfig.getMaximumSize())
+        .expireAfterWrite(entityLabelsCachingClientConfig.getExpiryTimeInMinutes(), TimeUnit.MINUTES)
+        .build(loader);
   }
 
   @Override
