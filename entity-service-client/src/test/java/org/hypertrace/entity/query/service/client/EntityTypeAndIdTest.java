@@ -17,6 +17,8 @@ public class EntityTypeAndIdTest {
         "id", "labels_");
     EntityTypeAndId entityTypeAndId5 = new EntityTypeAndId("type1", "id1",
         "id", "labels");
+    EntityTypeAndId entityTypeAndId6 = new EntityTypeAndId("type2", "id1",
+        "id", "labels");
 
     Assertions.assertEquals("type1", entityTypeAndId1.getType());
     Assertions.assertEquals("id1", entityTypeAndId1.getId());
@@ -28,6 +30,7 @@ public class EntityTypeAndIdTest {
     Assertions.assertNotEquals(entityTypeAndId1, entityTypeAndId3);
     Assertions.assertNotEquals(entityTypeAndId1, entityTypeAndId4);
     Assertions.assertEquals(entityTypeAndId1, entityTypeAndId5);
+    Assertions.assertNotEquals(entityTypeAndId1, entityTypeAndId6);
     Assertions.assertNotEquals(entityTypeAndId1, null);
     Assertions.assertNotEquals(entityTypeAndId1, 7);
 
