@@ -41,9 +41,19 @@ public class DocStoreConverterTest {
     // Verify that the first filter is based on tenant id.
     Filter tenantIdFilter = transformedFilter.getChildFilters()[0];
 
-    Assertions.assertEquals(Op.EQ, tenantIdFilter.getOp());
-    Assertions.assertEquals(TENANT_ID, tenantIdFilter.getValue());
-    Assertions.assertEquals(EntityServiceConstants.TENANT_ID, tenantIdFilter.getFieldName());
+    // Verify tenantId filter. For backwards compatibility need to match on the old "customerId" field
+    // name.
+    Assertions.assertEquals(Op.OR, tenantIdFilter.getOp());
+    Assertions.assertEquals(2, tenantIdFilter.getChildFilters().length);
+    Assertions.assertEquals(null, tenantIdFilter.getValue());
+
+    Assertions.assertEquals(Op.EQ, tenantIdFilter.getChildFilters()[0].getOp());
+    Assertions.assertEquals(TENANT_ID, tenantIdFilter.getChildFilters()[0].getValue());
+    Assertions.assertEquals(EntityServiceConstants.TENANT_ID, tenantIdFilter.getChildFilters()[0].getFieldName());
+
+    Assertions.assertEquals(Op.EQ, tenantIdFilter.getChildFilters()[1].getOp());
+    Assertions.assertEquals(TENANT_ID, tenantIdFilter.getChildFilters()[1].getValue());
+    Assertions.assertEquals(EntityServiceConstants.CUSTOMER_ID, tenantIdFilter.getChildFilters()[1].getFieldName());
 
     Assertions.assertEquals(EntityServiceConstants.ENTITY_ID,
         transformedFilter.getChildFilters()[1].getFieldName());

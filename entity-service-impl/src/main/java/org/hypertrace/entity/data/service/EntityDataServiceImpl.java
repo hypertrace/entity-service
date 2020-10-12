@@ -471,7 +471,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       Map<String, AttributeValue> attributeMap) {
     Map<String, AttributeValue> map = new HashMap<>(attributeMap);
     // Add the tenantId and entityType to the map to make it more unique.
-    map.put("customerId",
+    map.put(EntityServiceConstants.CUSTOMER_ID,
         AttributeValue.newBuilder().setValue(Value.newBuilder().setString(tenantId)).build());
     map.put("entityType",
         AttributeValue.newBuilder().setValue(Value.newBuilder().setString(entityType)).build());

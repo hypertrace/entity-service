@@ -79,9 +79,26 @@ public class DocStoreConverter {
     return docStoreQuery;
   }
 
+  /**
+   * Since we decided to keep the customerId field around for old entities - to avoid entityId
+   * regeneration and backwards compatibility break - these entities are never
+   * upserted and hence the tenantId column has not been written into the document. So when creating
+   * the filter for tenantId, we need to match on both field names.
+   * @param tenantId
+   * @return OR filter on customerId and tenantId field names
+   */
   public static Filter getTenantIdEqFilter(String tenantId) {
-    return new Filter(Filter.Op.EQ, EntityServiceConstants.TENANT_ID, tenantId);
+    Filter filter = new Filter();
+    filter.setOp(Op.OR);
+    filter.setChildFilters(
+        new Filter[] {
+            new Filter(Filter.Op.EQ, EntityServiceConstants.TENANT_ID, tenantId),
+            new Filter(Filter.Op.EQ, EntityServiceConstants.CUSTOMER_ID, tenantId)
+        });
+
+    return filter;
   }
+
 
   private static Filter transform(AttributeFilter filter) {
     try {

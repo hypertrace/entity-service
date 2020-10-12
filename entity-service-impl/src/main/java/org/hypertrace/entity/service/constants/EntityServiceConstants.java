@@ -3,6 +3,7 @@ package org.hypertrace.entity.service.constants;
 public class EntityServiceConstants {
 
   public static final String TENANT_ID = "tenantId";
+  public static final String CUSTOMER_ID = "customerId";
 
   //EntityType constants
   public static final String NAME = "name";
