@@ -186,6 +186,15 @@ public class EntityLabelsCachingClient implements EntityLabelsClient {
       }
     }
 
+    // For entity ids that were not found in entity-service, set the labels to empty list
+    // TODO: This is to take care of the issue with not filtering on customerId as well for old
+    //    entities that do not have the tenantId field name in the entity document.
+    for (EntityCacheKey<EntityTypeAndId> entityIdCacheKey : entityIdKeys) {
+      if (!entityLabelsByEntityIdMap.containsKey(entityIdCacheKey)) {
+        entityLabelsByEntityIdMap.put(entityIdCacheKey, List.of());
+      }
+    }
+
     return entityLabelsByEntityIdMap;
   }
 
