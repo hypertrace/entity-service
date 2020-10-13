@@ -3,6 +3,8 @@ package org.hypertrace.entity.data.service.client;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import io.grpc.Channel;
+import io.grpc.ManagedChannelBuilder;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -30,11 +32,6 @@ public class EdsCacheClient implements EdsClient {
   private LoadingCache<EdsTypeAndIdAttributesCacheKey, String> entityIdsCache;
 
   private final EntityDataServiceClient client;
-
-  EdsCacheClient(EntityServiceClientConfig entityServiceClientConfig) {
-    this(new EntityDataServiceClient(entityServiceClientConfig),
-        entityServiceClientConfig.getCacheConfig());
-  }
 
   public EdsCacheClient(EntityDataServiceClient client,
       EntityServiceClientCacheConfig cacheConfig) {
