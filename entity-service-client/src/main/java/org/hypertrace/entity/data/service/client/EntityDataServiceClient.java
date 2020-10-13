@@ -5,7 +5,6 @@ import static org.hypertrace.entity.service.constants.EntityConstants.attributeM
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import io.grpc.Channel;
-import io.grpc.ManagedChannelBuilder;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -29,7 +28,6 @@ import org.hypertrace.entity.data.service.v1.Operator;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.data.service.v1.RelationshipsQuery;
 import org.hypertrace.entity.data.service.v1.RelationshipsQuery.Builder;
-import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,14 +38,6 @@ public class EntityDataServiceClient implements EdsClient {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EntityDataServiceClient.class);
   private final EntityDataServiceBlockingStub blockingStub;
-
-  public EntityDataServiceClient(EntityServiceClientConfig entityServiceClientConfig) {
-    this(ManagedChannelBuilder
-        .forAddress(entityServiceClientConfig.getHost(), entityServiceClientConfig.getPort())
-        // Channels are secure by default (via SSL/TLS). For the example we disable TLS to avoid
-        // needing certificates.
-        .usePlaintext().build());
-  }
 
   public EntityDataServiceClient(Channel channel) {
     blockingStub = EntityDataServiceGrpc.newBlockingStub(channel).withCallCredentials(
