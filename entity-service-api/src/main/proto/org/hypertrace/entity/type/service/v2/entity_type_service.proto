@@ -7,16 +7,33 @@ message EntityType {
   string name = 1;
   string attribute_scope = 2;
   string id_attribute_key = 3;
+  string name_attribute_key = 4;
 }
 
-message EntityTypeFilter {
+message UpsertEntityTypeRequest {
+  EntityType entity_type = 1;
+}
+
+message UpsertEntityTypeResponse {
+  EntityType entity_type = 1;
+}
+
+message DeleteEntityTypesRequest {
   repeated string name = 1;
 }
 
-message Empty {}
+message DeleteEntityTypesResponse {}
 
-service EntityTypeServiceV2 {
-  rpc upsertEntityType (EntityType) returns (EntityType) {}
-  rpc deleteEntityTypes (EntityTypeFilter) returns (Empty) {}
-  rpc queryEntityTypes (EntityTypeFilter) returns (stream EntityType) {}
+message QueryEntityTypesRequest {
+  repeated string name = 1;
+}
+
+message QueryEntityTypesResponse {
+  repeated EntityType entity_type = 1;
+}
+
+service EntityTypeService {
+  rpc UpsertEntityType (UpsertEntityTypeRequest) returns (UpsertEntityTypeResponse) {}
+  rpc DeleteEntityTypes (DeleteEntityTypesRequest) returns (DeleteEntityTypesResponse) {}
+  rpc QueryEntityTypes (QueryEntityTypesRequest) returns (QueryEntityTypesResponse) {}
 }

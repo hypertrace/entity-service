@@ -6,9 +6,9 @@ import io.grpc.ManagedChannelBuilder;
 import java.util.List;
 import org.hypertrace.core.serviceframework.IntegrationTestServerUtil;
 import org.hypertrace.entity.service.client.config.EntityServiceTestConfig;
-import org.hypertrace.entity.type.service.v2.client.EntityTypeServiceClient;
 import org.hypertrace.entity.type.service.v2.EntityType;
-import org.hypertrace.entity.type.service.v2.EntityTypeFilter;
+import org.hypertrace.entity.type.service.v2.EntityTypeServiceImpl;
+import org.hypertrace.entity.type.service.v2.client.EntityTypeServiceClient;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -16,7 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Integration test for testing {@link org.hypertrace.entity.type.service.v2.EntityTypeServiceImplV2}
+ * Integration test for testing {@link EntityTypeServiceImpl}
  */
 public class EntityTypeServiceV2Test {
   private static final String TENANT_ID =
@@ -40,15 +40,31 @@ public class EntityTypeServiceV2Test {
 
   @BeforeEach
   public void setupMethod() {
-    client.deleteEntityTypes(TENANT_ID, EntityTypeFilter.newBuilder().build());
+    client.deleteAllEntityTypes(TENANT_ID);
+  }
+
+  @Test()
+  public void testInvalidEntityTypeUpsert() {
+    Assertions.assertThrows(RuntimeException.class, () -> {
+      EntityType entityType1 = EntityType.newBuilder().setName("API").build();
+      client.upsertEntityType(TENANT_ID, entityType1);
+    });
   }
 
   @Test
   public void testAllEntityTypeMethods() {
-    EntityType entityType1 =
-        EntityType.newBuilder().setName("API").setAttributeScope("API").setIdAttributeKey("id").build();
-    EntityType entityType2 =
-        EntityType.newBuilder().setName("SERVICE").setAttributeScope("SERVICE").setIdAttributeKey("id").build();
+    EntityType entityType1 = EntityType.newBuilder()
+        .setName("API")
+        .setAttributeScope("API")
+        .setIdAttributeKey("id")
+        .setNameAttributeKey("name")
+        .build();
+    EntityType entityType2 = EntityType.newBuilder()
+        .setName("SERVICE")
+        .setAttributeScope("SERVICE")
+        .setIdAttributeKey("id")
+        .setNameAttributeKey("name")
+        .build();
     client.upsertEntityType(TENANT_ID, entityType1);
     client.upsertEntityType(TENANT_ID, entityType2);
 
@@ -56,14 +72,16 @@ public class EntityTypeServiceV2Test {
     Assertions.assertEquals(2, entityTypes.size());
     Assertions.assertTrue(entityTypes.containsAll(List.of(entityType1, entityType2)));
 
-    entityTypes = client.queryEntityTypes(TENANT_ID, EntityTypeFilter.newBuilder()
-        .addName(entityType1.getName())
-        .build());
+    entityTypes = client.queryEntityTypes(TENANT_ID, List.of(entityType1.getName()));
     Assertions.assertEquals(1, entityTypes.size());
     Assertions.assertTrue(entityTypes.contains(entityType1));
 
+    // Lookup unknown entity type and assert empty result.
+    entityTypes = client.queryEntityTypes(TENANT_ID, List.of("unknown"));
+    Assertions.assertTrue(entityTypes.isEmpty());
+
     // Delete one and verify there is only one left.
-    client.deleteEntityTypes(TENANT_ID, EntityTypeFilter.newBuilder().addName("API").build());
+    client.deleteEntityTypes(TENANT_ID, List.of("API"));
 
     // Query all types
     entityTypes = client.getAllEntityTypes(TENANT_ID);

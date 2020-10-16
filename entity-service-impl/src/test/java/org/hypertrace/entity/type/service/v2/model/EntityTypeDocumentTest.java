@@ -12,13 +12,14 @@ public class EntityTypeDocumentTest {
   @Test
   public void testProtoConversion() {
     EntityType entityType = EntityType.newBuilder().setName("API").setAttributeScope("API")
-        .setIdAttributeKey("id").build();
-    Assertions.assertEquals(entityType, EntityTypeDocument.fromProto(entityType).toProto());
+        .setIdAttributeKey("id").setNameAttributeKey("name").build();
+    Assertions.assertEquals(entityType, EntityTypeDocument.fromProto("testTenant", entityType).toProto());
   }
 
   @Test
   public void testJsonConversion() throws JsonProcessingException {
-    EntityTypeDocument document = new EntityTypeDocument("testTenant", "API", "API", "id");
+    EntityTypeDocument document =
+        new EntityTypeDocument("testTenant", "API", "API", "id", "name");
     Assertions.assertEquals(document, EntityTypeDocument.fromJson(document.toJson()));
   }
 }

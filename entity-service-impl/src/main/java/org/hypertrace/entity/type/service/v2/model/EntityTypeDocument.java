@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Objects;
+import javax.annotation.Nonnull;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.type.service.v2.EntityType;
@@ -27,27 +28,27 @@ public class EntityTypeDocument implements Document {
   @JsonProperty
   private String idAttributeKey;
 
+  @JsonProperty
+  private String nameAttributeKey;
+
   public EntityTypeDocument() {}
 
-  public EntityTypeDocument(String name, String attributeScope, String idAttributeKey) {
-    this(null, name, attributeScope, idAttributeKey);
-  }
-
-  public EntityTypeDocument(String tenantId, String name, String attributeScope, String idAttributeKey) {
+  public EntityTypeDocument(String tenantId, String name, String attributeScope, String idAttributeKey, String nameAttributeKey) {
     this.tenantId = tenantId;
     this.name = name;
     this.attributeScope = attributeScope;
     this.idAttributeKey = idAttributeKey;
+    this.nameAttributeKey = nameAttributeKey;
   }
 
-  public static EntityTypeDocument fromProto(EntityType entityType) {
-    return new EntityTypeDocument(entityType.getName(), entityType.getAttributeScope(),
-        entityType.getIdAttributeKey());
+  public static EntityTypeDocument fromProto(@Nonnull String tenantId, EntityType entityType) {
+    return new EntityTypeDocument(tenantId, entityType.getName(), entityType.getAttributeScope(),
+        entityType.getIdAttributeKey(), entityType.getNameAttributeKey());
   }
 
   public EntityType toProto() {
     return EntityType.newBuilder().setName(getName()).setAttributeScope(getAttributeScope())
-        .setIdAttributeKey(getIdAttributeKey()).build();
+        .setIdAttributeKey(getIdAttributeKey()).setNameAttributeKey(getNameAttributeKey()).build();
   }
 
   public static EntityTypeDocument fromJson(String json) throws JsonProcessingException {
@@ -86,6 +87,14 @@ public class EntityTypeDocument implements Document {
     this.idAttributeKey = idAttributeKey;
   }
 
+  public String getNameAttributeKey() {
+    return nameAttributeKey;
+  }
+
+  public void setNameAttributeKey(String nameAttributeKey) {
+    this.nameAttributeKey = nameAttributeKey;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -98,12 +107,13 @@ public class EntityTypeDocument implements Document {
     return Objects.equals(tenantId, document.tenantId) &&
         Objects.equals(name, document.name) &&
         Objects.equals(attributeScope, document.attributeScope) &&
-        Objects.equals(idAttributeKey, document.idAttributeKey);
+        Objects.equals(idAttributeKey, document.idAttributeKey) &&
+        Objects.equals(nameAttributeKey, document.nameAttributeKey);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tenantId, name, attributeScope, idAttributeKey);
+    return Objects.hash(tenantId, name, attributeScope, idAttributeKey, nameAttributeKey);
   }
 
   @Override
