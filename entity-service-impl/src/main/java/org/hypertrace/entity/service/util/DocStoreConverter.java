@@ -93,17 +93,23 @@ public class DocStoreConverter {
       f.setFieldName(filter.getName());
       f.setOp(transform(filter.getOperator()));
       if (filter.hasAttributeValue()) {
-        transform(filter.getAttributeValue(), f);
+        //transform(filter.getAttributeValue(), f);
+        if (ATTRIBUTES_LABELS_FIELD_NAME.equals(f.getFieldName()) && f.getOp() == Op.EQ) {
+          transformToEqFilterWithValueListRhs(filter.getAttributeValue(), f);
+        } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(f.getFieldName()) && f.getOp() == Op.IN) {
+          transformToOrFilterChainForStrArray(filter.getAttributeValue(), f);
+          // Early return on this one since the childFilters are in the Or chain.
+          return f;
+        } else {
+          transform(filter.getAttributeValue(), f, isPartOfAttributeMap(f.getFieldName()));
+        }
       }
 
-      // TODO: Need to do this in a different way
-      if (f.getChildFilters() == null || f.getChildFilters().length == 0) {
-        f.setChildFilters(
-            filter.getChildFilterList().stream()
-                .map(DocStoreConverter::transform)
-                .collect(Collectors.toList())
-                .toArray(new Filter[]{}));
-      }
+      f.setChildFilters(
+          filter.getChildFilterList().stream()
+              .map(DocStoreConverter::transform)
+              .collect(Collectors.toList())
+              .toArray(new Filter[]{}));
       return f;
     } catch (IOException ioe) {
       throw new IllegalArgumentException("Error converting filter for query");
@@ -114,15 +120,15 @@ public class DocStoreConverter {
     return !EntityServiceConstants.ENTITY_CREATED_TIME.equalsIgnoreCase(fieldName);
   }
 
-  private static void transform(AttributeValue attributeValue, Filter filter) throws IOException {
-    if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getFieldName()) && filter.getOp() == Op.EQ) {
-      transformToEqFilterWithValueListRhs(attributeValue, filter);
-    } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getFieldName()) && filter.getOp() == Op.IN) {
-      transformToOrFilterChainForStrArray(attributeValue, filter);
-    } else {
-      transform(attributeValue, filter, isPartOfAttributeMap(filter.getFieldName()));
-    }
-  }
+//  private static void transform(AttributeValue attributeValue, Filter filter) throws IOException {
+//    if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getFieldName()) && filter.getOp() == Op.EQ) {
+//      transformToEqFilterWithValueListRhs(attributeValue, filter);
+//    } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getFieldName()) && filter.getOp() == Op.IN) {
+//      transformToOrFilterChainForStrArray(attributeValue, filter);
+//    } else {
+//      transform(attributeValue, filter, isPartOfAttributeMap(filter.getFieldName()));
+//    }
+//  }
 
   private static void transformToOrFilterChainForStrArray(AttributeValue attributeValue, Filter filter) {
     String fieldName = filter.getFieldName() + "." + "valueList" + "." + "values";
