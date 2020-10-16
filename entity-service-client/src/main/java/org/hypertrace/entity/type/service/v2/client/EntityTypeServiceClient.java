@@ -8,17 +8,16 @@ import org.hypertrace.core.grpcutils.client.GrpcClientRequestContextUtil;
 import org.hypertrace.core.grpcutils.client.RequestContextClientCallCredsProviderFactory;
 import org.hypertrace.entity.type.service.v2.EntityType;
 import org.hypertrace.entity.type.service.v2.EntityTypeFilter;
-import org.hypertrace.entity.type.service.v2.EntityTypeServiceGrpc;
-import org.hypertrace.entity.type.service.v2.EntityTypeServiceGrpc.EntityTypeServiceBlockingStub;
+import org.hypertrace.entity.type.service.v2.EntityTypeServiceV2Grpc;
+import org.hypertrace.entity.type.service.v2.EntityTypeServiceV2Grpc.EntityTypeServiceV2BlockingStub;
 
 public class EntityTypeServiceClient {
 
-  private final EntityTypeServiceBlockingStub blockingStub;
+  private final EntityTypeServiceV2BlockingStub blockingStub;
 
   public EntityTypeServiceClient(Channel channel) {
-    blockingStub = EntityTypeServiceGrpc.newBlockingStub(channel)
-        .withCallCredentials(
-            RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
+    blockingStub = EntityTypeServiceV2Grpc.newBlockingStub(channel).withCallCredentials(
+        RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
   }
 
   private <V> V execute(String tenantId, Callable<V> c) {
@@ -39,7 +38,6 @@ public class EntityTypeServiceClient {
   }
 
   public List<EntityType> queryEntityTypes(String tenantId, EntityTypeFilter entityTypeFilter) {
-    return Lists
-        .newArrayList(execute(tenantId, () -> blockingStub.queryEntityTypes(entityTypeFilter)));
+    return Lists.newArrayList(execute(tenantId, () -> blockingStub.queryEntityTypes(entityTypeFilter)));
   }
 }

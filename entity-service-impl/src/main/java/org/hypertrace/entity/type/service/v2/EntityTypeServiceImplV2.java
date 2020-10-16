@@ -18,12 +18,12 @@ import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.service.constants.EntityCollectionConstants;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.util.TenantUtils;
-import org.hypertrace.entity.type.service.v2.EntityTypeServiceGrpc.EntityTypeServiceImplBase;
+import org.hypertrace.entity.type.service.v2.EntityTypeServiceV2Grpc.EntityTypeServiceV2ImplBase;
 import org.hypertrace.entity.type.service.v2.model.EntityTypeDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class EntityTypeServiceImplV2 extends EntityTypeServiceImplBase {
+public class EntityTypeServiceImplV2 extends EntityTypeServiceV2ImplBase {
   private static final Logger LOGGER = LoggerFactory.getLogger(EntityTypeServiceImplV2.class);
 
   private final Collection entityTypeCollection;
