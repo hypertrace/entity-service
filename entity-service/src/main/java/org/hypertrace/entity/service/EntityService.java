@@ -15,6 +15,7 @@ import org.hypertrace.core.serviceframework.config.ConfigClient;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl;
 import org.hypertrace.entity.query.service.EntityQueryServiceImpl;
 import org.hypertrace.entity.type.service.EntityTypeServiceImpl;
+import org.hypertrace.entity.type.service.v2.EntityTypeServiceImplV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +30,7 @@ public class EntityService extends PlatformService {
   private Datastore datastore;
   private Server server;
 
-  private ScheduledExecutorService scheduledExecutorService =
+  private final ScheduledExecutorService scheduledExecutorService =
       Executors.newSingleThreadScheduledExecutor();
   private int consecutiveFailedHealthCheck = 0;
 
@@ -50,6 +51,7 @@ public class EntityService extends PlatformService {
 
     server = ServerBuilder.forPort(port)
         .addService(InterceptorUtil.wrapInterceptors(new EntityTypeServiceImpl(datastore)))
+        .addService(InterceptorUtil.wrapInterceptors(new EntityTypeServiceImplV2(datastore)))
         .addService(InterceptorUtil.wrapInterceptors(new EntityDataServiceImpl(datastore)))
         .addService(
             InterceptorUtil.wrapInterceptors(new EntityQueryServiceImpl(datastore, getAppConfig())))
