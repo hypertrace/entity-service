@@ -1,4 +1,4 @@
-package org.hypertrace.entity.type.service.v2.client;
+package org.hypertrace.entity.type.client;
 
 import io.grpc.Channel;
 import java.util.List;
@@ -15,7 +15,6 @@ import org.hypertrace.entity.type.service.v2.UpsertEntityTypeRequest;
 import org.hypertrace.entity.type.service.v2.UpsertEntityTypeResponse;
 
 public class EntityTypeServiceClient {
-
   private final EntityTypeServiceBlockingStub blockingStub;
 
   public EntityTypeServiceClient(Channel channel) {
@@ -57,3 +56,4 @@ public class EntityTypeServiceClient {
         QueryEntityTypesRequest.newBuilder().addAllName(names).build())).getEntityTypeList();
   }
 }
+

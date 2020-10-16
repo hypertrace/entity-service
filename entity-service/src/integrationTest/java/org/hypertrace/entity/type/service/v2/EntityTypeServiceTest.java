@@ -1,4 +1,4 @@
-package org.hypertrace.entity.service.service;
+package org.hypertrace.entity.type.service.v2;
 
 import io.grpc.Channel;
 import io.grpc.ClientInterceptors;
@@ -6,9 +6,7 @@ import io.grpc.ManagedChannelBuilder;
 import java.util.List;
 import org.hypertrace.core.serviceframework.IntegrationTestServerUtil;
 import org.hypertrace.entity.service.client.config.EntityServiceTestConfig;
-import org.hypertrace.entity.type.service.v2.EntityType;
-import org.hypertrace.entity.type.service.v2.EntityTypeServiceImpl;
-import org.hypertrace.entity.type.service.v2.client.EntityTypeServiceClient;
+import org.hypertrace.entity.type.client.EntityTypeServiceClient;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -18,9 +16,9 @@ import org.junit.jupiter.api.Test;
 /**
  * Integration test for testing {@link EntityTypeServiceImpl}
  */
-public class EntityTypeServiceV2Test {
+public class EntityTypeServiceTest {
   private static final String TENANT_ID =
-      "__testTenant__" + EntityTypeServiceV2Test.class.getSimpleName();
+      "__testTenant__" + EntityTypeServiceTest.class.getSimpleName();
 
   private static EntityTypeServiceClient client;
 
