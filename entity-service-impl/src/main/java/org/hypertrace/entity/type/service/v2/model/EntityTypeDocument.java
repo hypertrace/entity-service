@@ -13,7 +13,7 @@ public class EntityTypeDocument implements Document {
   // Since there could be additional metadata fields written by the doc store,
   // ignore them while reading the object from JSON.
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().configure(
-      DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);;
+      DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
   @JsonProperty(value = EntityServiceConstants.TENANT_ID)
   private String tenantId;
