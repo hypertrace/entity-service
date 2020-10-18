@@ -32,6 +32,7 @@ public class DocStoreConverter {
   private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static DocStoreJsonFormat.Printer JSONFORMAT_PRINTER = DocStoreJsonFormat.printer();
   private static final String ATTRIBUTES_LABELS_FIELD_NAME = "attributes.labels";
+  private static final String VALUE_LIST_VALUES_CONST = ".valueList.values";
 
   /**
    * Transforms entity to JSONDocument
@@ -131,7 +132,7 @@ public class DocStoreConverter {
 //  }
 
   private static void transformToOrFilterChainForStrArray(AttributeValue attributeValue, Filter filter) {
-    String fieldName = filter.getFieldName() + "." + "valueList" + "." + "values";
+    String fieldName = filter.getFieldName() + VALUE_LIST_VALUES_CONST;
 
     filter.setFieldName("");
     filter.setOp(Op.OR);
@@ -160,7 +161,7 @@ public class DocStoreConverter {
 
   private static void transformToEqFilterWithValueListRhs(AttributeValue attributeValue, Filter filter)
       throws InvalidProtocolBufferException, JsonProcessingException {
-    String fieldName = filter.getFieldName() + "." + "valueList" + "." + "values";
+    String fieldName = filter.getFieldName() + VALUE_LIST_VALUES_CONST;
     filter.setFieldName(fieldName);
 
     org.hypertrace.entity.data.service.v1.AttributeValue.TypeCase typeCase = attributeValue.getTypeCase();
@@ -251,9 +252,7 @@ public class DocStoreConverter {
           + "." + "value"
           + "." + fieldNameSuffix.orElse("string");
     } else {
-      return filter.getFieldName()
-          + "." + "valueList"
-          + "." + "values";
+      return filter.getFieldName() + VALUE_LIST_VALUES_CONST;
     }
   }
 
