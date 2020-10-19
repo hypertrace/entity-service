@@ -9,9 +9,9 @@ public class EntityServiceConfig {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityServiceConfig.class);
 
-  private String dataStoreType;
+  private final String dataStoreType;
 
-  private Config entityServiceConfig;
+  private final Config entityServiceConfig;
 
   public EntityServiceConfig(Config config) {
 
@@ -25,10 +25,7 @@ public class EntityServiceConfig {
   }
 
   public Config getDataStoreConfig(String storeType) {
-    entityServiceConfig.entrySet().forEach(e -> {
-      LOG.info("Config key {}", e.getKey());
-    });
+    entityServiceConfig.entrySet().forEach(e -> LOG.info("Config key {}", e.getKey()));
     return entityServiceConfig.getConfig(storeType);
   }
-
 }

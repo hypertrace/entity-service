@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+package org.hypertrace.entity.type.service.v2;
+
+message EntityType {
+  string name = 1;
+  string attribute_scope = 2;
+  string id_attribute_key = 3;
+  string name_attribute_key = 4;
+}
+
+message UpsertEntityTypeRequest {
+  EntityType entity_type = 1;
+}
+
+message UpsertEntityTypeResponse {
+  EntityType entity_type = 1;
+}
+
+message DeleteEntityTypesRequest {
+  repeated string name = 1;
+}
+
+message DeleteEntityTypesResponse {}
+
+message QueryEntityTypesRequest {
+  repeated string name = 1;
+}
+
+message QueryEntityTypesResponse {
+  repeated EntityType entity_type = 1;
+}
+
+service EntityTypeService {
+  rpc UpsertEntityType (UpsertEntityTypeRequest) returns (UpsertEntityTypeResponse) {}
+  rpc DeleteEntityTypes (DeleteEntityTypesRequest) returns (DeleteEntityTypesResponse) {}
+  rpc QueryEntityTypes (QueryEntityTypesRequest) returns (QueryEntityTypesResponse) {}
+}
