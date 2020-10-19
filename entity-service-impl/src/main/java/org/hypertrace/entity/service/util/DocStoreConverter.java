@@ -88,27 +88,19 @@ public class DocStoreConverter {
     return new Filter(Filter.Op.EQ, EntityServiceConstants.TENANT_ID, tenantId);
   }
 
-  private static Filter transform(AttributeFilter filter) {
+  // TODO: Delete method
+  private static Filter transformOld(AttributeFilter filter) {
     try {
       Filter f = new Filter();
       f.setFieldName(filter.getName());
       f.setOp(transform(filter.getOperator()));
       if (filter.hasAttributeValue()) {
-        //transform(filter.getAttributeValue(), f);
-        if (ATTRIBUTES_LABELS_FIELD_NAME.equals(f.getFieldName()) && f.getOp() == Op.EQ) {
-          transformToEqFilterWithValueListRhs(filter.getAttributeValue(), f);
-        } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(f.getFieldName()) && f.getOp() == Op.IN) {
-          transformToOrFilterChainForStrArray(filter.getAttributeValue(), f);
-          // Early return on this one since the childFilters are in the Or chain.
-          return f;
-        } else {
-          transform(filter.getAttributeValue(), f, isPartOfAttributeMap(f.getFieldName()));
-        }
+        transform(filter.getAttributeValue(), f, isPartOfAttributeMap(f.getFieldName()));
       }
 
       f.setChildFilters(
           filter.getChildFilterList().stream()
-              .map(DocStoreConverter::transform)
+              .map(DocStoreConverter::transformOld)
               .collect(Collectors.toList())
               .toArray(new Filter[]{}));
       return f;
@@ -117,31 +109,65 @@ public class DocStoreConverter {
     }
   }
 
+  private static Filter transform(AttributeFilter filter) {
+    try {
+      if (filter.hasAttributeValue()) {
+        if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.EQ) {
+          return transformToEqFilterWithValueListRhs(filter);
+        } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.IN) {
+          return transformToOrFilterChainForStrArray(filter);
+        } else {
+          return transformNonListRhsFilterTypes(filter);
+        }
+      } else { // AND or OR filter chains
+        Filter f = new Filter();
+        f.setFieldName(filter.getName());
+        f.setOp(transform(filter.getOperator()));
+
+        f.setChildFilters(
+            filter.getChildFilterList().stream()
+                .map(DocStoreConverter::transform)
+                .collect(Collectors.toList())
+                .toArray(new Filter[]{}));
+        return f;
+      }
+    } catch (IOException ioe) {
+      throw new IllegalArgumentException(String.format("transform: Error converting filter for query. Filter:  %s", filter), ioe);
+    }
+  }
+
+  private static Filter transformNonListRhsFilterTypes(AttributeFilter filter) {
+    try {
+      Filter f = new Filter();
+      f.setFieldName(filter.getName());
+      f.setOp(transform(filter.getOperator()));
+      transform(filter.getAttributeValue(), f, isPartOfAttributeMap(f.getFieldName()));
+
+      // Set child filters to empty string
+      f.setChildFilters(new Filter[]{});
+      return f;
+    } catch (IOException ioe) {
+      throw new IllegalArgumentException(String.format("transformNonListRhsFilterTypes: Error converting filter for query. Filter:  %s", filter), ioe);
+    }
+  }
+
   private static boolean isPartOfAttributeMap(String fieldName) {
     return !EntityServiceConstants.ENTITY_CREATED_TIME.equalsIgnoreCase(fieldName);
   }
 
-//  private static void transform(AttributeValue attributeValue, Filter filter) throws IOException {
-//    if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getFieldName()) && filter.getOp() == Op.EQ) {
-//      transformToEqFilterWithValueListRhs(attributeValue, filter);
-//    } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getFieldName()) && filter.getOp() == Op.IN) {
-//      transformToOrFilterChainForStrArray(attributeValue, filter);
-//    } else {
-//      transform(attributeValue, filter, isPartOfAttributeMap(filter.getFieldName()));
-//    }
-//  }
+  private static Filter transformToOrFilterChainForStrArray(AttributeFilter attributeFilter) {
+    String fieldName = attributeFilter.getName() + VALUE_LIST_VALUES_CONST;
 
-  private static void transformToOrFilterChainForStrArray(AttributeValue attributeValue, Filter filter) {
-    String fieldName = filter.getFieldName() + VALUE_LIST_VALUES_CONST;
+    Filter f = new Filter();
+    f.setFieldName("");
+    f.setOp(Op.OR);
 
-    filter.setFieldName("");
-    filter.setOp(Op.OR);
-    filter.setChildFilters(
-        attributeValue.getValueList().getValuesList().stream()
+    f.setChildFilters(
+        attributeFilter.getAttributeValue().getValueList().getValuesList().stream()
             .map(rhsAttributeValue -> {
-              Filter f = new Filter();
-              f.setFieldName(fieldName);
-              f.setOp(Op.EQ);
+              Filter childFilter = new Filter();
+              childFilter.setFieldName(fieldName);
+              childFilter.setOp(Op.EQ);
 
               JsonNode mapNode = null;
               try {
@@ -151,29 +177,39 @@ public class DocStoreConverter {
                 throw new RuntimeException(e);
               }
               Map map = OBJECT_MAPPER.convertValue(mapNode, Map.class);
-              f.setValue(map);
-              return f;
+              childFilter.setValue(map);
+              return childFilter;
             })
             .collect(Collectors.toList())
             .toArray(new Filter[]{})
     );
+
+    return f;
   }
 
-  private static void transformToEqFilterWithValueListRhs(AttributeValue attributeValue, Filter filter)
+  private static Filter transformToEqFilterWithValueListRhs(AttributeFilter attributeFilter)
       throws InvalidProtocolBufferException, JsonProcessingException {
-    String fieldName = filter.getFieldName() + VALUE_LIST_VALUES_CONST;
-    filter.setFieldName(fieldName);
+    String fieldName = attributeFilter.getName() + VALUE_LIST_VALUES_CONST;
 
+    Filter f = new Filter();
+    f.setFieldName(fieldName);
+    f.setOp(Op.EQ);
+
+    AttributeValue attributeValue = attributeFilter.getAttributeValue();
     org.hypertrace.entity.data.service.v1.AttributeValue.TypeCase typeCase = attributeValue.getTypeCase();
     if (typeCase == TypeCase.VALUE) {
       JsonNode mapNode = OBJECT_MAPPER
           .readTree(JSONFORMAT_PRINTER.print(attributeValue));
       Map map = OBJECT_MAPPER.convertValue(mapNode, Map.class);
-      filter.setValue(map);
+      f.setValue(map);
     } else { // TODO: Handle VALUE_LIST specially as well. Will consult if this is needed.
       throw new UnsupportedOperationException(
           String.format("The RHS of filter for string array types can only be VALUE or VALUE_LIST: %s", attributeValue));
     }
+
+    // Set child filters to empty array
+    f.setChildFilters(new Filter[]{});
+    return f;
   }
 
   private static void transform(AttributeValue attributeValue, Filter filter,
