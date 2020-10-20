@@ -88,27 +88,6 @@ public class DocStoreConverter {
     return new Filter(Filter.Op.EQ, EntityServiceConstants.TENANT_ID, tenantId);
   }
 
-  // TODO: Delete method
-  private static Filter transformOld(AttributeFilter filter) {
-    try {
-      Filter f = new Filter();
-      f.setFieldName(filter.getName());
-      f.setOp(transform(filter.getOperator()));
-      if (filter.hasAttributeValue()) {
-        transform(filter.getAttributeValue(), f, isPartOfAttributeMap(f.getFieldName()));
-      }
-
-      f.setChildFilters(
-          filter.getChildFilterList().stream()
-              .map(DocStoreConverter::transformOld)
-              .collect(Collectors.toList())
-              .toArray(new Filter[]{}));
-      return f;
-    } catch (IOException ioe) {
-      throw new IllegalArgumentException("Error converting filter for query");
-    }
-  }
-
   private static Filter transform(AttributeFilter filter) {
     try {
       if (filter.hasAttributeValue()) {
