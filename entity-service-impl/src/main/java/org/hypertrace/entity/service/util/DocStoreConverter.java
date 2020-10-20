@@ -89,29 +89,25 @@ public class DocStoreConverter {
   }
 
   private static Filter transform(AttributeFilter filter) {
-    try {
-      if (filter.hasAttributeValue()) {
-        if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.EQ) {
-          return transformToEqFilterWithValueListRhs(filter);
-        } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.IN) {
-          return transformToOrFilterChainForStrArray(filter);
-        } else {
-          return transformNonListRhsFilterTypes(filter);
-        }
-      } else { // AND or OR filter chains
-        Filter f = new Filter();
-        f.setFieldName(filter.getName());
-        f.setOp(transform(filter.getOperator()));
-
-        f.setChildFilters(
-            filter.getChildFilterList().stream()
-                .map(DocStoreConverter::transform)
-                .collect(Collectors.toList())
-                .toArray(new Filter[]{}));
-        return f;
+    if (filter.hasAttributeValue()) {
+      if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.EQ) {
+        return transformToEqFilterWithValueListRhs(filter);
+      } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.IN) {
+        return transformToOrFilterChainForStrArray(filter);
+      } else {
+        return transformNonListRhsFilterTypes(filter);
       }
-    } catch (IOException ioe) {
-      throw new IllegalArgumentException(String.format("transform: Error converting filter for query. Filter:  %s", filter), ioe);
+    } else { // AND or OR filter chains
+      Filter f = new Filter();
+      f.setFieldName(filter.getName());
+      f.setOp(transform(filter.getOperator()));
+
+      f.setChildFilters(
+          filter.getChildFilterList().stream()
+              .map(DocStoreConverter::transform)
+              .collect(Collectors.toList())
+              .toArray(new Filter[]{}));
+      return f;
     }
   }
 
@@ -143,22 +139,7 @@ public class DocStoreConverter {
 
     f.setChildFilters(
         attributeFilter.getAttributeValue().getValueList().getValuesList().stream()
-            .map(rhsAttributeValue -> {
-              Filter childFilter = new Filter();
-              childFilter.setFieldName(fieldName);
-              childFilter.setOp(Op.EQ);
-
-              JsonNode mapNode = null;
-              try {
-                mapNode = OBJECT_MAPPER
-                    .readTree(JSONFORMAT_PRINTER.print(rhsAttributeValue));
-              } catch (JsonProcessingException | InvalidProtocolBufferException e) {
-                throw new RuntimeException(e);
-              }
-              Map map = OBJECT_MAPPER.convertValue(mapNode, Map.class);
-              childFilter.setValue(map);
-              return childFilter;
-            })
+            .map(rhsAttributeValue -> createEqFilterForAttributeValue(fieldName, rhsAttributeValue))
             .collect(Collectors.toList())
             .toArray(new Filter[]{})
     );
@@ -166,24 +147,28 @@ public class DocStoreConverter {
     return f;
   }
 
-  private static Filter transformToEqFilterWithValueListRhs(AttributeFilter attributeFilter)
-      throws InvalidProtocolBufferException, JsonProcessingException {
+  private static Filter transformToEqFilterWithValueListRhs(AttributeFilter attributeFilter) {
     String fieldName = attributeFilter.getName() + VALUE_LIST_VALUES_CONST;
+    return createEqFilterForAttributeValue(fieldName, attributeFilter.getAttributeValue());
+  }
 
+  private static Filter createEqFilterForAttributeValue(String fieldName, AttributeValue attributeValue) {
     Filter f = new Filter();
     f.setFieldName(fieldName);
     f.setOp(Op.EQ);
 
-    AttributeValue attributeValue = attributeFilter.getAttributeValue();
     org.hypertrace.entity.data.service.v1.AttributeValue.TypeCase typeCase = attributeValue.getTypeCase();
     if (typeCase == TypeCase.VALUE) {
-      JsonNode mapNode = OBJECT_MAPPER
-          .readTree(JSONFORMAT_PRINTER.print(attributeValue));
-      Map map = OBJECT_MAPPER.convertValue(mapNode, Map.class);
-      f.setValue(map);
-    } else { // TODO: Handle VALUE_LIST specially as well. Will consult if this is needed.
+      try {
+        JsonNode mapNode = OBJECT_MAPPER.readTree(JSONFORMAT_PRINTER.print(attributeValue));
+        Map map = OBJECT_MAPPER.convertValue(mapNode, Map.class);
+        f.setValue(map);
+      } catch (JsonProcessingException | InvalidProtocolBufferException e) {
+        throw new RuntimeException(e);
+      }
+    } else { // For now, just expecting VALUE type on the RHS
       throw new UnsupportedOperationException(
-          String.format("The RHS of filter for string array types can only be VALUE or VALUE_LIST: %s", attributeValue));
+          String.format("The RHS of filter for string array types can only be VALUE: %s", attributeValue));
     }
 
     // Set child filters to empty array
