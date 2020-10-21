@@ -10,6 +10,6 @@ spec:
     - port: {{ .Values.service.port }}
       targetPort: grpc-port
       protocol: TCP
-      name: {{ .Chart.Name }}
+      name: grpc-port
   selector:
     {{- toYaml .Values.serviceSelectorLabels | nindent 4 }}
