@@ -89,6 +89,9 @@ jobs:
       - machine_install_java11
       - setup_build_environment
       - populate_and_save_cache
+      - run:
+          name: Dockerhub login
+          command: echo $DOCKERHUB_PASSWORD | docker login --username $DOCKERHUB_USERNAME --password-stdin
       - gradle:
           args: jacocoIntegrationTestReport
       - codecov/upload:
@@ -158,7 +161,9 @@ workflows:
       - build:
           context:
             - dockerhub-read
-      - integration-test
+      - integration-test:
+          context:
+            - dockerhub-read
       - validate-charts:
           context:
             - dockerhub-read
