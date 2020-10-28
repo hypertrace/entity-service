@@ -8,15 +8,24 @@ executors:
   gradle_docker:
     docker:
       - image: cimg/openjdk:11.0
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
   gradle_machine:
     machine:
       image: ubuntu-1604:201903-01
   helm:
     docker:
       - image: hypertrace/helm-gcs-packager:0.1.1
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
   buf:
     docker:
       - image: bufbuild/buf:0.18.1
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
 
 commands:
   gradle:
@@ -65,6 +74,9 @@ jobs:
       - setup_build_environment
       - setup_remote_docker
       - populate_and_save_cache
+      - run:
+          name: Dockerhub login
+          command: echo $DOCKERHUB_PASSWORD | docker login --username $DOCKERHUB_USERNAME --password-stdin
       - gradle:
           args: build dockerBuildImages
       - gradle:
@@ -93,6 +105,9 @@ jobs:
     steps:
       - setup_build_environment
       - setup_remote_docker
+      - run:
+          name: Dockerhub login
+          command: echo $DOCKERHUB_PASSWORD | docker login --username $DOCKERHUB_USERNAME --password-stdin
       - gradle:
           args: :tag -Prelease
       - add_ssh_keys:
@@ -140,18 +155,28 @@ workflows:
   version: 2
   build-and-publish:
     jobs:
-      - build
+      - build:
+          context:
+            - dockerhub-read
       - integration-test
-      - validate-charts
+      - validate-charts:
+          context:
+            - dockerhub-read
       - verify-protos:
+          context:
+            - dockerhub-read
           filters:
             branches:
               ignore:
                 - main
       - snyk-scan:
-          context: hypertrace-vulnerability-scanning
+          context:
+            - hypertrace-vulnerability-scanning
+            - dockerhub-read
       - publish:
-          context: hypertrace-publishing
+          context:
+            - hypertrace-publishing
+            - dockerhub-read
           requires:
             - build
             - integration-test
@@ -162,7 +187,9 @@ workflows:
               only:
                 - main
       - package-charts:
-          context: hypertrace-publishing
+          context:
+            - hypertrace-publishing
+            - dockerhub-read
           requires:
             - publish
           filters:
