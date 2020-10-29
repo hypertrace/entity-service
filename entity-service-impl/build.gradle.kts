@@ -15,10 +15,6 @@ dependencies {
   implementation("org.slf4j:slf4j-api:1.7.30")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.11.1")
 
-  runtimeOnly("com.google.guava:guava:30.0-android") {
-    because("https://snyk.io/vuln/SNYK-JAVA-COMGOOGLEGUAVA-1015415")
-  }
-
   testImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
   testImplementation("org.mockito:mockito-core:3.3.3")
 }
