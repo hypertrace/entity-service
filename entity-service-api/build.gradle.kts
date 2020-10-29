@@ -59,4 +59,8 @@ dependencies {
   api("io.grpc:grpc-protobuf:1.32.1")
   api("io.grpc:grpc-stub:1.32.1")
   api("javax.annotation:javax.annotation-api:1.3.2")
+
+  runtimeOnly("com.google.guava:guava:30.0-android") {
+    because("https://snyk.io/vuln/SNYK-JAVA-COMGOOGLEGUAVA-1015415")
+  }
 }
