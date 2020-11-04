@@ -17,7 +17,7 @@ protobuf {
     // the identifier, which can be referred to in the "plugins"
     // container of the "generateProtoTasks" closure.
     id("grpc_java") {
-      artifact = "io.grpc:protoc-gen-grpc-java:1.33.0"
+      artifact = "io.grpc:protoc-gen-grpc-java:1.33.1"
     }
 
     if (generateLocalGoGrpcFiles) {
@@ -56,8 +56,8 @@ sourceSets {
 }
 
 dependencies {
-  api("io.grpc:grpc-protobuf:1.33.0")
-  api("io.grpc:grpc-stub:1.33.0")
+  api("io.grpc:grpc-protobuf:1.33.1")
+  api("io.grpc:grpc-stub:1.33.1")
   constraints {
     implementation("com.google.guava:guava:30.0-jre") {
       because("https://snyk.io/vuln/SNYK-JAVA-COMGOOGLEGUAVA-1015415")
