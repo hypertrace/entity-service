@@ -16,6 +16,7 @@ dependencies {
 
   implementation("org.slf4j:slf4j-api:1.7.30")
   implementation("com.google.guava:guava:30.0-jre")
+  implementation("io.reactivex.rxjava3:rxjava:3.0.6")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.0")
   testImplementation("org.mockito:mockito-core:3.5.13")
