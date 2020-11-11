@@ -10,8 +10,19 @@ import javax.annotation.Nonnull;
 import org.hypertrace.core.grpcutils.client.RequestContextClientCallCredsProviderFactory;
 import org.hypertrace.entity.data.service.v1.Entity;
 
+/**
+ * EntityDataClient is an asynchronous, potentially caching client, keyin entities as described in
+ * {@link EntityCacheKey}
+ */
 public interface EntityDataClient {
 
+  /**
+   * Gets the entity from the cache if available, otherwise upserts it and returns the result. The
+   * behavior of this may or may be cached depending on the configuration.
+   *
+   * @param entity
+   * @return
+   */
   Single<Entity> getOrCreateEntity(Entity entity);
 
   static Builder builder(@Nonnull Channel channel) {
