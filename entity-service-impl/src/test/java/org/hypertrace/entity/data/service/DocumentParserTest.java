@@ -48,7 +48,6 @@ class DocumentParserTest {
 
   @Test
   void returnsMessageOptionalIfAbleToParseOrLog() {
-
     assertEquals(Optional.of(ENTITY), PARSER.parseOrLog(GOOD_JSON, Entity.newBuilder()));
   }
 
