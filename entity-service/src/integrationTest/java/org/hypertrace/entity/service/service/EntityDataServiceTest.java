@@ -1,7 +1,9 @@
 package org.hypertrace.entity.service.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -31,12 +33,11 @@ import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Operator;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.data.service.v1.Value;
-import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceTestConfig;
 import org.hypertrace.entity.service.constants.EntityConstants;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
-import org.hypertrace.entity.type.service.client.EntityTypeServiceClient;
+import org.hypertrace.entity.type.client.EntityTypeServiceClient;
 import org.hypertrace.entity.type.service.v1.AttributeKind;
 import org.hypertrace.entity.type.service.v1.AttributeType;
 import org.hypertrace.entity.v1.entitytype.EntityType;
@@ -51,9 +52,9 @@ import org.junit.jupiter.api.Test;
 public class EntityDataServiceTest {
 
   private static EntityDataServiceClient entityDataServiceClient;
-  private static EntityQueryServiceClient entityQueryServiceClient;
   private static final String TENANT_ID =
       "__testTenant__" + EntityDataServiceTest.class.getSimpleName();
+  private static final String TEST_ENTITY_TYPE_V2 = "TEST_ENTITY";
 
   @BeforeAll
   public static void setUp() {
@@ -62,8 +63,7 @@ public class EntityDataServiceTest {
     Channel channel = ClientInterceptors.intercept(ManagedChannelBuilder.forAddress(
         esConfig.getHost(), esConfig.getPort()).usePlaintext().build());
     entityDataServiceClient = new EntityDataServiceClient(channel);
-    entityQueryServiceClient = new EntityQueryServiceClient(channel);
-    setupEntityTypes();
+    setupEntityTypes(channel);
   }
 
   @AfterAll
@@ -71,40 +71,51 @@ public class EntityDataServiceTest {
     IntegrationTestServerUtil.shutdownServices();
   }
 
-  private static void setupEntityTypes() {
-    Channel channel = ClientInterceptors.intercept(ManagedChannelBuilder.forAddress(
-        EntityServiceTestConfig.getClientConfig().getHost(),
-        EntityServiceTestConfig.getClientConfig().getPort()).usePlaintext().build());
-    EntityTypeServiceClient entityTypeServiceClient = new EntityTypeServiceClient(channel);
-    entityTypeServiceClient.upsertEntityType(TENANT_ID,
+  private static void setupEntityTypes(Channel channel) {
+    org.hypertrace.entity.type.service.client.EntityTypeServiceClient entityTypeServiceV1Client = new org.hypertrace.entity.type.service.client.EntityTypeServiceClient(channel);
+    EntityTypeServiceClient entityTypeServiceV2Client = new EntityTypeServiceClient(channel);
+    entityTypeServiceV1Client.upsertEntityType(
+        TENANT_ID,
         org.hypertrace.entity.type.service.v1.EntityType.newBuilder()
             .setName(EntityType.K8S_POD.name())
-            .addAttributeType(AttributeType.newBuilder()
-                .setName(EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID))
-                .setValueKind(AttributeKind.TYPE_STRING)
-                .setIdentifyingAttribute(true)
-                .build())
+            .addAttributeType(
+                AttributeType.newBuilder()
+                    .setName(EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID))
+                    .setValueKind(AttributeKind.TYPE_STRING)
+                    .setIdentifyingAttribute(true)
+                    .build())
             .build());
-    entityTypeServiceClient
-        .upsertEntityType(TENANT_ID, org.hypertrace.entity.type.service.v1.EntityType
-            .newBuilder()
+    entityTypeServiceV1Client.upsertEntityType(
+        TENANT_ID,
+        org.hypertrace.entity.type.service.v1.EntityType.newBuilder()
             .setName(EntityType.BACKEND.name())
-            .addAttributeType(AttributeType.newBuilder()
-                .setName(EntityConstants.getValue(BackendAttribute.BACKEND_ATTRIBUTE_HOST))
-                .setValueKind(AttributeKind.TYPE_STRING)
-                .setIdentifyingAttribute(true)
-                .build())
-            .addAttributeType(AttributeType.newBuilder()
-                .setName(EntityConstants.getValue(BackendAttribute.BACKEND_ATTRIBUTE_PORT))
-                .setValueKind(AttributeKind.TYPE_STRING)
-                .setIdentifyingAttribute(true)
-                .build())
-            .addAttributeType(AttributeType.newBuilder()
-                .setName(EntityConstants.getValue(BackendAttribute.BACKEND_ATTRIBUTE_PROTOCOL))
-                .setValueKind(AttributeKind.TYPE_STRING)
-                .setIdentifyingAttribute(true)
-                .build())
+            .addAttributeType(
+                AttributeType.newBuilder()
+                    .setName(EntityConstants.getValue(BackendAttribute.BACKEND_ATTRIBUTE_HOST))
+                    .setValueKind(AttributeKind.TYPE_STRING)
+                    .setIdentifyingAttribute(true)
+                    .build())
+            .addAttributeType(
+                AttributeType.newBuilder()
+                    .setName(EntityConstants.getValue(BackendAttribute.BACKEND_ATTRIBUTE_PORT))
+                    .setValueKind(AttributeKind.TYPE_STRING)
+                    .setIdentifyingAttribute(true)
+                    .build())
+            .addAttributeType(
+                AttributeType.newBuilder()
+                    .setName(EntityConstants.getValue(BackendAttribute.BACKEND_ATTRIBUTE_PROTOCOL))
+                    .setValueKind(AttributeKind.TYPE_STRING)
+                    .setIdentifyingAttribute(true)
+                    .build())
             .build());
+
+    entityTypeServiceV2Client.upsertEntityType(
+        TENANT_ID, org.hypertrace.entity.type.service.v2.EntityType.newBuilder()
+                                                                   .setName(TEST_ENTITY_TYPE_V2)
+                                                                   .setAttributeScope(TEST_ENTITY_TYPE_V2)
+                                                                   .setIdAttributeKey("id")
+                                                                   .setNameAttributeKey("name")
+                                                                   .build());
   }
 
   @Test
@@ -164,7 +175,7 @@ public class EntityDataServiceTest {
   }
 
   @Test
-  public void testCreateWithoutIdentifyingAttributes() {
+  public void testCreateV1EntityTypeWithoutIdentifyingAttributes() {
     boolean upsertFailed = false;
     Entity entity = Entity.newBuilder()
         .setTenantId(TENANT_ID)
@@ -181,11 +192,32 @@ public class EntityDataServiceTest {
       assertEquals(Code.INTERNAL, sre.getStatus().getCode());
       assertNotNull(sre.getStatus().getDescription());
       assertTrue(sre.getStatus().getDescription().contains(
-          "required identifying attributes not present"));
+          "expected identifying attributes"));
     }
     if (!upsertFailed) {
-      fail("Expecting upsert to fail as identifying attributes are not set");
+      fail("Expecting upsert v1 typed entity to fail as identifying attributes are not set");
     }
+  }
+
+  @Test
+  public void testCreateV2EntityTypeWithoutIdentifyingAttributes() {
+    Entity firstInputEntity = Entity.newBuilder()
+                          .setTenantId(TENANT_ID)
+                          .setEntityType(TEST_ENTITY_TYPE_V2)
+                          .setEntityId(UUID.randomUUID().toString())
+                          .setEntityName("Test entity v2")
+                          .putAttributes("foo", AttributeValue.newBuilder().setValue(Value.newBuilder().setString("foo1")).build())
+                          .build();
+    Entity firstCreatedEntity = entityDataServiceClient.upsert(firstInputEntity);
+    assertNotSame(firstInputEntity, firstCreatedEntity);
+    assertEquals(firstInputEntity, firstCreatedEntity);
+
+    Entity secondInputEntity = firstInputEntity.toBuilder().clearAttributes()
+        .build();
+
+    Entity secondCreatedEntity = entityDataServiceClient.upsert(secondInputEntity);
+
+    assertEquals(firstCreatedEntity, secondCreatedEntity);
   }
 
   @Test
