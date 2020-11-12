@@ -47,6 +47,7 @@ message Entity {
 
   //attributes that describe the entity (e.g. service labels, service version, lang etc)
   map<string, AttributeValue> attributes = 7;
+  int64 created_time = 8;
 }
 
 message Entities {

@@ -10,10 +10,12 @@ import io.grpc.ClientInterceptors;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status.Code;
 import io.grpc.StatusRuntimeException;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
 import org.hypertrace.core.serviceframework.IntegrationTestServerUtil;
 import org.hypertrace.entity.constants.v1.BackendAttribute;
 import org.hypertrace.entity.constants.v1.CommonAttribute;
@@ -610,6 +612,7 @@ public class EntityDataServiceTest {
     Entity createdEntity = entityDataServiceClient.upsert(entityToCreate);
     assertNotNull(entityToCreate);
     assertNotNull(createdEntity.getEntityId().trim());
+    assertTrue(createdEntity.getCreatedTime() > 0);
 
     Entity actualBackendEntity = entityDataServiceClient
         .getById(TENANT_ID, createdEntity.getEntityId());
@@ -621,6 +624,7 @@ public class EntityDataServiceTest {
     EnrichedEntity createdEntity = entityDataServiceClient.upsertEnrichedEntity(enrichedEntity);
     assertNotNull(enrichedEntity);
     assertNotNull(createdEntity.getEntityId().trim());
+    assertTrue(createdEntity.getCreatedTime() > 0);
 
     EnrichedEntity actualBackendEntity = entityDataServiceClient
         .getEnrichedEntityById(TENANT_ID, createdEntity.getEntityId());

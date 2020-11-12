@@ -21,6 +21,7 @@ message EnrichedEntity {
 
   // Map of entity type to entities which are related to this entity.
   map<string, EnrichedEntities> related_entities = 7;
+  int64 created_time = 8;
 }
 
 message EnrichedEntities {
