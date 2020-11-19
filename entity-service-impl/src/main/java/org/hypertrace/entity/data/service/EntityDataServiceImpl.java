@@ -560,7 +560,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
 
     if (LOG.isDebugEnabled()) {
-      LOG.debug("MongoDB query has returned the result: {}", entities);
+      LOG.debug("Docstore query has returned the result: {}", entities);
     }
 
     if (entities.size() == 1) {
@@ -597,7 +597,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                .collect(Collectors.toList());
 
     if (LOG.isDebugEnabled()) {
-      LOG.debug("MongoDB query has returned the result: {}", entities);
+      LOG.debug("Docstore query has returned the result: {}", entities);
     }
     responseObserver.onCompleted();
   }
@@ -620,7 +620,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
             .collect(Collectors.toList());
 
     if (LOG.isDebugEnabled()) {
-      LOG.debug("MongoDB query has returned the result: {}", relationships);
+      LOG.debug("Docstore query has returned the result: {}", relationships);
     }
     responseObserver.onCompleted();
   }
