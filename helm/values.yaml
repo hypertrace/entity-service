@@ -78,6 +78,7 @@ serviceSelectorLabels:
 ###########
 entityServiceConfig:
   name: entity-service-config
+  dataStoreType: "mongo"
   data:
     mongoHost: mongo
     mongoUrl: ""
