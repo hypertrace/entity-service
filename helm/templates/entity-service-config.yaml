@@ -28,10 +28,8 @@ data:
           {{- if .Values.entityServiceConfig.postgres.database }}
           database= {{ .Values.entityServiceConfig.postgres.database }}
           {{- end }}
-          {{- if .Values.entityServiceConfig.postgres.user }}
+          {{- if and .Values.entityServiceConfig.postgres.user .Values.entityServiceConfig.postgres.password }}
           user={{ .Values.entityServiceConfig.postgres.user }}
-          {{- end }}
-          {{- if .Values.entityServiceConfig.postgres.password }}
           password={{ .Values.entityServiceConfig.postgres.password }}
           {{- end }}
         }
