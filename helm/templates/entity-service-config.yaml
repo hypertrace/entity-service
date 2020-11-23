@@ -8,6 +8,8 @@ data:
   application.conf: |-
     entity.service.config = {
       entity-service {
+        dataStoreType = {{ .Values.entityServiceConfig.dataStoreType }}
+        {{- if eq .Values.entityServiceConfig.dataStoreType "mongo" }}
         mongo {
           {{- if .Values.entityServiceConfig.data.mongoUrl }}
           url = {{ .Values.entityServiceConfig.data.mongoUrl | quote }}
@@ -15,6 +17,25 @@ data:
           host = {{ .Values.entityServiceConfig.data.mongoHost }}
           {{- end }}
         }
+        {{ else if eq .Values.entityServiceConfig.dataStoreType "postgres" }}
+        postgres {
+          {{- if .Values.entityServiceConfig.postgres.url }}
+          url={{ .Values.entityServiceConfig.postgres.url | quote }}
+          {{- else }}
+          host={{ .Values.entityServiceConfig.postgres.host }}
+          port={{ .Values.entityServiceConfig.postgres.port }}
+          {{- end }}
+          {{- if .Values.entityServiceConfig.postgres.database }}
+          database= {{ .Values.entityServiceConfig.postgres.database }}
+          {{- end }}
+          {{- if .Values.entityServiceConfig.postgres.user }}
+          user={{ .Values.entityServiceConfig.postgres.user }}
+          {{- end }}
+          {{- if .Values.entityServiceConfig.postgres.password }}
+          password={{ .Values.entityServiceConfig.postgres.password }}
+          {{- end }}
+        }
+        {{- end }}
       }
     }
   {{- if .Values.attributes }}
