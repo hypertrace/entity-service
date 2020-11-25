@@ -61,7 +61,7 @@ dependencies {
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.15")
   implementation("org.hypertrace.core.documentstore:document-store:0.4.4")
 
-  runtimeOnly("io.grpc:grpc-netty:1.33.1")
+  runtimeOnly("io.grpc:grpc-netty:1.33.0")
   constraints {
     runtimeOnly("io.netty:netty-codec-http2:4.1.54.Final") {
       because("https://snyk.io/vuln/SNYK-JAVA-IONETTY-1020439")
