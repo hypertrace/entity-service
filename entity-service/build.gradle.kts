@@ -9,8 +9,8 @@ plugins {
   java
   application
   jacoco
-  id("org.hypertrace.docker-java-application-plugin")
-  id("org.hypertrace.docker-publish-plugin")
+  id("org.hypertrace.docker-java-application-plugin") version "0.8.0"
+  id("org.hypertrace.docker-publish-plugin") version "0.8.0"
   id("org.hypertrace.integration-test-plugin")
   id("org.hypertrace.jacoco-report-plugin")
 }
@@ -63,10 +63,10 @@ dependencies {
 
   runtimeOnly("io.grpc:grpc-netty:1.33.1")
   constraints {
-    runtimeOnly("io.netty:netty-codec-http2:4.1.53.Final") {
+    runtimeOnly("io.netty:netty-codec-http2:4.1.54.Final") {
       because("https://snyk.io/vuln/SNYK-JAVA-IONETTY-1020439")
     }
-    runtimeOnly("io.netty:netty-handler-proxy:4.1.53.Final") {
+    runtimeOnly("io.netty:netty-handler-proxy:4.1.54.Final") {
       because("https://snyk.io/vuln/SNYK-JAVA-IONETTY-1020439s")
     }
   }
@@ -95,4 +95,12 @@ tasks.run<JavaExec> {
 tasks.jacocoIntegrationTestReport {
   sourceSets(project(":entity-service-impl").sourceSets.getByName("main"))
   sourceSets(project(":entity-service-client").sourceSets.getByName("main"))
+}
+
+hypertraceDocker {
+  defaultImage {
+    javaApplication {
+      port.set(50061)
+    }
+  }
 }

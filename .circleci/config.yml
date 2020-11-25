@@ -41,7 +41,8 @@ commands:
       - checkout
       - run:
           name: Generate cache key
-          command: find . -type f -name "*.gradle-wrapper*" -exec shasum {} + | sort > /tmp/checksum.txt && cat /tmp/checksum.txt
+          # Find all gradle related files, hash each and order them consistently, then save to file for later use
+          command: find . -type f -name "*.gradle*" -o -name "gradle-wrapper*" | xargs shasum | sort > /tmp/checksum.txt && cat /tmp/checksum.txt
       - restore_cache:
           keys:
             - v1-dependencies-{{ checksum "/tmp/checksum.txt" }}
@@ -143,7 +144,6 @@ jobs:
           additional-arguments: --all-sub-projects --policy-path=.snyk
   release-charts:
     executor: helm
-    working_directory: ~/repo
     steps:
       - checkout
       - run:
@@ -170,7 +170,7 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             # This ssh key gives write permission needed for the following step.
-            - '76:7a:c8:91:c0:cd:eb:71:96:3c:44:c6:cf:b0:26:83'
+            - 'e1:ef:62:d9:f0:2e:5b:94:28:8b:d9:ed:d3:f3:f2:d2'
       - run:
           name: Update remote tags
           command: git push origin refs/tags/$(git describe --abbrev=0) :refs/tags/release-$(git describe --abbrev=0)
@@ -204,6 +204,7 @@ workflows:
             - dockerhub-read
           requires:
             - build
+            - integration-test
             - validate-charts
             - snyk-scan
           filters:
