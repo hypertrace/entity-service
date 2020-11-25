@@ -13,8 +13,8 @@ import com.typesafe.config.Config;
 public class EntityServiceClientConfig {
 
   private static final String ENTITY_SERVICE_CONFIG_KEY = "entity.service.config";
-  private String host;
-  private int port;
+  private final String host;
+  private final int port;
   private final EntityServiceClientCacheConfig cacheConfig;
 
   private EntityServiceClientConfig(Config clientConfig) {

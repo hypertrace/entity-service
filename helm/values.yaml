@@ -78,9 +78,14 @@ serviceSelectorLabels:
 ###########
 entityServiceConfig:
   name: entity-service-config
-  data:
-    mongoHost: mongo
-    mongoUrl: ""
+  dataStoreType: "mongo"
+  mongo:
+    host: mongo
+    url: ""
+  postgres:
+    host: postgres
+    port: 5432
+    url: ""
 
 attributes: []
 extraAttributes: []

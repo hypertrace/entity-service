@@ -24,7 +24,7 @@ tasks.register<DockerRemoveNetwork>("removeIntegrationTestNetwork") {
 }
 
 tasks.register<DockerPullImage>("pullMongoImage") {
-  image.set("mongo:4.2.0")
+  image.set("mongo:4.4.0")
 }
 
 tasks.register<DockerCreateContainer>("createMongoContainer") {
@@ -59,7 +59,7 @@ dependencies {
   implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.3.1")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.3.1")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.15")
-  implementation("org.hypertrace.core.documentstore:document-store:0.4.0")
+  implementation("org.hypertrace.core.documentstore:document-store:0.4.4")
 
   runtimeOnly("io.grpc:grpc-netty:1.33.1")
   constraints {

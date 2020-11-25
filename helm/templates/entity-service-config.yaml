@@ -8,11 +8,13 @@ data:
   application.conf: |-
     entity.service.config = {
       entity-service {
-        mongo {
-          {{- if .Values.entityServiceConfig.data.mongoUrl }}
-          url = {{ .Values.entityServiceConfig.data.mongoUrl | quote }}
-          {{- else }}
-          host = {{ .Values.entityServiceConfig.data.mongoHost }}
+        {{- $dst := .Values.entityServiceConfig.dataStoreType }}
+        dataStoreType = {{ $dst }}
+        {{ $dst }} {
+          {{- range $key, $value := (index .Values "entityServiceConfig" (printf "%s" $dst)) }}
+          {{- if $value }}
+          {{ $key }} = {{ $value | quote }}
+          {{- end }}
           {{- end }}
         }
       }
