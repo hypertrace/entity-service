@@ -96,3 +96,11 @@ tasks.jacocoIntegrationTestReport {
   sourceSets(project(":entity-service-impl").sourceSets.getByName("main"))
   sourceSets(project(":entity-service-client").sourceSets.getByName("main"))
 }
+
+hypertraceDocker {
+  defaultImage {
+    javaApplication {
+      port.set(50061)
+    }
+  }
+}
