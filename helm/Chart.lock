@@ -1,6 +1,0 @@
-dependencies:
-- name: config-bootstrapper
-  repository: https://storage.googleapis.com/hypertrace-helm-charts
-  version: 0.1.17
-digest: sha256:f580adff33dd58e90e3acaae5f877e3a2cd3f83b1a25bad1ba314e0976f6e701
-generated: "2020-11-27T09:23:18.635625+05:30"

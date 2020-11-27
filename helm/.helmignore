@@ -19,4 +19,6 @@
 .project
 .idea/
 *.tmproj
+.java-version
 .vscode/
+*.tgz
