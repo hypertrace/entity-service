@@ -81,6 +81,12 @@ public class DocStoreConverter {
         docStoreQuery.setFilter(f);
       }
     }
+    if (query.getLimit() > 0) {
+      docStoreQuery.setLimit(query.getLimit());
+    }
+    if (query.getOffset() > 0) {
+      docStoreQuery.setOffset(query.getOffset());
+    }
     return docStoreQuery;
   }
 

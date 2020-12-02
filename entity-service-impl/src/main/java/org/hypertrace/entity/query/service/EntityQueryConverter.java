@@ -32,6 +32,17 @@ public class EntityQueryConverter {
     if (attributeFilter != null) {
       queryBuilder.setFilter(attributeFilter);
     }
+
+    int limit = queryRequest.getLimit();
+    if (limit > 0) {
+      queryBuilder.setLimit(limit);
+    }
+
+    int offset = queryRequest.getOffset();
+    if (offset > 0) {
+      queryBuilder.setOffset(offset);
+    }
+
     return queryBuilder.build();
   }
 

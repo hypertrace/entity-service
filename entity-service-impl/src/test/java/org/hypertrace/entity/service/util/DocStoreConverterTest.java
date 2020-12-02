@@ -31,6 +31,29 @@ public class DocStoreConverterTest {
   private static DocStoreJsonFormat.Printer JSONFORMAT_PRINTER = DocStoreJsonFormat.printer();
   private static final String ATTRIBUTES_LABELS_FIELD_NAME = "attributes.labels";
 
+
+  @Test
+  public void testEntityQueryLimitOffsetConversion() {
+    int limit = 2;
+    int offset = 1;
+    Query query = Query.newBuilder().addEntityId("some id").build();
+    org.hypertrace.core.documentstore.Query transformedQuery =
+        DocStoreConverter.transform(TENANT_ID, query);
+    Assertions.assertNull(transformedQuery.getLimit());
+    Assertions.assertNull(transformedQuery.getOffset());
+
+    query = Query.newBuilder().addEntityId("some id").setLimit(limit).setOffset(offset).build();
+    transformedQuery = DocStoreConverter.transform(TENANT_ID, query);
+    Assertions.assertEquals(limit, transformedQuery.getLimit());
+    Assertions.assertEquals(offset, transformedQuery.getOffset());
+
+    // zero values will be ignored
+    query = Query.newBuilder().addEntityId("some id").setLimit(0).setOffset(0).build();
+    transformedQuery = DocStoreConverter.transform(TENANT_ID, query);
+    Assertions.assertNull(transformedQuery.getLimit());
+    Assertions.assertNull(transformedQuery.getOffset());
+  }
+
   @Test
   public void testEntityFieldsQueryConversion() {
     Query query = Query.newBuilder().addEntityId("some id").build();
@@ -46,7 +69,6 @@ public class DocStoreConverterTest {
     Assertions.assertEquals(Op.EQ, tenantIdFilter.getOp());
     Assertions.assertEquals(TENANT_ID, tenantIdFilter.getValue());
     Assertions.assertEquals(EntityServiceConstants.TENANT_ID, tenantIdFilter.getFieldName());
-
     Assertions.assertEquals(EntityServiceConstants.ENTITY_ID,
         transformedFilter.getChildFilters()[1].getFieldName());
     Assertions.assertEquals(Collections.singletonList("some id"),

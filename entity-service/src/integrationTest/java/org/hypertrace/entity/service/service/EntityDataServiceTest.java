@@ -322,6 +322,22 @@ public class EntityDataServiceTest {
     List<Entity> entitiesList = entityDataServiceClient.query(TENANT_ID, entityTypeQuery);
     assertTrue(entitiesList.size() > 1);
 
+    Query entityLimitQuery = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .setLimit(1)
+        .build();
+    entitiesList = entityDataServiceClient.query(TENANT_ID, entityLimitQuery);
+    assertEquals(1,entitiesList.size());
+
+    Query entityOffsetQuery = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .setLimit(1)
+        .setOffset(1)
+        .build();
+    List<Entity> entityWithOffset = entityDataServiceClient.query(TENANT_ID, entityOffsetQuery);
+    assertEquals(1, entityWithOffset.size());
+    assertNotEquals(entitiesList.get(0).getEntityId(), entityWithOffset.get(0).getEntityId());
+
     //Query specific entity
     Query entityTypeAndIdQuery = Query.newBuilder()
         .addEntityId(createdEntity1.getEntityId())

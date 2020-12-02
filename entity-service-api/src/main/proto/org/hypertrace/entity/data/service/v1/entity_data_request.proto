@@ -40,6 +40,8 @@ message Query {
   string entity_type = 4;
   string entity_name = 5;
   AttributeFilter filter = 6;
+  int32 limit = 7;
+  int32 offset = 8;
 }
 
 message RelationshipsQuery {
