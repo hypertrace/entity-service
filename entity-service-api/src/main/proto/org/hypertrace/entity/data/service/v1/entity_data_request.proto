@@ -40,6 +40,7 @@ message Query {
   string entity_type = 4;
   string entity_name = 5;
   AttributeFilter filter = 6;
+  repeated OrderByExpression order_by = 9;
   int32 limit = 7;
   int32 offset = 8;
 }
@@ -55,4 +56,14 @@ message AttributeFilter {
   Operator operator = 2;
   AttributeValue attributeValue = 3;
   repeated AttributeFilter childFilter = 4;
+}
+
+message OrderByExpression {
+  string name = 1;
+  SortOrder order = 2;
+}
+
+enum SortOrder {
+  ASC = 0;
+  DESC = 1;
 }
