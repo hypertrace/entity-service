@@ -9,12 +9,15 @@ import java.util.Map;
 import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.Filter.Op;
 import org.hypertrace.core.documentstore.JSONDocument;
+import org.hypertrace.core.documentstore.OrderBy;
 import org.hypertrace.entity.data.service.v1.AttributeFilter;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Operator;
+import org.hypertrace.entity.data.service.v1.OrderByExpression;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.data.service.v1.SortOrder;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.service.constants.EntityConstants;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -146,6 +149,31 @@ public class DocStoreConverterTest {
         transformedFilter.getChildFilters()[2].getFieldName());
     Assertions.assertEquals(Filter.Op.CONTAINS, transformedFilter.getChildFilters()[2].getOp());
     Assertions.assertEquals("stringValue", transformedFilter.getChildFilters()[2].getValue());
+  }
+
+  @Test
+  public void testOrderByConversion() {
+    Query query = Query.newBuilder()
+        .addEntityId("some id")
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setName("col1")
+                .setOrder(SortOrder.DESC)
+                .build())
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setName("col2")
+                .build())
+        .build();
+    org.hypertrace.core.documentstore.Query transformedQuery =
+        DocStoreConverter.transform(TENANT_ID, query);
+    List<OrderBy> transformedOrderBys= transformedQuery.getOrderBys();
+
+    Assertions.assertEquals(2, transformedOrderBys.size());
+    Assertions.assertEquals("col1", transformedOrderBys.get(0).getField());
+    Assertions.assertFalse(transformedOrderBys.get(0).isAsc());
+    Assertions.assertEquals("col2", transformedOrderBys.get(1).getField());
+    Assertions.assertTrue(transformedOrderBys.get(1).isAsc());
   }
 
   @Test

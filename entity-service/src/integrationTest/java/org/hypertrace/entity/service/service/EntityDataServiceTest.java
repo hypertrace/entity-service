@@ -29,7 +29,9 @@ import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Operator;
+import org.hypertrace.entity.data.service.v1.OrderByExpression;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.data.service.v1.SortOrder;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceTestConfig;
@@ -355,6 +357,74 @@ public class EntityDataServiceTest {
         .build();
     entitiesList = entityDataServiceClient.query(TENANT_ID, randomEntityIdQuery);
     assertTrue(entitiesList.isEmpty());
+  }
+
+  @Test
+  public void testEntityQueryOrderBy() {
+    Entity entity1 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.K8S_POD.name())
+        .setEntityName("Some Service 1")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+            generateRandomUUIDAttrValue())
+        .putAttributes(
+            "foo",
+            AttributeValue.newBuilder()
+                .setValue(Value.newBuilder().setInt(5).build())
+                .build())
+        .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1);
+    assertNotNull(createdEntity1.getEntityId().trim());
+
+    Entity entity2 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.K8S_POD.name())
+        .setEntityName("Some Service 2")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+            generateRandomUUIDAttrValue())
+        .putAttributes(
+            "foo",
+            AttributeValue.newBuilder()
+                .setValue(Value.newBuilder().setInt(10).build())
+                .build())
+        .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2);
+    assertNotNull(createdEntity2.getEntityId().trim());
+
+    // Query by field name
+    Query entityNameQuery = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setOrder(SortOrder.DESC)
+                .setName("entityName")
+                .build())
+        .build();
+    List<Entity> entitiesList = entityDataServiceClient.query(TENANT_ID, entityNameQuery);
+    assertTrue(entitiesList.size() > 1);
+    assertTrue(entitiesList.contains(createdEntity1) && entitiesList.contains(createdEntity2));
+    // ordered such that entity with "larger" entity name value is listed earlier
+    assertTrue(entitiesList.indexOf(createdEntity2) < entitiesList.indexOf(createdEntity1));
+
+    // Query by attribute
+    Query attributeQuery = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setOrder(SortOrder.DESC)
+                .setName("attributes.foo")
+                .build())
+        .build();
+    entitiesList = entityDataServiceClient.query(TENANT_ID, attributeQuery);
+    assertTrue(entitiesList.size() > 1);
+    assertTrue(entitiesList.contains(createdEntity1) && entitiesList.contains(createdEntity2));
+    // ordered such that entity with "larger" attributes value is listed earlier
+    assertTrue(entitiesList.indexOf(createdEntity2) < entitiesList.indexOf(createdEntity1));
+
   }
 
   @Test

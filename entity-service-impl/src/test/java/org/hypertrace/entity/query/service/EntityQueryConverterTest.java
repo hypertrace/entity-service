@@ -2,13 +2,34 @@ package org.hypertrace.entity.query.service;
 
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
+import org.hypertrace.entity.query.service.v1.Expression;
+import org.hypertrace.entity.query.service.v1.Function;
+import org.hypertrace.entity.query.service.v1.OrderByExpression;
+import org.hypertrace.entity.query.service.v1.SortOrder;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class EntityQueryConverterTest {
+  private static final String EQS_COLUMN_NAME1 = "eqsColumn1";
+  private static final String EDS_COLUMN_NAME1 = "edsColumn1";
+  private static final String EQS_COLUMN_NAME2 = "eqsColumn2";
+  private static final String EDS_COLUMN_NAME2 = "edsColumn2";
+
+  private Map<String, String> attributeMap = new HashMap<>();
+
+  @BeforeEach
+  public void setup() {
+    attributeMap.put(EQS_COLUMN_NAME1, EDS_COLUMN_NAME1);
+    attributeMap.put(EQS_COLUMN_NAME2, EDS_COLUMN_NAME2);
+  }
 
   @Test
   public void test_convertToEDSQuery_limitAndOffset() {
@@ -26,4 +47,71 @@ public class EntityQueryConverterTest {
     assertEquals(offset, convertedQuery.getOffset());
   }
 
+  @Test
+  public void test_convertToEdsQuery_orderByExpression() {
+    EntityQueryRequest request = EntityQueryRequest.newBuilder()
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setExpression(
+                    Expression.newBuilder().setColumnIdentifier(
+                        ColumnIdentifier.newBuilder()
+                          .setColumnName(EQS_COLUMN_NAME1)
+                          .build()))
+                .setOrder(SortOrder.ASC)
+            .build())
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setExpression(
+                    Expression.newBuilder().setColumnIdentifier(
+                        ColumnIdentifier.newBuilder()
+                            .setColumnName(EQS_COLUMN_NAME2)
+                            .build()))
+                .setOrder(SortOrder.DESC)
+                .build())
+        .build();
+    Query convertedQuery = EntityQueryConverter.convertToEDSQuery(request, attributeMap);
+    assertEquals(2, convertedQuery.getOrderByCount());
+    // ensure that the order of OrderByExpression is maintained
+    assertEquals(EDS_COLUMN_NAME1, convertedQuery.getOrderByList().get(0).getName());
+    assertEquals(org.hypertrace.entity.data.service.v1.SortOrder.ASC,
+        convertedQuery.getOrderBy(0).getOrder());
+    assertEquals(EDS_COLUMN_NAME2, convertedQuery.getOrderByList().get(1).getName());
+    assertEquals(org.hypertrace.entity.data.service.v1.SortOrder.DESC,
+        convertedQuery.getOrderBy(1).getOrder());
+
+  }
+
+  @Test
+  public void test_convertToEdsQuery_missingSortOrderByExpression_assignWithAscByDefault() {
+    EntityQueryRequest request = EntityQueryRequest.newBuilder()
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setExpression(
+                    Expression.newBuilder().setColumnIdentifier(
+                        ColumnIdentifier.newBuilder()
+                            .setColumnName(EQS_COLUMN_NAME1)
+                            .build()))
+        ).build();
+    Query convertedQuery = EntityQueryConverter.convertToEDSQuery(request, attributeMap);
+    assertEquals(1, convertedQuery.getOrderByCount());
+    // ensure that the order of OrderByExpression is maintained
+    assertEquals(EDS_COLUMN_NAME1, convertedQuery.getOrderByList().get(0).getName());
+    assertEquals(org.hypertrace.entity.data.service.v1.SortOrder.ASC,
+        convertedQuery.getOrderBy(0).getOrder());
+  }
+
+  @Test
+  public void test_convertToEdsQuery_functionExpressionOrderByExpression_throwsException() {
+    EntityQueryRequest request = EntityQueryRequest.newBuilder()
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setExpression(Expression.newBuilder()
+                    .setFunction(
+                        Function.newBuilder().build())
+                    .build())
+                .setOrder(SortOrder.ASC).build()
+        ).build();
+    assertThrows(UnsupportedOperationException.class,
+        () -> EntityQueryConverter.convertToEDSQuery(request, Collections.emptyMap()));
+  }
 }
