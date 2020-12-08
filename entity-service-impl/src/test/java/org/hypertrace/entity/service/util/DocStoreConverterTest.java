@@ -151,6 +151,36 @@ public class DocStoreConverterTest {
     Assertions.assertEquals("stringValue", transformedFilter.getChildFilters()[2].getValue());
   }
 
+
+  @Test
+  public void testFilterNonAttributesFieldNames() {
+    Query query = Query.newBuilder()
+        .addEntityId("some id")
+        .setFilter(AttributeFilter.newBuilder()
+            .setName("API.createdTime")
+            .setOperator(Operator.GT)
+            .setAttributeValue(AttributeValue.newBuilder()
+                .setValue(Value.newBuilder().setLong(1234L).build())
+                .build())
+            .build())
+        .build();
+    org.hypertrace.core.documentstore.Query transformedQuery =
+        DocStoreConverter.transform(TENANT_ID, query);
+
+    Filter transformedFilter = transformedQuery.getFilter();
+    Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
+
+    Assertions.assertEquals(3, transformedFilter.getChildFilters().length);
+    Assertions.assertEquals(EntityServiceConstants.ENTITY_ID,
+        transformedFilter.getChildFilters()[1].getFieldName());
+    Assertions.assertEquals(Collections.singletonList("some id"),
+        transformedFilter.getChildFilters()[1].getValue());
+    Assertions.assertEquals("API.createdTime",
+        transformedFilter.getChildFilters()[2].getFieldName());
+    Assertions.assertEquals(Filter.Op.GT, transformedFilter.getChildFilters()[2].getOp());
+    Assertions.assertEquals(1234L, transformedFilter.getChildFilters()[2].getValue());
+  }
+
   @Test
   public void testOrderByConversion() {
     Query query = Query.newBuilder()
@@ -422,7 +452,7 @@ public class DocStoreConverterTest {
             AttributeFilter.newBuilder().setOperator(Operator.AND)
                 .addChildFilter(
                     AttributeFilter.newBuilder()
-                        .setName("some_col")
+                        .setName("attributes.some_col")
                         .setOperator(Operator.EQ)
                         .setAttributeValue(AttributeValue.newBuilder()
                             .setValue(Value.newBuilder().setString("some_val"))
@@ -463,7 +493,7 @@ public class DocStoreConverterTest {
 
     Assertions.assertEquals(Op.AND, transformedFilter.getChildFilters()[2].getOp());
 
-    Assertions.assertEquals("some_col.value.string",
+    Assertions.assertEquals("attributes.some_col.value.string",
         transformedFilter.getChildFilters()[2].getChildFilters()[0].getFieldName());
     Assertions.assertEquals(Op.EQ, transformedFilter.getChildFilters()[2].getChildFilters()[0].getOp());
     Assertions.assertEquals("some_val", transformedFilter.getChildFilters()[2].getChildFilters()[0].getValue());

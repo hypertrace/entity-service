@@ -25,6 +25,7 @@ import org.hypertrace.entity.data.service.v1.OrderByExpression;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.data.service.v1.SortOrder;
 import org.hypertrace.entity.data.service.v1.Value;
+import org.hypertrace.entity.service.constants.EntityConstants;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 
 /**
@@ -158,7 +159,7 @@ public class DocStoreConverter {
   }
 
   private static boolean isPartOfAttributeMap(String fieldName) {
-    return !EntityServiceConstants.ENTITY_CREATED_TIME.equalsIgnoreCase(fieldName);
+    return fieldName.startsWith(EntityConstants.ATTRIBUTES_MAP_PATH);
   }
 
   private static Filter transformToOrFilterChainForStrArray(AttributeFilter attributeFilter) {

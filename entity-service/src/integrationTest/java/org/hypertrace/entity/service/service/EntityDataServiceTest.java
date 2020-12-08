@@ -1,6 +1,7 @@
 package org.hypertrace.entity.service.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -12,11 +13,17 @@ import io.grpc.ClientInterceptors;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status.Code;
 import io.grpc.StatusRuntimeException;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.hypertrace.core.serviceframework.IntegrationTestServerUtil;
+import org.hypertrace.entity.constants.v1.ApiAttribute;
 import org.hypertrace.entity.constants.v1.BackendAttribute;
 import org.hypertrace.entity.constants.v1.CommonAttribute;
 import org.hypertrace.entity.data.service.client.EntityDataServiceClient;
@@ -357,6 +364,50 @@ public class EntityDataServiceTest {
         .build();
     entitiesList = entityDataServiceClient.query(TENANT_ID, randomEntityIdQuery);
     assertTrue(entitiesList.isEmpty());
+  }
+
+  @Test
+  public void testEntityNonAttributeQuery() {
+    Entity entity1 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.K8S_POD.name())
+        .setEntityName("Some Service 1")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1);
+    assertFalse(createdEntity1.getEntityId().trim().isEmpty());
+
+    Entity entity2 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.K8S_POD.name())
+        .setEntityName("Some Service 2")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2);
+    assertFalse(createdEntity2.getEntityId().trim().isEmpty());
+
+    long afterCreatedTime = Instant.now().toEpochMilli();
+    Query createTimeQuery = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .setFilter(
+            AttributeFilter.newBuilder()
+                .setOperator(Operator.LT)
+                .setName("createdTime")
+                .setAttributeValue(AttributeValue.newBuilder().setValue(
+                    Value.newBuilder().setLong(afterCreatedTime).build()
+                ))
+            .build())
+        .build();
+
+    //Query all entities that created time is less than now
+    List<Entity> entitiesList = entityDataServiceClient.query(TENANT_ID, createTimeQuery);
+    assertTrue(entitiesList.size() > 1);
   }
 
   @Test
