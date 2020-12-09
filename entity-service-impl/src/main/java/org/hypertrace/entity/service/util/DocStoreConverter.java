@@ -7,6 +7,7 @@ import com.google.protobuf.GeneratedMessageV3;
 import com.google.protobuf.InvalidProtocolBufferException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -15,11 +16,14 @@ import javax.annotation.Nonnull;
 import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.Filter.Op;
 import org.hypertrace.core.documentstore.JSONDocument;
+import org.hypertrace.core.documentstore.OrderBy;
 import org.hypertrace.entity.data.service.v1.AttributeFilter;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValue.TypeCase;
 import org.hypertrace.entity.data.service.v1.Operator;
+import org.hypertrace.entity.data.service.v1.OrderByExpression;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.data.service.v1.SortOrder;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.service.constants.EntityConstants;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -82,7 +86,34 @@ public class DocStoreConverter {
         docStoreQuery.setFilter(f);
       }
     }
+
+    if (query.getOrderByCount() > 0) {
+      docStoreQuery.addAllOrderBys(transformOrderBy(query.getOrderByList()));
+    }
+
+    if (query.getLimit() > 0) {
+      docStoreQuery.setLimit(query.getLimit());
+    }
+    if (query.getOffset() > 0) {
+      docStoreQuery.setOffset(query.getOffset());
+    }
+
     return docStoreQuery;
+  }
+
+  private static List<OrderBy> transformOrderBy(List<OrderByExpression> orderByExpressions) {
+    if (orderByExpressions.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    return orderByExpressions.stream()
+        .map(expression ->
+            new OrderBy(expression.getName(), transformSortOrder(expression.getOrder())))
+        .collect(Collectors.toList());
+  }
+
+  private static boolean transformSortOrder(SortOrder sortOrder) {
+    return SortOrder.ASC == sortOrder;
   }
 
   public static Filter getTenantIdEqFilter(String tenantId) {
