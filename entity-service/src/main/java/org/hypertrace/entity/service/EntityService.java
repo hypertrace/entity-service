@@ -5,6 +5,7 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.protobuf.services.ProtoReflectionService;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -53,6 +54,7 @@ public class EntityService extends PlatformService {
         ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build();
     this.getLifecycle().shutdownComplete().thenRun(localChannel::shutdown);
     server = ServerBuilder.forPort(port)
+        .addService(ProtoReflectionService.newInstance())
         .addService(InterceptorUtil.wrapInterceptors(new org.hypertrace.entity.type.service.EntityTypeServiceImpl(datastore)))
         .addService(InterceptorUtil.wrapInterceptors(new EntityTypeServiceImpl(datastore)))
         .addService(InterceptorUtil.wrapInterceptors(new EntityDataServiceImpl(datastore, localChannel)))

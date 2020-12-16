@@ -60,6 +60,7 @@ dependencies {
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.3.1")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.18")
   implementation("org.hypertrace.core.documentstore:document-store:0.4.5")
+  implementation("io.grpc:grpc-services:1.33.1")
 
   runtimeOnly("io.grpc:grpc-netty:1.33.1")
   constraints {

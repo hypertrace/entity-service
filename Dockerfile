@@ -1,4 +1,4 @@
-FROM  hypertrace/entity-service:0.4.4
+FROM  traceableai-docker.jfrog.io/hypertrace/entity-service:test
 
 RUN wget https://github.com/hypertrace/javaagent/releases/download/0.6.2/hypertrace-agent-all.jar -O /javaagent.jar
 
