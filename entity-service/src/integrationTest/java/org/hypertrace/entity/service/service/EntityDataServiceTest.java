@@ -406,6 +406,7 @@ public class EntityDataServiceTest {
     assertTrue(entitiesList.size() > 1);
   }
 
+
   @Test
   public void testEntityQueryAttributeFiltering() {
     long timeBeforeQuery = System.currentTimeMillis();
@@ -513,6 +514,106 @@ public class EntityDataServiceTest {
         Query.newBuilder().setFilter(listInFilter).build());
     Entity foundEntity4 = entities4.get(0);
     assertEquals(createdEntity, foundEntity4);
+  }
+
+  @Test
+  public void testEntityQueryAttributeWithExistsFiltering() {
+    String stringRandomizer1 = UUID.randomUUID().toString();
+    Entity entity1 = Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.K8S_POD.name())
+            .setEntityName("Some Service")
+            .putIdentifyingAttributes(
+                    EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+                    AttributeValue.newBuilder().setValue(Value.newBuilder().setString("value1").build())
+                            .build())
+            .putAttributes("simpleValue1" + "-" + stringRandomizer1, AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("StringValue1").build())
+                    .build())
+            .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1.getEntityId());
+
+    String stringRandomizer2 = UUID.randomUUID().toString();
+    Entity entity2 = Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.K8S_POD.name())
+            .setEntityName("Some Service")
+            .putIdentifyingAttributes(
+                    EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+                    AttributeValue.newBuilder().setValue(Value.newBuilder().setString("value2").build())
+                            .build())
+            .putAttributes("simpleValue2" + "-" + stringRandomizer2, AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("StringValue2").build())
+                    .build())
+            .putAttributes("test" + "-" + stringRandomizer2 , AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("test").build())
+                    .build())
+            .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2.getEntityId());
+
+    // test for exists operator
+    AttributeFilter existsFilter = AttributeFilter.newBuilder()
+            .setName(EntityConstants.attributeMapPathFor("simpleValue1" + "-" + stringRandomizer1))
+            .setOperator(Operator.EXISTS)
+            .build();
+    List<Entity> entities = entityDataServiceClient.query(TENANT_ID,
+            Query.newBuilder().setFilter(existsFilter).build());
+
+    assertEquals(1, entities.size());
+    assertEquals(createdEntity1, entities.get(0));
+
+    // test for not-exists operator
+    AttributeFilter notExistsFilter = AttributeFilter.newBuilder()
+            .setName(EntityConstants.attributeMapPathFor("simpleValue3"))
+            .setOperator(Operator.NOT_EXISTS)
+            .build();
+
+    entities = entityDataServiceClient.query(TENANT_ID,
+            Query.newBuilder().setFilter(notExistsFilter).build());
+
+    assertTrue(entities.size() > 0);
+    
+    // test with AND operator
+    AttributeFilter eqFilter = AttributeFilter.newBuilder()
+            .setName(EntityConstants.attributeMapPathFor("test" + "-" + stringRandomizer2))
+            .setOperator(Operator.EQ)
+            .setAttributeValue(AttributeValue.newBuilder()
+              .setValue(Value.newBuilder().setString("test").build())
+              .build())
+            .build();
+
+    existsFilter = AttributeFilter.newBuilder()
+            .setName(EntityConstants.attributeMapPathFor("simpleValue2" + "-" + stringRandomizer2))
+            .setOperator(Operator.EXISTS)
+            .build();
+
+    AttributeFilter andFilter = AttributeFilter.newBuilder()
+            .setOperator(Operator.AND)
+            .addChildFilter(eqFilter)
+            .addChildFilter(existsFilter)
+            .build();
+
+    entities = entityDataServiceClient.query(TENANT_ID,
+            Query.newBuilder().setFilter(andFilter).build());
+
+    assertEquals(1, entities.size());
+    assertEquals(createdEntity2, entities.get(0));
+
+    // exists with attribute value - discard the value
+    existsFilter = AttributeFilter.newBuilder()
+            .setName(EntityConstants.attributeMapPathFor("simpleValue1" + "-" + stringRandomizer1))
+            .setOperator(Operator.EXISTS)
+            .setAttributeValue(AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("StringValue").build())
+                    .build())
+            .build();
+    entities = entityDataServiceClient.query(TENANT_ID,
+            Query.newBuilder().setFilter(existsFilter).build());
+
+    assertEquals(1, entities.size());
+    assertEquals(createdEntity1, entities.get(0));
   }
 
   @Test
