@@ -148,7 +148,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         documentMap.put(key, doc);
       }
 
-      Streams.stream(entitiesCollection.returnAndBulkUpsert(documentMap))
+      Streams.stream(entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap))
           .flatMap(document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
           .map(Entity::toBuilder)
           .map(builder -> builder.setTenantId(tenantId))
