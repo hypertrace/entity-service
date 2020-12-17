@@ -338,6 +338,10 @@ public class DocStoreConverter {
         return Op.CONTAINS;
       case LIKE:
         return Op.LIKE;
+      case EXISTS:
+        return Op.EXISTS;
+      case NOT_EXISTS:
+        return Op.NOT_EXISTS;
       case NOT_IN:
       default:
         throw new IllegalArgumentException(

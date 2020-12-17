@@ -32,6 +32,8 @@ enum Operator {
   LE = 10;
   CONTAINS = 11;
   LIKE = 12;
+  EXISTS = 13;
+  NOT_EXISTS = 14;
 }
 
 message Query {
