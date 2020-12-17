@@ -5,6 +5,7 @@ import static org.hypertrace.entity.service.constants.EntityConstants.attributeM
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import io.grpc.Channel;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -56,6 +57,11 @@ public class EntityDataServiceClient implements EdsClient {
       LOGGER.debug("Upserted entity: {}", result);
     }
     return result.equals(Entity.getDefaultInstance()) ? null : result;
+  }
+
+  @Override
+  public Iterator<Entity> getAndBulkUpsert(String tenantId, Collection<Entity> entities) {
+    return execute(tenantId, () -> blockingStub.getAndUpsertEntities(Entities.newBuilder().addAllEntity(entities).build()));
   }
 
   public void bulkUpsert(String tenantId, java.util.Collection<Entity> entities) {

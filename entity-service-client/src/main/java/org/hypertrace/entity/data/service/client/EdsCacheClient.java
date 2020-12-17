@@ -3,8 +3,7 @@ package org.hypertrace.entity.data.service.client;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import io.grpc.Channel;
-import io.grpc.ManagedChannelBuilder;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -20,7 +19,6 @@ import org.hypertrace.entity.data.service.v1.EntityRelationship;
 import org.hypertrace.entity.data.service.v1.EntityRelationships;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.service.client.config.EntityServiceClientCacheConfig;
-import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +86,11 @@ public class EdsCacheClient implements EdsClient {
   @Override
   public Entity upsert(Entity entity) {
     return client.upsert(entity);
+  }
+
+  @Override
+  public Iterator<Entity> getAndBulkUpsert(String tenantId, Collection<Entity> entities) {
+    return client.getAndBulkUpsert(tenantId, entities);
   }
 
   @Override

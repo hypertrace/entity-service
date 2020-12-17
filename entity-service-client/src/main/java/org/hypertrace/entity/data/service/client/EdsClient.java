@@ -1,5 +1,6 @@
 package org.hypertrace.entity.data.service.client;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -17,6 +18,8 @@ import org.hypertrace.entity.data.service.v1.Query;
 public interface EdsClient {
 
   Entity upsert(Entity entity);
+
+  Iterator<Entity> getAndBulkUpsert(String tenantId, Collection<Entity> entities);
 
   Entity getByTypeAndIdentifyingAttributes(String tenantId,
       ByTypeAndIdentifyingAttributes byIdentifyingAttributes);
