@@ -37,6 +37,8 @@ enum Operator {
   GE = 10;
   LE = 11;
   LIKE = 12;
+  EXISTS = 13;
+  NOT_EXISTS = 14;
 }
 
 
