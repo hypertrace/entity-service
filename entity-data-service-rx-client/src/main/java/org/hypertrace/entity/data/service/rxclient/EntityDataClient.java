@@ -18,7 +18,7 @@ public interface EntityDataClient {
 
   /**
    * Gets the entity from the cache if available, otherwise upserts it and returns the result. The
-   * behavior of this may or may be cached depending on the configuration.
+   * behavior of this may or may not be cached depending on the configuration.
    *
    * @param entity
    * @return

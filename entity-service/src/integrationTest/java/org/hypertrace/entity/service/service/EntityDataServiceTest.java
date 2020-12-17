@@ -14,16 +14,12 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status.Code;
 import io.grpc.StatusRuntimeException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.hypertrace.core.serviceframework.IntegrationTestServerUtil;
-import org.hypertrace.entity.constants.v1.ApiAttribute;
 import org.hypertrace.entity.constants.v1.BackendAttribute;
 import org.hypertrace.entity.constants.v1.CommonAttribute;
 import org.hypertrace.entity.data.service.client.EntityDataServiceClient;
@@ -542,6 +538,7 @@ public class EntityDataServiceTest {
     entityDataServiceClient.bulkUpsert(TENANT_ID, externalIdToEntity.values());
 
     // all N entities should have been created
+    Map<String, Entity> entityMap = new HashMap<>();
     for (String id : externalIdToEntity.keySet()) {
       List<Entity> readEntity =
           entityDataServiceClient.getEntitiesWithGivenAttribute(TENANT_ID,
@@ -551,6 +548,15 @@ public class EntityDataServiceTest {
       // exactly one entity exists
       assertEquals(1, readEntity.size());
       assertNotNull(readEntity.get(0).getEntityId());
+      entityMap.put(readEntity.get(0).getEntityId(), readEntity.get(0));
+    }
+
+    // Try getAndBulkUpsert, verify that the returned entities were in previous state.
+    Iterator<Entity> iterator = entityDataServiceClient.getAndBulkUpsert(TENANT_ID, externalIdToEntity.values());
+    while (iterator.hasNext()) {
+      Entity entity = iterator.next();
+      assertNotNull(entityMap.get(entity.getEntityId()));
+      assertEquals(entityMap.get(entity.getEntityId()), entity);
     }
   }
 
