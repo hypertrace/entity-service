@@ -20,6 +20,7 @@ import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
@@ -49,6 +50,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceImpl.class);
   private static final String ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.attributeMap";
   private static final Parser PARSER = DocStoreJsonFormat.parser().ignoringUnknownFields();
+  private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
 
   private final Collection entitiesCollection;
   private final Map<String, Map<String, String>> attrNameToEDSAttrMap;
@@ -89,14 +91,30 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         .convertToEDSQuery(request, attrNameToEDSAttrMap.get(request.getEntityType()));
     Iterator<Document> documentIterator = entitiesCollection.search(
         DocStoreConverter.transform(tenantId.get(), query));
-    List<Entity> entities = convertDocsToEntities(documentIterator);
 
-    //Build result
-    //TODO : chunk response. For now sending everything in one chunk
-    responseObserver.onNext(convertEntitiesToResultSetChunk(
-        entities,
-        request.getSelectionList(),
-        attrNameToEDSAttrMap.get(request.getEntityType())));
+    boolean isFirstEntity = true;
+    while (documentIterator.hasNext()) {
+      Optional<Entity> entity = DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
+      if (entity.isPresent()) {
+        Row row = convertToEntityQueryResult(entity.get(), request.getSelectionList(), attrNameToEDSAttrMap.get(request.getEntityType()));
+        ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+        // Set metadata for first entity
+        if (isFirstEntity) {
+          resultBuilder.setResultSetMetadata(ResultSetMetadata.newBuilder()
+              .addAllColumnMetadata(
+                  () -> request.getSelectionList().stream().map(Expression::getColumnIdentifier)
+                      .map(
+                          ColumnIdentifier::getColumnName)
+                      .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build()).iterator())
+              .build());
+          isFirstEntity = false;
+        }
+        //Build data
+        resultBuilder.addRow(row);
+        responseObserver.onNext(resultBuilder.build());
+      }
+    }
+
     responseObserver.onCompleted();
   }
 
