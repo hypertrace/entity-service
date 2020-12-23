@@ -127,6 +127,41 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
   }
 
+  @Override
+  public void getAndUpsertEntities(Entities request, StreamObserver<Entity> responseObserver) {
+    String tenantId = RequestContext.CURRENT.get().getTenantId().orElse(null);
+    if (tenantId == null) {
+      responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
+      return;
+    }
+
+    try {
+      Map<String, Entity> entityMap =
+          request.getEntityList().stream()
+              .map(entity -> this.upsertNormalizer.normalize(tenantId, entity))
+              .collect(Collectors.toUnmodifiableMap(Entity::getEntityId, Function.identity()));
+
+      Map<Key, Document> documentMap = new HashMap<>();
+      for (Map.Entry<String, Entity> entry : entityMap.entrySet()) {
+        Document doc = convertEntityToDocument(entry.getValue());
+        SingleValueKey key = new SingleValueKey(tenantId, entry.getKey());
+        documentMap.put(key, doc);
+      }
+
+      Streams.stream(entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap))
+          .flatMap(document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
+          .map(Entity::toBuilder)
+          .map(builder -> builder.setTenantId(tenantId))
+          .map(Entity.Builder::build)
+          .forEach(responseObserver::onNext);
+
+      responseObserver.onCompleted();
+    } catch (IOException e) {
+      LOG.error("Failed to bulk upsert entities", e);
+      responseObserver.onError(e);
+    }
+  }
+
   /**
    * Get an Entity by the EntityId and EntityType
    *

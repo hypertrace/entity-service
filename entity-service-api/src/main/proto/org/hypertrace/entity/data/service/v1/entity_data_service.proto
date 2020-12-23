@@ -12,6 +12,7 @@ service EntityDataService {
   }
   rpc upsertEntities (Entities) returns (Empty) {
   }
+  rpc getAndUpsertEntities (Entities) returns (stream Entity) {}
   rpc delete (ByIdRequest) returns (Empty) {
   }
   rpc getById (ByIdRequest) returns (Entity) {
