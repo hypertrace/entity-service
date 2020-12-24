@@ -114,7 +114,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         responseObserver.onNext(resultBuilder.build());
       }
     }
-
     responseObserver.onCompleted();
   }
 
@@ -133,7 +132,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return entities;
   }
 
-  private ResultSetChunk convertEntitiesToResultSetChunk(
+  private static ResultSetChunk convertEntitiesToResultSetChunk(
       List<Entity> entities,
       List<Expression> selections,
       Map<String, String> attributeFqnMapping) {
@@ -153,7 +152,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return resultBuilder.build();
   }
 
-  private Row convertToEntityQueryResult(
+  static Row convertToEntityQueryResult(
       Entity entity, List<Expression> selections, Map<String, String> egsToEdsAttrMapping) {
     Row.Builder result = Row.newBuilder();
     selections.stream()
