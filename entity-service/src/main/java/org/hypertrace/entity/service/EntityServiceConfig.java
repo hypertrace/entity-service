@@ -14,8 +14,6 @@ public class EntityServiceConfig {
   private final Config entityServiceConfig;
 
   public EntityServiceConfig(Config config) {
-
-    LOG.info(config.toString());
     entityServiceConfig = config.getConfig("entity-service");
     dataStoreType = entityServiceConfig.getString(DocumentStoreConfig.DATASTORE_TYPE_CONFIG_KEY);
   }
