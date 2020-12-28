@@ -58,8 +58,8 @@ dependencies {
 
   implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.3.1")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.3.1")
-  implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.15")
-  implementation("org.hypertrace.core.documentstore:document-store:0.4.4")
+  implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.18")
+  implementation("org.hypertrace.core.documentstore:document-store:0.4.6")
 
   runtimeOnly("io.grpc:grpc-netty:1.33.1")
   constraints {
@@ -80,7 +80,7 @@ dependencies {
 
   integrationTestImplementation(project(":entity-service-client"))
   integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
-  integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.10")
+  integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.18")
 }
 
 application {

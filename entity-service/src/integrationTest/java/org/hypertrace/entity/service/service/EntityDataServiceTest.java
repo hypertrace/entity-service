@@ -1,6 +1,7 @@
 package org.hypertrace.entity.service.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -12,7 +13,9 @@ import io.grpc.ClientInterceptors;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status.Code;
 import io.grpc.StatusRuntimeException;
+import java.time.Instant;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,7 +32,9 @@ import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Operator;
+import org.hypertrace.entity.data.service.v1.OrderByExpression;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.data.service.v1.SortOrder;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceTestConfig;
@@ -322,6 +327,22 @@ public class EntityDataServiceTest {
     List<Entity> entitiesList = entityDataServiceClient.query(TENANT_ID, entityTypeQuery);
     assertTrue(entitiesList.size() > 1);
 
+    Query entityLimitQuery = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .setLimit(1)
+        .build();
+    entitiesList = entityDataServiceClient.query(TENANT_ID, entityLimitQuery);
+    assertEquals(1,entitiesList.size());
+
+    Query entityOffsetQuery = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .setLimit(1)
+        .setOffset(1)
+        .build();
+    List<Entity> entityWithOffset = entityDataServiceClient.query(TENANT_ID, entityOffsetQuery);
+    assertEquals(1, entityWithOffset.size());
+    assertNotEquals(entitiesList.get(0).getEntityId(), entityWithOffset.get(0).getEntityId());
+
     //Query specific entity
     Query entityTypeAndIdQuery = Query.newBuilder()
         .addEntityId(createdEntity1.getEntityId())
@@ -340,6 +361,51 @@ public class EntityDataServiceTest {
     entitiesList = entityDataServiceClient.query(TENANT_ID, randomEntityIdQuery);
     assertTrue(entitiesList.isEmpty());
   }
+
+  @Test
+  public void testEntityNonAttributeQuery() {
+    Entity entity1 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.K8S_POD.name())
+        .setEntityName("Some Service 1")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1);
+    assertFalse(createdEntity1.getEntityId().trim().isEmpty());
+
+    Entity entity2 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.K8S_POD.name())
+        .setEntityName("Some Service 2")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2);
+    assertFalse(createdEntity2.getEntityId().trim().isEmpty());
+
+    long afterCreatedTime = Instant.now().toEpochMilli();
+    Query createTimeQuery = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .setFilter(
+            AttributeFilter.newBuilder()
+                .setOperator(Operator.LT)
+                .setName("createdTime")
+                .setAttributeValue(AttributeValue.newBuilder().setValue(
+                    Value.newBuilder().setLong(afterCreatedTime).build()
+                ))
+            .build())
+        .build();
+
+    //Query all entities that created time is less than now
+    List<Entity> entitiesList = entityDataServiceClient.query(TENANT_ID, createTimeQuery);
+    assertTrue(entitiesList.size() > 1);
+  }
+
 
   @Test
   public void testEntityQueryAttributeFiltering() {
@@ -451,6 +517,106 @@ public class EntityDataServiceTest {
   }
 
   @Test
+  public void testEntityQueryAttributeWithExistsFiltering() {
+    String stringRandomizer1 = UUID.randomUUID().toString();
+    Entity entity1 = Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.K8S_POD.name())
+            .setEntityName("Some Service")
+            .putIdentifyingAttributes(
+                    EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+                    AttributeValue.newBuilder().setValue(Value.newBuilder().setString("value1").build())
+                            .build())
+            .putAttributes("simpleValue1" + "-" + stringRandomizer1, AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("StringValue1").build())
+                    .build())
+            .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1.getEntityId());
+
+    String stringRandomizer2 = UUID.randomUUID().toString();
+    Entity entity2 = Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.K8S_POD.name())
+            .setEntityName("Some Service")
+            .putIdentifyingAttributes(
+                    EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+                    AttributeValue.newBuilder().setValue(Value.newBuilder().setString("value2").build())
+                            .build())
+            .putAttributes("simpleValue2" + "-" + stringRandomizer2, AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("StringValue2").build())
+                    .build())
+            .putAttributes("test" + "-" + stringRandomizer2 , AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("test").build())
+                    .build())
+            .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2.getEntityId());
+
+    // test for exists operator
+    AttributeFilter existsFilter = AttributeFilter.newBuilder()
+            .setName(EntityConstants.attributeMapPathFor("simpleValue1" + "-" + stringRandomizer1))
+            .setOperator(Operator.EXISTS)
+            .build();
+    List<Entity> entities = entityDataServiceClient.query(TENANT_ID,
+            Query.newBuilder().setFilter(existsFilter).build());
+
+    assertEquals(1, entities.size());
+    assertEquals(createdEntity1, entities.get(0));
+
+    // test for not-exists operator
+    AttributeFilter notExistsFilter = AttributeFilter.newBuilder()
+            .setName(EntityConstants.attributeMapPathFor("simpleValue3"))
+            .setOperator(Operator.NOT_EXISTS)
+            .build();
+
+    entities = entityDataServiceClient.query(TENANT_ID,
+            Query.newBuilder().setFilter(notExistsFilter).build());
+
+    assertTrue(entities.size() > 0);
+    
+    // test with AND operator
+    AttributeFilter eqFilter = AttributeFilter.newBuilder()
+            .setName(EntityConstants.attributeMapPathFor("test" + "-" + stringRandomizer2))
+            .setOperator(Operator.EQ)
+            .setAttributeValue(AttributeValue.newBuilder()
+              .setValue(Value.newBuilder().setString("test").build())
+              .build())
+            .build();
+
+    existsFilter = AttributeFilter.newBuilder()
+            .setName(EntityConstants.attributeMapPathFor("simpleValue2" + "-" + stringRandomizer2))
+            .setOperator(Operator.EXISTS)
+            .build();
+
+    AttributeFilter andFilter = AttributeFilter.newBuilder()
+            .setOperator(Operator.AND)
+            .addChildFilter(eqFilter)
+            .addChildFilter(existsFilter)
+            .build();
+
+    entities = entityDataServiceClient.query(TENANT_ID,
+            Query.newBuilder().setFilter(andFilter).build());
+
+    assertEquals(1, entities.size());
+    assertEquals(createdEntity2, entities.get(0));
+
+    // exists with attribute value - discard the value
+    existsFilter = AttributeFilter.newBuilder()
+            .setName(EntityConstants.attributeMapPathFor("simpleValue1" + "-" + stringRandomizer1))
+            .setOperator(Operator.EXISTS)
+            .setAttributeValue(AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("StringValue").build())
+                    .build())
+            .build();
+    entities = entityDataServiceClient.query(TENANT_ID,
+            Query.newBuilder().setFilter(existsFilter).build());
+
+    assertEquals(1, entities.size());
+    assertEquals(createdEntity1, entities.get(0));
+  }
+
+  @Test
   public void whenNNewEntitiesAreUpserted_thenExpectNNewEntities() {
     int N = 5;
     Map<String, Entity> externalIdToEntity = new HashMap<>();
@@ -473,6 +639,7 @@ public class EntityDataServiceTest {
     entityDataServiceClient.bulkUpsert(TENANT_ID, externalIdToEntity.values());
 
     // all N entities should have been created
+    Map<String, Entity> entityMap = new HashMap<>();
     for (String id : externalIdToEntity.keySet()) {
       List<Entity> readEntity =
           entityDataServiceClient.getEntitiesWithGivenAttribute(TENANT_ID,
@@ -482,6 +649,15 @@ public class EntityDataServiceTest {
       // exactly one entity exists
       assertEquals(1, readEntity.size());
       assertNotNull(readEntity.get(0).getEntityId());
+      entityMap.put(readEntity.get(0).getEntityId(), readEntity.get(0));
+    }
+
+    // Try getAndBulkUpsert, verify that the returned entities were in previous state.
+    Iterator<Entity> iterator = entityDataServiceClient.getAndBulkUpsert(TENANT_ID, externalIdToEntity.values());
+    while (iterator.hasNext()) {
+      Entity entity = iterator.next();
+      assertNotNull(entityMap.get(entity.getEntityId()));
+      assertEquals(entityMap.get(entity.getEntityId()), entity);
     }
   }
 
@@ -628,6 +804,74 @@ public class EntityDataServiceTest {
     EnrichedEntity actualEntity2 = entityDataServiceClient
         .getEnrichedEntityById(TENANT_ID, entity2.getEntityId());
     assertEquals(entity2, actualEntity2);
+  }
+
+  @Test
+  public void testEntityQueryOrderBy() {
+    Entity entity1 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.K8S_POD.name())
+        .setEntityName("Some Service 1")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+            generateRandomUUIDAttrValue())
+        .putAttributes(
+            "foo",
+            AttributeValue.newBuilder()
+                .setValue(Value.newBuilder().setInt(5).build())
+                .build())
+        .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1);
+    assertNotNull(createdEntity1.getEntityId().trim());
+
+    Entity entity2 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.K8S_POD.name())
+        .setEntityName("Some Service 2")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+            generateRandomUUIDAttrValue())
+        .putAttributes(
+            "foo",
+            AttributeValue.newBuilder()
+                .setValue(Value.newBuilder().setInt(10).build())
+                .build())
+        .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2);
+    assertNotNull(createdEntity2.getEntityId().trim());
+
+    // Query by field name
+    Query entityNameQuery = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setOrder(SortOrder.DESC)
+                .setName("entityName")
+                .build())
+        .build();
+    List<Entity> entitiesList = entityDataServiceClient.query(TENANT_ID, entityNameQuery);
+    assertTrue(entitiesList.size() > 1);
+    assertTrue(entitiesList.contains(createdEntity1) && entitiesList.contains(createdEntity2));
+    // ordered such that entity with "larger" entity name value is listed earlier
+    assertTrue(entitiesList.indexOf(createdEntity2) < entitiesList.indexOf(createdEntity1));
+
+    // Query by attribute
+    Query attributeQuery = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setOrder(SortOrder.DESC)
+                .setName("attributes.foo")
+                .build())
+        .build();
+    entitiesList = entityDataServiceClient.query(TENANT_ID, attributeQuery);
+    assertTrue(entitiesList.size() > 1);
+    assertTrue(entitiesList.contains(createdEntity1) && entitiesList.contains(createdEntity2));
+    // ordered such that entity with "larger" attributes value is listed earlier
+    assertTrue(entitiesList.indexOf(createdEntity2) < entitiesList.indexOf(createdEntity1));
+
   }
 
   private AttributeValue generateRandomUUIDAttrValue() {

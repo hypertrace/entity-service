@@ -9,12 +9,15 @@ import java.util.Map;
 import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.Filter.Op;
 import org.hypertrace.core.documentstore.JSONDocument;
+import org.hypertrace.core.documentstore.OrderBy;
 import org.hypertrace.entity.data.service.v1.AttributeFilter;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Operator;
+import org.hypertrace.entity.data.service.v1.OrderByExpression;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.data.service.v1.SortOrder;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.service.constants.EntityConstants;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -31,6 +34,29 @@ public class DocStoreConverterTest {
   private static DocStoreJsonFormat.Printer JSONFORMAT_PRINTER = DocStoreJsonFormat.printer();
   private static final String ATTRIBUTES_LABELS_FIELD_NAME = "attributes.labels";
 
+
+  @Test
+  public void testEntityQueryLimitOffsetConversion() {
+    int limit = 2;
+    int offset = 1;
+    Query query = Query.newBuilder().addEntityId("some id").build();
+    org.hypertrace.core.documentstore.Query transformedQuery =
+        DocStoreConverter.transform(TENANT_ID, query);
+    Assertions.assertNull(transformedQuery.getLimit());
+    Assertions.assertNull(transformedQuery.getOffset());
+
+    query = Query.newBuilder().addEntityId("some id").setLimit(limit).setOffset(offset).build();
+    transformedQuery = DocStoreConverter.transform(TENANT_ID, query);
+    Assertions.assertEquals(limit, transformedQuery.getLimit());
+    Assertions.assertEquals(offset, transformedQuery.getOffset());
+
+    // zero values will be ignored
+    query = Query.newBuilder().addEntityId("some id").setLimit(0).setOffset(0).build();
+    transformedQuery = DocStoreConverter.transform(TENANT_ID, query);
+    Assertions.assertNull(transformedQuery.getLimit());
+    Assertions.assertNull(transformedQuery.getOffset());
+  }
+
   @Test
   public void testEntityFieldsQueryConversion() {
     Query query = Query.newBuilder().addEntityId("some id").build();
@@ -46,7 +72,6 @@ public class DocStoreConverterTest {
     Assertions.assertEquals(Op.EQ, tenantIdFilter.getOp());
     Assertions.assertEquals(TENANT_ID, tenantIdFilter.getValue());
     Assertions.assertEquals(EntityServiceConstants.TENANT_ID, tenantIdFilter.getFieldName());
-
     Assertions.assertEquals(EntityServiceConstants.ENTITY_ID,
         transformedFilter.getChildFilters()[1].getFieldName());
     Assertions.assertEquals(Collections.singletonList("some id"),
@@ -124,6 +149,61 @@ public class DocStoreConverterTest {
         transformedFilter.getChildFilters()[2].getFieldName());
     Assertions.assertEquals(Filter.Op.CONTAINS, transformedFilter.getChildFilters()[2].getOp());
     Assertions.assertEquals("stringValue", transformedFilter.getChildFilters()[2].getValue());
+  }
+
+
+  @Test
+  public void testFilterNonAttributesFieldNames() {
+    Query query = Query.newBuilder()
+        .addEntityId("some id")
+        .setFilter(AttributeFilter.newBuilder()
+            .setName("API.createdTime")
+            .setOperator(Operator.GT)
+            .setAttributeValue(AttributeValue.newBuilder()
+                .setValue(Value.newBuilder().setLong(1234L).build())
+                .build())
+            .build())
+        .build();
+    org.hypertrace.core.documentstore.Query transformedQuery =
+        DocStoreConverter.transform(TENANT_ID, query);
+
+    Filter transformedFilter = transformedQuery.getFilter();
+    Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
+
+    Assertions.assertEquals(3, transformedFilter.getChildFilters().length);
+    Assertions.assertEquals(EntityServiceConstants.ENTITY_ID,
+        transformedFilter.getChildFilters()[1].getFieldName());
+    Assertions.assertEquals(Collections.singletonList("some id"),
+        transformedFilter.getChildFilters()[1].getValue());
+    Assertions.assertEquals("API.createdTime",
+        transformedFilter.getChildFilters()[2].getFieldName());
+    Assertions.assertEquals(Filter.Op.GT, transformedFilter.getChildFilters()[2].getOp());
+    Assertions.assertEquals(1234L, transformedFilter.getChildFilters()[2].getValue());
+  }
+
+  @Test
+  public void testOrderByConversion() {
+    Query query = Query.newBuilder()
+        .addEntityId("some id")
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setName("col1")
+                .setOrder(SortOrder.DESC)
+                .build())
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setName("col2")
+                .build())
+        .build();
+    org.hypertrace.core.documentstore.Query transformedQuery =
+        DocStoreConverter.transform(TENANT_ID, query);
+    List<OrderBy> transformedOrderBys= transformedQuery.getOrderBys();
+
+    Assertions.assertEquals(2, transformedOrderBys.size());
+    Assertions.assertEquals("col1", transformedOrderBys.get(0).getField());
+    Assertions.assertFalse(transformedOrderBys.get(0).isAsc());
+    Assertions.assertEquals("col2", transformedOrderBys.get(1).getField());
+    Assertions.assertTrue(transformedOrderBys.get(1).isAsc());
   }
 
   @Test
@@ -372,7 +452,7 @@ public class DocStoreConverterTest {
             AttributeFilter.newBuilder().setOperator(Operator.AND)
                 .addChildFilter(
                     AttributeFilter.newBuilder()
-                        .setName("some_col")
+                        .setName("attributes.some_col")
                         .setOperator(Operator.EQ)
                         .setAttributeValue(AttributeValue.newBuilder()
                             .setValue(Value.newBuilder().setString("some_val"))
@@ -413,7 +493,7 @@ public class DocStoreConverterTest {
 
     Assertions.assertEquals(Op.AND, transformedFilter.getChildFilters()[2].getOp());
 
-    Assertions.assertEquals("some_col.value.string",
+    Assertions.assertEquals("attributes.some_col.value.string",
         transformedFilter.getChildFilters()[2].getChildFilters()[0].getFieldName());
     Assertions.assertEquals(Op.EQ, transformedFilter.getChildFilters()[2].getChildFilters()[0].getOp());
     Assertions.assertEquals("some_val", transformedFilter.getChildFilters()[2].getChildFilters()[0].getValue());

@@ -12,7 +12,7 @@ message EntityQueryRequest {
   string entityType = 2;
   Filter filter = 3;
   repeated Expression selection = 4;
-
+  repeated OrderByExpression orderBy = 7;
   int32 limit = 5;
   int32 offset = 6;
 }

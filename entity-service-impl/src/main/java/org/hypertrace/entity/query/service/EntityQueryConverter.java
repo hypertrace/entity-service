@@ -2,8 +2,11 @@ package org.hypertrace.entity.query.service;
 
 import static java.util.stream.Collectors.toMap;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
@@ -17,6 +20,8 @@ import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Filter;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
+import org.hypertrace.entity.query.service.v1.OrderByExpression;
+import org.hypertrace.entity.query.service.v1.SortOrder;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 
@@ -32,6 +37,11 @@ public class EntityQueryConverter {
     if (attributeFilter != null) {
       queryBuilder.setFilter(attributeFilter);
     }
+
+    queryBuilder.addAllOrderBy(convertOrderBy(queryRequest.getOrderByList(), attrNameToEDSAttrMap));
+    queryBuilder.setLimit(queryRequest.getLimit());
+    queryBuilder.setOffset(queryRequest.getOffset());
+
     return queryBuilder.build();
   }
 
@@ -316,5 +326,41 @@ public class EntityQueryConverter {
         return Arrays.toString(values);
     }
     throw new IllegalArgumentException("Unhandled type: " + value.getTypeCase());
+  }
+
+  private static List<org.hypertrace.entity.data.service.v1.OrderByExpression> convertOrderBy(
+      List<OrderByExpression> orderByExpressions,
+      Map<String, String> attrNameToEDSAttrMap) {
+    if (orderByExpressions.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<org.hypertrace.entity.data.service.v1.OrderByExpression> result = new ArrayList<>();
+    for (OrderByExpression orderByExpression : orderByExpressions)
+      if (orderByExpression.hasExpression()) {
+        if (orderByExpression.getExpression().hasColumnIdentifier()) {
+          String edsColumnName = convertToAttributeKey(
+              orderByExpression.getExpression(), attrNameToEDSAttrMap);
+          org.hypertrace.entity.data.service.v1.OrderByExpression convertedExpression =
+              org.hypertrace.entity.data.service.v1.OrderByExpression.newBuilder()
+                  .setName(edsColumnName)
+                  .setOrder(convertSortOrder(orderByExpression.getOrder()))
+                  .build();
+          result.add(convertedExpression);
+        } else {
+          // entity data service and doc store only support field order by. There's no
+          // aggregate order by yet
+          throw new UnsupportedOperationException(
+              "OrderByExpression only support Column Identifier Expression");
+        }
+      }
+    return result;
+  }
+
+  private static org.hypertrace.entity.data.service.v1.SortOrder convertSortOrder(
+      SortOrder sortOrder) {
+    return SortOrder.DESC == sortOrder ?
+        org.hypertrace.entity.data.service.v1.SortOrder.DESC :
+        org.hypertrace.entity.data.service.v1.SortOrder.ASC;
   }
 }
