@@ -27,28 +27,13 @@ enum ApiAttribute {
   API_ATTRIBUTE_ID = 2 [(string_value) = "API_ID"];
   API_ATTRIBUTE_URL_PATTERN = 3 [(string_value) = "API_URL_PATTERN"];
   API_ATTRIBUTE_API_TYPE = 4 [(string_value) = "API_TYPE"];
-  API_ATTRIBUTE_HTTP_METHOD = 5 [(string_value) = "http_method"];
-  API_ATTRIBUTE_PATH_PARAMS_SCHEMA = 6 [(string_value) = "path_params_schema"];
-  API_ATTRIBUTE_QUERY_PARAMS_SCHEMA = 7 [(string_value) = "query_params_schema"];
-  API_ATTRIBUTE_REQUEST_HEADERS = 8 [(string_value) = "request_headers"];
-  API_ATTRIBUTE_RESPONSE_HEADERS = 9 [(string_value) = "response_headers"];
-  API_ATTRIBUTE_REQUEST_BODY_SCHEMA = 10 [(string_value) = "request_body_schema"];
-  API_ATTRIBUTE_RESPONSE_BODY_SCHEMA = 11 [(string_value) = "response_body_schema"];
-  API_ATTRIBUTE_DEFINITION_TYPE = 12 [(string_value) = "api_definition_type"]; //deprecated. Use API_ATTRIBUTE_DISCOVERY_TYPE
-  API_ATTRIBUTE_DEFINITION = 13 [(string_value) = "api_definition"];
-  API_ATTRIBUTE_HTTP_PATH_PARAMS_TYPE = 14 [(string_value) = "http_path_params_type"];
-  API_ATTRIBUTE_HTTP_QUERY_PARAMS_TYPE = 15 [(string_value) = "http_query_params_type"];
-  API_ATTRIBUTE_HTTP_REQUEST_HEADERS_TYPE = 16 [(string_value) = "http_request_headers_type"];
-  API_ATTRIBUTE_HTTP_RESPONSE_HEADERS_TYPE = 17 [(string_value) = "http_response_headers_type"];
   API_ATTRIBUTE_IS_EXTERNAL_API = 18 [(string_value) = "IS_EXTERNAL_API"];
-  API_ATTRIBUTE_DEFINITION_FROM = 19 [(string_value) = "API_DEFINITION_FROM"]; //deprecated. Use API_ATTRIBUTE_DISCOVERY_FROM
-  API_ATTRIBUTE_HTTP_PATH_PARAMS_PII = 20 [(string_value) = "http_path_params_pii"];
-  API_ATTRIBUTE_HTTP_QUERY_PARAMS_PII = 21 [(string_value) = "http_query_params_pii"];
   API_ATTRIBUTE_IS_PII = 22 [(string_value) = "api_is_pii"];
   API_ATTRIBUTE_DISCOVERY_TYPE = 23 [(string_value) = "api_discovery_type"];
   API_ATTRIBUTE_DISCOVERY_FROM = 24 [(string_value) = "api_discovery_from"];
   API_ATTRIBUTE_DISCOVERY_STATE = 25 [(string_value) = "api_discovery_state"];
   API_ATTRIBUTE_DISCOVERY_TIMESTAMP = 26 [(string_value) = "api_discovery_timestamp"];
+  reserved 5 to 17, 19 to 21;
 }
 
 enum BackendAttribute {
