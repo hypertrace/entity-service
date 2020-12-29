@@ -32,7 +32,6 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceTestConfig;
 import org.hypertrace.entity.service.constants.EntityConstants;
-import org.hypertrace.entity.type.client.EntityTypeServiceClient;
 import org.hypertrace.entity.type.service.v1.AttributeKind;
 import org.hypertrace.entity.type.service.v1.AttributeType;
 import org.hypertrace.entity.v1.entitytype.EntityType;
@@ -49,7 +48,6 @@ public class EntityQueryServiceTest {
   private static EntityDataServiceClient entityDataServiceClient;
   private static final String TENANT_ID =
       "__testTenant__" + EntityQueryServiceClient.class.getSimpleName();
-  private static final String TEST_ENTITY_TYPE_V2 = "TEST_ENTITY";
 
   @BeforeAll
   public static void setUp() {
@@ -70,7 +68,6 @@ public class EntityQueryServiceTest {
   private static void setupEntityTypes(Channel channel) {
     org.hypertrace.entity.type.service.client.EntityTypeServiceClient entityTypeServiceV1Client
         = new org.hypertrace.entity.type.service.client.EntityTypeServiceClient(channel);
-    EntityTypeServiceClient entityTypeServiceV2Client = new EntityTypeServiceClient(channel);
     entityTypeServiceV1Client.upsertEntityType(
         TENANT_ID,
         org.hypertrace.entity.type.service.v1.EntityType.newBuilder()
@@ -108,6 +105,8 @@ public class EntityQueryServiceTest {
             generateRandomUUIDAttrValue())
         .build();
     Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2);
+    assertFalse(createdEntity2.getEntityId().trim().isEmpty());
 
     EntityQueryRequest queryRequest = EntityQueryRequest.newBuilder()
         .setEntityType(EntityType.SERVICE.name())
@@ -137,14 +136,20 @@ public class EntityQueryServiceTest {
             EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
             generateRandomUUIDAttrValue())
         .build();
-    entityDataServiceClient.upsert(entity3);
+    Entity createdEntity3 = entityDataServiceClient.upsert(entity3);
+    assertNotNull(createdEntity3);
+    assertFalse(createdEntity3.getEntityId().trim().isEmpty());
 
     Iterator<ResultSetChunk> resultSetChunkIterator = entityQueryServiceClient.execute(queryRequest, Map.of("x-tenant-id", TENANT_ID));
     List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
     assertEquals(2, list.size());
     // chunk size is always 1
     assertEquals(1, list.get(0).getRowCount());
+    assertEquals(1, list.get(0).getChunkId());
+    assertFalse(list.get(0).getIsLastChunk());
     assertEquals(1, list.get(1).getRowCount());
+    assertEquals(2, list.get(1).getChunkId());
+    assertTrue(list.get(1).getIsLastChunk());
 
     assertEquals(createdEntity1.getEntityId(), list.get(0).getRow(0).getColumn(0).getString());
     assertEquals(createdEntity1.getEntityName(), list.get(0).getRow(0).getColumn(1).getString());

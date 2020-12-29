@@ -13,7 +13,6 @@ import com.google.common.collect.Lists;
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,12 +25,10 @@ import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
-import org.hypertrace.entity.data.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
-import org.hypertrace.entity.query.service.v1.Filter;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.LiteralConstant.Builder;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
@@ -220,19 +217,34 @@ public class EntityQueryServiceImplTest {
   @Test
   public void testExecute_success() throws Exception {
     Collection mockEntitiesCollection = mock(Collection.class);
-    Entity ENTITY =
+    Entity entity1 =
         Entity.newBuilder()
             .setTenantId("tenant-1")
             .setEntityType(TEST_ENTITY_TYPE)
             .setEntityId(UUID.randomUUID().toString())
-            .setEntityName("Test entity")
+            .setEntityName("Test entity 1")
             .putAttributes(
                 EDS_COLUMN_NAME1,
                 AttributeValue.newBuilder().setValue(
                     org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo1")).build())
             .build();
+    Entity entity2 =
+        Entity.newBuilder()
+            .setTenantId("tenant-1")
+            .setEntityType(TEST_ENTITY_TYPE)
+            .setEntityId(UUID.randomUUID().toString())
+            .setEntityName("Test entity 2")
+            .putAttributes(
+                EDS_COLUMN_NAME1,
+                AttributeValue.newBuilder().setValue(
+                    org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo2")).build())
+            .build();
 
-    List<Document> docs = java.util.Collections.singletonList(new JSONDocument(JsonFormat.printer().print(ENTITY)));
+    List<Document> docs = List.of(
+        new JSONDocument(JsonFormat.printer().print(entity1)),
+        new JSONDocument(JsonFormat.printer().print(entity2)),
+        // this doc will result in parsing error
+        new JSONDocument("{\"entityId\": [1, 2]}"));
     when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
     EntityQueryRequest request = EntityQueryRequest.newBuilder()
         .setEntityType(TEST_ENTITY_TYPE)
@@ -257,7 +269,7 @@ public class EntityQueryServiceImplTest {
             });
 
     verify(mockEntitiesCollection, times(1)).search(any());
-    verify(mockResponseObserver, times(1)).onNext(any());
+    verify(mockResponseObserver, times(3)).onNext(any());
     verify(mockResponseObserver, times(1)).onCompleted();
   }
 

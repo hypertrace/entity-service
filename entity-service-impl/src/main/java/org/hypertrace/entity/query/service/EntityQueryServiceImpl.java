@@ -93,26 +93,34 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         DocStoreConverter.transform(tenantId.get(), query));
 
     boolean isFirstEntity = true;
+    int chunkId = 0;
     while (documentIterator.hasNext()) {
       Optional<Entity> entity = DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
-      if (entity.isPresent()) {
-        Row row = convertToEntityQueryResult(entity.get(), request.getSelectionList(), attrNameToEDSAttrMap.get(request.getEntityType()));
-        ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
-        // Set metadata for first entity
-        if (isFirstEntity) {
-          resultBuilder.setResultSetMetadata(ResultSetMetadata.newBuilder()
-              .addAllColumnMetadata(
-                  () -> request.getSelectionList().stream().map(Expression::getColumnIdentifier)
-                      .map(
-                          ColumnIdentifier::getColumnName)
-                      .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build()).iterator())
-              .build());
-          isFirstEntity = false;
-        }
-        //Build data
-        resultBuilder.addRow(row);
-        responseObserver.onNext(resultBuilder.build());
+      ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+      // Set metadata for first entity
+      if (isFirstEntity) {
+        resultBuilder.setResultSetMetadata(ResultSetMetadata.newBuilder()
+            .addAllColumnMetadata(
+                () -> request.getSelectionList().stream().map(Expression::getColumnIdentifier)
+                    .map(
+                        ColumnIdentifier::getColumnName)
+                    .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build()).iterator())
+            .build());
+        isFirstEntity = false;
       }
+      if (entity.isPresent()) {
+        //Build data
+        resultBuilder.addRow(convertToEntityQueryResult(
+            entity.get(),
+            request.getSelectionList(),
+            attrNameToEDSAttrMap.get(request.getEntityType())));
+      } else {
+        // if the optional is empty, subtly convey it to the consumer
+        resultBuilder.setHasError(true);
+      }
+      resultBuilder.setChunkId(++chunkId);
+      resultBuilder.setIsLastChunk(!documentIterator.hasNext());
+      responseObserver.onNext(resultBuilder.build());
     }
     responseObserver.onCompleted();
   }
