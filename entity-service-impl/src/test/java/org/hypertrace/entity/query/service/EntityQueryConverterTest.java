@@ -1,9 +1,9 @@
 package org.hypertrace.entity.query.service;
 
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -11,9 +11,15 @@ import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
+import org.hypertrace.entity.query.service.v1.Filter;
 import org.hypertrace.entity.query.service.v1.Function;
+import org.hypertrace.entity.query.service.v1.LiteralConstant;
+import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
 import org.hypertrace.entity.query.service.v1.SortOrder;
+import org.hypertrace.entity.query.service.v1.ValueType;
+import org.hypertrace.entity.v1.entitytype.EntityType;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -98,6 +104,29 @@ public class EntityQueryConverterTest {
     assertEquals(EDS_COLUMN_NAME1, convertedQuery.getOrderByList().get(0).getName());
     assertEquals(org.hypertrace.entity.data.service.v1.SortOrder.ASC,
         convertedQuery.getOrderBy(0).getOrder());
+  }
+
+  @Test
+  public void test_filter() {
+    EntityQueryRequest queryRequest = EntityQueryRequest.newBuilder()
+        .setEntityType(EntityType.SERVICE.name())
+        .setFilter(
+            Filter.newBuilder()
+                .setOperatorValue(Operator.LT.getNumber())
+                .setLhs(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("SERVICE.createdTime").build()).build())
+                .setRhs(Expression.newBuilder().setLiteral(
+                    LiteralConstant.newBuilder().setValue(
+                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                            .setLong(Instant.now().toEpochMilli())
+                            .setValueType(ValueType.LONG)
+                            .build())
+                        .build()).
+                    build())
+                .build())
+        .build();
+    Query query = EntityQueryConverter.convertToEDSQuery(queryRequest, Map.of("SERVICE.createdTime", "createdTime"));
+    Assertions.assertEquals(EntityType.SERVICE.name(), query.getEntityType());
+    Assertions.assertNotNull(query.getFilter());
   }
 
   @Test
