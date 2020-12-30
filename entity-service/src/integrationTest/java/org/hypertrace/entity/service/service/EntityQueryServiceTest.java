@@ -161,6 +161,36 @@ public class EntityQueryServiceTest {
     assertEquals(0, list.get(1).getResultSetMetadata().getColumnMetadataCount());
   }
 
+  @Test
+  public void testExecute_EmptyResponse() {
+    EntityQueryRequest queryRequestNoResult = EntityQueryRequest.newBuilder()
+        .setEntityType(EntityType.SERVICE.name())
+        .setFilter(
+            Filter.newBuilder()
+                .setOperatorValue(Operator.GT.getNumber())
+                .setLhs(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("SERVICE.createdTime").build()).build())
+                .setRhs(Expression.newBuilder().setLiteral(
+                    LiteralConstant.newBuilder().setValue(
+                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                            .setLong(Instant.now().toEpochMilli())
+                            .setValueType(ValueType.LONG)
+                            .build())
+                        .build()).
+                    build())
+                .build())
+        .addSelection(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("SERVICE.id").build()).build())
+        .addSelection(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("SERVICE.name").build()).build())
+        .build();
+
+    Iterator<ResultSetChunk> resultSetChunkIterator = entityQueryServiceClient.execute(queryRequestNoResult, Map.of("x-tenant-id", TENANT_ID));
+    List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
+
+    assertEquals(1, list.size());
+    assertEquals(1, list.get(0).getChunkId());
+    assertTrue(list.get(0).getIsLastChunk());
+    assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
+  }
+
   private AttributeValue generateRandomUUIDAttrValue() {
     return AttributeValue.newBuilder()
         .setValue(Value.newBuilder()

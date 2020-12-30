@@ -93,7 +93,21 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         DocStoreConverter.transform(tenantId.get(), query));
 
     boolean isFirstEntity = true;
-    int chunkId = 0;
+    int chunkId = 1;
+
+    if (!documentIterator.hasNext()) {
+      ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+      resultBuilder.setResultSetMetadata(ResultSetMetadata.newBuilder()
+          .addAllColumnMetadata(
+              () -> request.getSelectionList().stream().map(Expression::getColumnIdentifier)
+                  .map(
+                      ColumnIdentifier::getColumnName)
+                  .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build()).iterator())
+          .build());
+      resultBuilder.setIsLastChunk(true);
+      resultBuilder.setChunkId(chunkId);
+      responseObserver.onNext(resultBuilder.build());
+    }
     while (documentIterator.hasNext()) {
       Optional<Entity> entity = DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
       ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
@@ -118,7 +132,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         // if the optional is empty, subtly convey it to the consumer
         resultBuilder.setHasError(true);
       }
-      resultBuilder.setChunkId(++chunkId);
+      resultBuilder.setChunkId(chunkId++);
       resultBuilder.setIsLastChunk(!documentIterator.hasNext());
       responseObserver.onNext(resultBuilder.build());
     }
