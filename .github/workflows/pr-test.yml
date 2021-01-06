@@ -45,11 +45,7 @@ jobs:
         uses: hypertrace/github-actions/gradle@main
         with: 
           args: jacocoIntegrationTestReport
-
-      - name: copy test reports
-        uses: hypertrace/github-actions/gradle@main
-        with: 
-          args: copyAllReports --output-dir=/tmp/test-reports
+  
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
@@ -58,6 +54,11 @@ jobs:
           fail_ci_if_error: true
           flags: integration
   
+      - name: copy test reports
+        uses: hypertrace/github-actions/gradle@main
+        with: 
+          args: copyAllReports --output-dir=/tmp/test-reports
+            
       - name: Archive test reports
         uses: actions/upload-artifact@v1
         with:
