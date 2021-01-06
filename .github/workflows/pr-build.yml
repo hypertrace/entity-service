@@ -59,7 +59,7 @@ jobs:
           fetch-depth: 0
 
       - name: verify-protos
-        uses: buf check lint
+        run: buf check lint
 
   validate-helm-charts:
     runs-on: ubuntu-20.04
