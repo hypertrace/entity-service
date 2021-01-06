@@ -51,6 +51,13 @@ jobs:
         with: 
           args: copyAllReports --output-dir=/tmp/test-reports
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          name: integration test reports
+          fail_ci_if_error: true
+          flags: integration
+  
       - name: Archive test reports
         uses: actions/upload-artifact@v1
         with:
