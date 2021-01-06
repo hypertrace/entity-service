@@ -40,7 +40,6 @@ jobs:
           fail_ci_if_error: true
           flags: unit
 
-
       - name: Integration test
         uses: hypertrace/github-actions/gradle@main
         with: 
