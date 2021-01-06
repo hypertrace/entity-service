@@ -21,7 +21,6 @@ jobs:
         uses: hypertrace/actions/checksum@main
 
       - name: Cache packages
-        id: cache-packages
         uses: actions/cache@v2
         with:
           path: ~/.gradle
@@ -37,7 +36,9 @@ jobs:
           password: ${{ secrets.DOCKERHUB_READ_TOKEN }}
 
       - name: push docker image
-        run: ./gradlew dockerPushImages
+        uses: hypertrace/github-actions/gradle@main
+        with: 
+          args: dockerPushImages
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKERHUB_PUBLISH_USER }}
           DOCKER_PASSWORD: ${{ secrets.DOCKERHUB_PUBLISH_TOKEN }}
