@@ -10,7 +10,7 @@ import org.hypertrace.entity.service.util.DocStoreJsonFormat.Parser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class DocumentParser {
+public class DocumentParser {
   private static final Logger LOG = LoggerFactory.getLogger(DocumentParser.class);
   private static final Parser PARSER = DocStoreJsonFormat.parser().ignoringUnknownFields();
 
@@ -21,7 +21,7 @@ class DocumentParser {
     return (T) messageBuilder.build();
   }
 
-  <T extends Message> Optional<T> parseOrLog(
+  public <T extends Message> Optional<T> parseOrLog(
       @Nonnull Document document, @Nonnull Message.Builder messageBuilder) {
     try {
       return Optional.of(this.parseOrThrow(document, messageBuilder));
