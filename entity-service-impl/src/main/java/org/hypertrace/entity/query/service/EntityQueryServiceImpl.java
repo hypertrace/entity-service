@@ -51,9 +51,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final String ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.attributeMap";
   private static final Parser PARSER = DocStoreJsonFormat.parser().ignoringUnknownFields();
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
+  private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
+  private static final int DEFAULT_CHUNK_SIZE = 10_000;
 
   private final Collection entitiesCollection;
   private final Map<String, Map<String, String>> attrNameToEDSAttrMap;
+  private final int CHUNK_SIZE;
 
   public EntityQueryServiceImpl(Datastore datastore, Config config) {
     this(
@@ -69,13 +72,16 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                   map.putAll(map2);
                   return map;
                 }
-            )));
+            )), !config.hasPathOrNull(CHUNK_SIZE_CONFIG) ? DEFAULT_CHUNK_SIZE : config.getInt(CHUNK_SIZE_CONFIG));
   }
 
-  public EntityQueryServiceImpl(Collection entitiesCollection,
-      Map<String, Map<String, String>> attrNameToEDSAttrMap) {
+  public EntityQueryServiceImpl(
+      Collection entitiesCollection,
+      Map<String, Map<String, String>> attrNameToEDSAttrMap,
+      int chunkSize) {
     this.entitiesCollection = entitiesCollection;
     this.attrNameToEDSAttrMap = attrNameToEDSAttrMap;
+    this.CHUNK_SIZE = chunkSize;
   }
 
   @Override
@@ -92,9 +98,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     Iterator<Document> documentIterator = entitiesCollection.search(
         DocStoreConverter.transform(tenantId.get(), query));
 
-    boolean isFirstEntity = true;
-    int chunkId = 1;
-
     if (!documentIterator.hasNext()) {
       ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
       resultBuilder.setResultSetMetadata(ResultSetMetadata.newBuilder()
@@ -105,14 +108,16 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                   .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build()).iterator())
           .build());
       resultBuilder.setIsLastChunk(true);
-      resultBuilder.setChunkId(chunkId);
+      resultBuilder.setChunkId(1);
       responseObserver.onNext(resultBuilder.build());
     }
+    boolean isNewChunk = true;
+    int chunkId = 1, rowCount = 0;
+    ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
     while (documentIterator.hasNext()) {
       Optional<Entity> entity = DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
-      ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
-      // Set metadata for first entity
-      if (isFirstEntity) {
+      // Set metadata for new chunk
+      if (isNewChunk) {
         resultBuilder.setResultSetMetadata(ResultSetMetadata.newBuilder()
             .addAllColumnMetadata(
                 () -> request.getSelectionList().stream().map(Expression::getColumnIdentifier)
@@ -120,7 +125,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                         ColumnIdentifier::getColumnName)
                     .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build()).iterator())
             .build());
-        isFirstEntity = false;
+        isNewChunk = false;
       }
       if (entity.isPresent()) {
         //Build data
@@ -128,13 +133,17 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             entity.get(),
             request.getSelectionList(),
             attrNameToEDSAttrMap.get(request.getEntityType())));
-      } else {
-        // if the optional is empty, subtly convey it to the consumer
-        resultBuilder.setHasError(true);
+        rowCount++;
       }
-      resultBuilder.setChunkId(chunkId++);
-      resultBuilder.setIsLastChunk(!documentIterator.hasNext());
-      responseObserver.onNext(resultBuilder.build());
+      // current chunk is complete
+      if (rowCount >= CHUNK_SIZE || !documentIterator.hasNext()) {
+        resultBuilder.setChunkId(chunkId++);
+        resultBuilder.setIsLastChunk(!documentIterator.hasNext());
+        responseObserver.onNext(resultBuilder.build());
+        resultBuilder = ResultSetChunk.newBuilder();
+        isNewChunk = true;
+        rowCount = 0;
+      }
     }
     responseObserver.onCompleted();
   }

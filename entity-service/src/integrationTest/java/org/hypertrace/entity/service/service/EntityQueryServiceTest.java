@@ -108,6 +108,42 @@ public class EntityQueryServiceTest {
     assertNotNull(createdEntity2);
     assertFalse(createdEntity2.getEntityId().trim().isEmpty());
 
+    Entity entity3 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.SERVICE.name())
+        .setEntityName("Some Service 3")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity3 = entityDataServiceClient.upsert(entity3);
+    assertNotNull(createdEntity3);
+    assertFalse(createdEntity3.getEntityId().trim().isEmpty());
+
+    Entity entity4 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.SERVICE.name())
+        .setEntityName("Some Service 4")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity4 = entityDataServiceClient.upsert(entity4);
+    assertNotNull(createdEntity4);
+    assertFalse(createdEntity4.getEntityId().trim().isEmpty());
+
+    Entity entity5 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.SERVICE.name())
+        .setEntityName("Some Service 5")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity5 = entityDataServiceClient.upsert(entity5);
+    assertNotNull(createdEntity5);
+    assertFalse(createdEntity5.getEntityId().trim().isEmpty());
+
     EntityQueryRequest queryRequest = EntityQueryRequest.newBuilder()
         .setEntityType(EntityType.SERVICE.name())
         .setFilter(
@@ -128,37 +164,46 @@ public class EntityQueryServiceTest {
         .build();
 
     // this entity will be filtered out
-    Entity entity3 = Entity.newBuilder()
+    Entity entity6 = Entity.newBuilder()
         .setTenantId(TENANT_ID)
         .setEntityType(EntityType.SERVICE.name())
-        .setEntityName("Some Service 2")
+        .setEntityName("Some Service 6")
         .putIdentifyingAttributes(
             EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
             generateRandomUUIDAttrValue())
         .build();
-    Entity createdEntity3 = entityDataServiceClient.upsert(entity3);
-    assertNotNull(createdEntity3);
-    assertFalse(createdEntity3.getEntityId().trim().isEmpty());
+    Entity createdEntity6 = entityDataServiceClient.upsert(entity6);
+    assertNotNull(createdEntity6);
+    assertFalse(createdEntity6.getEntityId().trim().isEmpty());
 
     Iterator<ResultSetChunk> resultSetChunkIterator = entityQueryServiceClient.execute(queryRequest, Map.of("x-tenant-id", TENANT_ID));
     List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
-    assertEquals(2, list.size());
-    // chunk size is always 1
-    assertEquals(1, list.get(0).getRowCount());
+    assertEquals(3, list.size());
+    assertEquals(2, list.get(0).getRowCount());
     assertEquals(1, list.get(0).getChunkId());
     assertFalse(list.get(0).getIsLastChunk());
-    assertEquals(1, list.get(1).getRowCount());
+    assertEquals(2, list.get(1).getRowCount());
     assertEquals(2, list.get(1).getChunkId());
-    assertTrue(list.get(1).getIsLastChunk());
+    assertFalse(list.get(1).getIsLastChunk());
+    assertEquals(1, list.get(2).getRowCount());
+    assertEquals(3, list.get(2).getChunkId());
+    assertTrue(list.get(2).getIsLastChunk());
 
     assertEquals(createdEntity1.getEntityId(), list.get(0).getRow(0).getColumn(0).getString());
     assertEquals(createdEntity1.getEntityName(), list.get(0).getRow(0).getColumn(1).getString());
-    assertEquals(createdEntity2.getEntityId(), list.get(1).getRow(0).getColumn(0).getString());
-    assertEquals(createdEntity2.getEntityName(), list.get(1).getRow(0).getColumn(1).getString());
+    assertEquals(createdEntity2.getEntityId(), list.get(0).getRow(1).getColumn(0).getString());
+    assertEquals(createdEntity2.getEntityName(), list.get(0).getRow(1).getColumn(1).getString());
+    assertEquals(createdEntity3.getEntityId(), list.get(1).getRow(0).getColumn(0).getString());
+    assertEquals(createdEntity3.getEntityName(), list.get(1).getRow(0).getColumn(1).getString());
+    assertEquals(createdEntity4.getEntityId(), list.get(1).getRow(1).getColumn(0).getString());
+    assertEquals(createdEntity4.getEntityName(), list.get(1).getRow(1).getColumn(1).getString());
+    assertEquals(createdEntity5.getEntityId(), list.get(2).getRow(0).getColumn(0).getString());
+    assertEquals(createdEntity5.getEntityName(), list.get(2).getRow(0).getColumn(1).getString());
 
-    // metadata sent for first chunk
+    // metadata sent for each chunk
     assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
-    assertEquals(0, list.get(1).getResultSetMetadata().getColumnMetadataCount());
+    assertTrue(list.get(1).getResultSetMetadata().getColumnMetadataCount() > 0);
+    assertTrue(list.get(2).getResultSetMetadata().getColumnMetadataCount() > 0);
   }
 
   @Test

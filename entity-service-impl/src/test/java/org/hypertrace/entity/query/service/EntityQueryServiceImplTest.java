@@ -71,7 +71,7 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection(), attributeFqnMaps);
+                  new EntityQueryServiceImpl(mockEntitiesCollection(), attributeFqnMaps, 1);
 
               eqs.update(null, mockResponseObserver);
 
@@ -91,7 +91,7 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection(), attributeFqnMaps);
+                  new EntityQueryServiceImpl(mockEntitiesCollection(), attributeFqnMaps, 1);
 
               eqs.update(EntityUpdateRequest.newBuilder().build(), mockResponseObserver);
 
@@ -111,7 +111,7 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection(), attributeFqnMaps);
+                  new EntityQueryServiceImpl(mockEntitiesCollection(), attributeFqnMaps, 1);
 
               eqs.update(EntityUpdateRequest.newBuilder()
                   .setEntityType(TEST_ENTITY_TYPE)
@@ -133,7 +133,7 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection(), attributeFqnMaps);
+                  new EntityQueryServiceImpl(mockEntitiesCollection(), attributeFqnMaps, 1);
 
               eqs.update(EntityUpdateRequest.newBuilder()
                   .setEntityType(TEST_ENTITY_TYPE)
@@ -182,7 +182,7 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection, attributeFqnMaps);
+                  new EntityQueryServiceImpl(mockEntitiesCollection, attributeFqnMaps, 1);
               eqs.update(updateRequest, mockResponseObserver);
               return null;
             });
@@ -203,7 +203,7 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection(), attributeFqnMaps);
+                  new EntityQueryServiceImpl(mockEntitiesCollection(), attributeFqnMaps, 1);
 
               eqs.execute(null, mockResponseObserver);
 
@@ -262,7 +262,7 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection, attributeFqnMaps);
+                  new EntityQueryServiceImpl(mockEntitiesCollection, attributeFqnMaps, 1);
 
               eqs.execute(request, mockResponseObserver);
               return null;
@@ -270,6 +270,78 @@ public class EntityQueryServiceImplTest {
 
     verify(mockEntitiesCollection, times(1)).search(any());
     verify(mockResponseObserver, times(3)).onNext(any());
+    verify(mockResponseObserver, times(1)).onCompleted();
+  }
+
+  @Test
+  public void testExecute_success_chunksize_2() throws Exception {
+    Collection mockEntitiesCollection = mock(Collection.class);
+    Entity entity1 =
+        Entity.newBuilder()
+            .setTenantId("tenant-1")
+            .setEntityType(TEST_ENTITY_TYPE)
+            .setEntityId(UUID.randomUUID().toString())
+            .setEntityName("Test entity 1")
+            .putAttributes(
+                EDS_COLUMN_NAME1,
+                AttributeValue.newBuilder().setValue(
+                    org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo1")).build())
+            .build();
+    Entity entity2 =
+        Entity.newBuilder()
+            .setTenantId("tenant-1")
+            .setEntityType(TEST_ENTITY_TYPE)
+            .setEntityId(UUID.randomUUID().toString())
+            .setEntityName("Test entity 2")
+            .putAttributes(
+                EDS_COLUMN_NAME1,
+                AttributeValue.newBuilder().setValue(
+                    org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo2")).build())
+            .build();
+
+    Entity entity3 =
+        Entity.newBuilder()
+            .setTenantId("tenant-1")
+            .setEntityType(TEST_ENTITY_TYPE)
+            .setEntityId(UUID.randomUUID().toString())
+            .setEntityName("Test entity 3")
+            .putAttributes(
+                EDS_COLUMN_NAME1,
+                AttributeValue.newBuilder().setValue(
+                    org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo2")).build())
+            .build();
+
+    List<Document> docs = List.of(
+        new JSONDocument(JsonFormat.printer().print(entity1)),
+        new JSONDocument(JsonFormat.printer().print(entity2)),
+        new JSONDocument(JsonFormat.printer().print(entity3)),
+        // this doc will result in parsing error
+        new JSONDocument("{\"entityId\": [1, 2]}"));
+    when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
+    EntityQueryRequest request = EntityQueryRequest.newBuilder()
+        .setEntityType(TEST_ENTITY_TYPE)
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setExpression(
+                    Expression.newBuilder().setColumnIdentifier(
+                        ColumnIdentifier.newBuilder()
+                            .setColumnName(EQS_COLUMN_NAME1)
+                            .build()))
+        ).build();
+    StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
+    Context.current()
+        .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
+        .call(
+            () -> {
+              EntityQueryServiceImpl eqs =
+                  new EntityQueryServiceImpl(mockEntitiesCollection, attributeFqnMaps, 2);
+
+              eqs.execute(request, mockResponseObserver);
+              return null;
+            });
+
+    verify(mockEntitiesCollection, times(1)).search(any());
+    verify(mockResponseObserver, times(2)).onNext(any());
     verify(mockResponseObserver, times(1)).onCompleted();
   }
 
