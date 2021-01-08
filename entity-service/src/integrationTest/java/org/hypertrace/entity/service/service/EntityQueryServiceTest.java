@@ -180,13 +180,13 @@ public class EntityQueryServiceTest {
     List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
     assertEquals(3, list.size());
     assertEquals(2, list.get(0).getRowCount());
-    assertEquals(1, list.get(0).getChunkId());
+    assertEquals(0, list.get(0).getChunkId());
     assertFalse(list.get(0).getIsLastChunk());
     assertEquals(2, list.get(1).getRowCount());
-    assertEquals(2, list.get(1).getChunkId());
+    assertEquals(1, list.get(1).getChunkId());
     assertFalse(list.get(1).getIsLastChunk());
     assertEquals(1, list.get(2).getRowCount());
-    assertEquals(3, list.get(2).getChunkId());
+    assertEquals(2, list.get(2).getChunkId());
     assertTrue(list.get(2).getIsLastChunk());
 
     assertEquals(createdEntity1.getEntityId(), list.get(0).getRow(0).getColumn(0).getString());
@@ -231,7 +231,7 @@ public class EntityQueryServiceTest {
     List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
 
     assertEquals(1, list.size());
-    assertEquals(1, list.get(0).getChunkId());
+    assertEquals(0, list.get(0).getChunkId());
     assertTrue(list.get(0).getIsLastChunk());
     assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
   }
