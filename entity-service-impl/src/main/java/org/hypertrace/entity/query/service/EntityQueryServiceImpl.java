@@ -98,33 +98,28 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     Iterator<Document> documentIterator = entitiesCollection.search(
         DocStoreConverter.transform(tenantId.get(), query));
 
+    ResultSetMetadata resultSetMetadata = ResultSetMetadata.newBuilder()
+        .addAllColumnMetadata(
+            () -> request.getSelectionList().stream().map(Expression::getColumnIdentifier)
+                .map(
+                    ColumnIdentifier::getColumnName)
+                .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build()).iterator())
+        .build();
     if (!documentIterator.hasNext()) {
       ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
-      resultBuilder.setResultSetMetadata(ResultSetMetadata.newBuilder()
-          .addAllColumnMetadata(
-              () -> request.getSelectionList().stream().map(Expression::getColumnIdentifier)
-                  .map(
-                      ColumnIdentifier::getColumnName)
-                  .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build()).iterator())
-          .build());
+      resultBuilder.setResultSetMetadata(resultSetMetadata);
       resultBuilder.setIsLastChunk(true);
-      resultBuilder.setChunkId(1);
+      resultBuilder.setChunkId(0);
       responseObserver.onNext(resultBuilder.build());
     }
     boolean isNewChunk = true;
-    int chunkId = 1, rowCount = 0;
+    int chunkId = 0, rowCount = 0;
     ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
     while (documentIterator.hasNext()) {
       Optional<Entity> entity = DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
       // Set metadata for new chunk
       if (isNewChunk) {
-        resultBuilder.setResultSetMetadata(ResultSetMetadata.newBuilder()
-            .addAllColumnMetadata(
-                () -> request.getSelectionList().stream().map(Expression::getColumnIdentifier)
-                    .map(
-                        ColumnIdentifier::getColumnName)
-                    .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build()).iterator())
-            .build());
+        resultBuilder.setResultSetMetadata(resultSetMetadata);
         isNewChunk = false;
       }
       if (entity.isPresent()) {
