@@ -49,6 +49,8 @@ tasks.register<DockerStopContainer>("stopMongoContainer") {
 
 tasks.integrationTest {
   useJUnitPlatform()
+  dependsOn("startMongoContainer")
+  finalizedBy("stopMongoContainer")
 }
 
 dependencies {
