@@ -217,7 +217,7 @@ public class EntityQueryServiceTest {
     return Entity.newBuilder()
         .setTenantId(TENANT_ID)
         .setEntityType(EntityType.API.name())
-        .setEntityName("API 1")
+        .setEntityName(apiName)
         .putIdentifyingAttributes(
             EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
             createAttribute(serviceId))
