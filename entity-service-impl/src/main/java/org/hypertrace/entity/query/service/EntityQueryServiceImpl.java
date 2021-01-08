@@ -111,6 +111,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       resultBuilder.setIsLastChunk(true);
       resultBuilder.setChunkId(0);
       responseObserver.onNext(resultBuilder.build());
+      responseObserver.onCompleted();
+      return;
     }
     boolean isNewChunk = true;
     int chunkId = 0, rowCount = 0;
