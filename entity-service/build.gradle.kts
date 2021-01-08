@@ -49,8 +49,6 @@ tasks.register<DockerStopContainer>("stopMongoContainer") {
 
 tasks.integrationTest {
   useJUnitPlatform()
-  dependsOn("startMongoContainer")
-  finalizedBy("stopMongoContainer")
 }
 
 dependencies {
@@ -59,7 +57,7 @@ dependencies {
   implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.3.1")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.3.1")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.19")
-  implementation("org.hypertrace.core.documentstore:document-store:0.4.9-SNAPSHOT")
+  implementation("org.hypertrace.core.documentstore:document-store:0.5.0")
 
   runtimeOnly("io.grpc:grpc-netty:1.33.1")
   constraints {
