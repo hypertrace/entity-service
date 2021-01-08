@@ -13,6 +13,7 @@ import io.grpc.Channel;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -265,8 +266,12 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
+    // EntityDataService does not support projections, yet. Hence, passing empty projections
+    // to document store, which means it would return all the entries
     searchByQueryAndStreamResponse(
-        DocStoreConverter.transform(tenantId.get(), request), responseObserver, tenantId.get());
+        DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList()),
+        responseObserver,
+        tenantId.get());
   }
 
   @Override

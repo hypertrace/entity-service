@@ -54,8 +54,8 @@ public class DocStoreConverter {
     return new JSONDocument(json);
   }
 
-  public static org.hypertrace.core.documentstore.Query transform(@Nonnull String tenantId,
-      @Nonnull Query query) {
+  public static org.hypertrace.core.documentstore.Query transform(
+      @Nonnull String tenantId, @Nonnull Query query, List<String> selections) {
     org.hypertrace.core.documentstore.Query docStoreQuery = new org.hypertrace.core.documentstore.Query();
 
     List<Filter> filters = new ArrayList<>();
@@ -85,6 +85,10 @@ public class DocStoreConverter {
         f.setChildFilters(filters.toArray(new Filter[]{}));
         docStoreQuery.setFilter(f);
       }
+    }
+
+    if (!selections.isEmpty()) {
+      docStoreQuery.addAllSelections(selections);
     }
 
     if (query.getOrderByCount() > 0) {

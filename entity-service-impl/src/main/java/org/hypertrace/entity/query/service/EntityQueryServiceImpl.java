@@ -9,6 +9,7 @@ import com.typesafe.config.Config;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -85,10 +86,18 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     //TODO: Optimize this later. For now converting to EDS Query and then again to DocStore Query.
-    Query query = EntityQueryConverter
-        .convertToEDSQuery(request, attrNameToEDSAttrMap.get(request.getEntityType()));
-    Iterator<Document> documentIterator = entitiesCollection.search(
-        DocStoreConverter.transform(tenantId.get(), query));
+    Map<String, String> scopedAttrNameToEDSAttrMap = attrNameToEDSAttrMap.get(request.getEntityType());
+    Query query = EntityQueryConverter.convertToEDSQuery(request, scopedAttrNameToEDSAttrMap);
+    /**
+     * {@link EntityQueryRequest} selections need to treated differently, since they don't transform
+     * one to one to {@link org.hypertrace.entity.data.service.v1.EntityDataRequest} selections
+     */
+    List<String> docStoreSelections =
+        EntityQueryConverter.convertSelectionsToDocStoreSelections(
+            request.getSelectionList(), scopedAttrNameToEDSAttrMap);
+    Iterator<Document> documentIterator =
+        entitiesCollection.search(
+            DocStoreConverter.transform(tenantId.get(), query, docStoreSelections));
     List<Entity> entities = convertDocsToEntities(documentIterator);
 
     //Build result
@@ -196,8 +205,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
       // Finally return the selections
       Query entitiesQuery = Query.newBuilder().addAllEntityId(request.getEntityIdsList()).build();
-      Iterator<Document> documentIterator = entitiesCollection.search(
-          DocStoreConverter.transform(tenantId.get(), entitiesQuery));
+      List<String> docStoreSelections =
+          EntityQueryConverter.convertSelectionsToDocStoreSelections(
+              request.getSelectionList(), attributeFqnMap);
+      Iterator<Document> documentIterator =
+          entitiesCollection.search(
+              DocStoreConverter.transform(tenantId.get(), entitiesQuery, docStoreSelections));
       List<Entity> entities = convertDocsToEntities(documentIterator);
       responseObserver.onNext(convertEntitiesToResultSetChunk(
           entities,

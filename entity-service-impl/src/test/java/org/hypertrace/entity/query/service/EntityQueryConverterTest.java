@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
@@ -23,7 +24,7 @@ public class EntityQueryConverterTest {
   private static final String EQS_COLUMN_NAME2 = "eqsColumn2";
   private static final String EDS_COLUMN_NAME2 = "edsColumn2";
 
-  private Map<String, String> attributeMap = new HashMap<>();
+  private final Map<String, String> attributeMap = new HashMap<>();
 
   @BeforeEach
   public void setup() {
@@ -113,5 +114,24 @@ public class EntityQueryConverterTest {
         ).build();
     assertThrows(UnsupportedOperationException.class,
         () -> EntityQueryConverter.convertToEDSQuery(request, Collections.emptyMap()));
+  }
+
+  @Test
+  public void test_convertEqsSelections_DocStoreSelections() {
+    List<Expression> expressions =
+        List.of(
+            Expression.newBuilder()
+                .setColumnIdentifier(
+                    ColumnIdentifier.newBuilder().setColumnName(EQS_COLUMN_NAME1).build())
+                .build(),
+            Expression.newBuilder()
+                .setColumnIdentifier(
+                    ColumnIdentifier.newBuilder().setColumnName(EQS_COLUMN_NAME2).build())
+                .build());
+    List<String> docStoreSelections =
+        EntityQueryConverter.convertSelectionsToDocStoreSelections(expressions, attributeMap);
+    assertEquals(2, docStoreSelections.size());
+    assertEquals(EDS_COLUMN_NAME1, docStoreSelections.get(0));
+    assertEquals(EDS_COLUMN_NAME2, docStoreSelections.get(1));
   }
 }
