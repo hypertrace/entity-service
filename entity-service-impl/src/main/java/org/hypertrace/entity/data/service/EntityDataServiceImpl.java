@@ -266,6 +266,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
+    // EntityDataService does not support projections, yet. Hence, passing empty projections
+    // to document store, which means it would return all the entries
     searchByQueryAndStreamResponse(
         DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList()),
         responseObserver,
