@@ -13,6 +13,7 @@ import io.grpc.Channel;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -265,7 +266,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    Streams.stream(entitiesCollection.search(DocStoreConverter.transform(tenantId.get(), request)))
+    Streams.stream(entitiesCollection.search(DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList())))
         .flatMap(
             document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
         .map(Entity::toBuilder)

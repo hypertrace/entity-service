@@ -77,6 +77,28 @@ public class EntityQueryConverter {
     }
   }
 
+  public static List<String> convertSelectionsToDocStoreSelections(
+      List<Expression> expressions, Map<String, String> attrNameToEDSAttrMap) {
+    if (expressions.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<String> result = new ArrayList<>();
+    for (Expression expression : expressions) {
+      if (expression.hasColumnIdentifier()) {
+        String docStoreColumnName =
+            EntityQueryConverter.convertToAttributeKey(expression, attrNameToEDSAttrMap);
+        result.add(docStoreColumnName);
+      } else {
+        // entity data service and doc store only support field selection. There's no
+        // aggregate selection yet
+        throw new UnsupportedOperationException(
+            "Expression only support Column Identifier Expression");
+      }
+    }
+    return result;
+  }
+
   private static org.hypertrace.entity.query.service.v1.Value convertValueToQueryValue(
       org.hypertrace.entity.data.service.v1.Value value) {
     switch (value.getTypeCase()) {

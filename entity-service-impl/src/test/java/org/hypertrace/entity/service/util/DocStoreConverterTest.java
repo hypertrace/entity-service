@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
 import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.Filter.Op;
 import org.hypertrace.core.documentstore.JSONDocument;
@@ -41,18 +43,18 @@ public class DocStoreConverterTest {
     int offset = 1;
     Query query = Query.newBuilder().addEntityId("some id").build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
     Assertions.assertNull(transformedQuery.getLimit());
     Assertions.assertNull(transformedQuery.getOffset());
 
     query = Query.newBuilder().addEntityId("some id").setLimit(limit).setOffset(offset).build();
-    transformedQuery = DocStoreConverter.transform(TENANT_ID, query);
+    transformedQuery = DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
     Assertions.assertEquals(limit, transformedQuery.getLimit());
     Assertions.assertEquals(offset, transformedQuery.getOffset());
 
     // zero values will be ignored
     query = Query.newBuilder().addEntityId("some id").setLimit(0).setOffset(0).build();
-    transformedQuery = DocStoreConverter.transform(TENANT_ID, query);
+    transformedQuery = DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
     Assertions.assertNull(transformedQuery.getLimit());
     Assertions.assertNull(transformedQuery.getOffset());
   }
@@ -61,7 +63,7 @@ public class DocStoreConverterTest {
   public void testEntityFieldsQueryConversion() {
     Query query = Query.newBuilder().addEntityId("some id").build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
     Filter transformedFilter = transformedQuery.getFilter();
 
     Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
@@ -80,7 +82,7 @@ public class DocStoreConverterTest {
 
     query = Query.newBuilder().addEntityId("some id").setEntityName("some name").build();
 
-    transformedQuery = DocStoreConverter.transform(TENANT_ID, query);
+    transformedQuery = DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
     transformedFilter = transformedQuery.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
     Assertions.assertEquals(3, transformedFilter.getChildFilters().length);
@@ -109,7 +111,7 @@ public class DocStoreConverterTest {
             .build())
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
 
     Filter transformedFilter = transformedQuery.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
@@ -135,7 +137,7 @@ public class DocStoreConverterTest {
             .build())
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
 
     Filter transformedFilter = transformedQuery.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
@@ -165,7 +167,7 @@ public class DocStoreConverterTest {
             .build())
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
 
     Filter transformedFilter = transformedQuery.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
@@ -196,8 +198,41 @@ public class DocStoreConverterTest {
                 .build())
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
-    List<OrderBy> transformedOrderBys= transformedQuery.getOrderBys();
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
+
+    Assertions.assertEquals(0, transformedQuery.getSelections().size());
+
+    List<OrderBy> transformedOrderBys = transformedQuery.getOrderBys();
+
+    Assertions.assertEquals(2, transformedOrderBys.size());
+    Assertions.assertEquals("col1", transformedOrderBys.get(0).getField());
+    Assertions.assertFalse(transformedOrderBys.get(0).isAsc());
+    Assertions.assertEquals("col2", transformedOrderBys.get(1).getField());
+    Assertions.assertTrue(transformedOrderBys.get(1).isAsc());
+  }
+
+  @Test
+  public void testSelectionsWithOrderBy() {
+    Query query = Query.newBuilder()
+        .addEntityId("some id")
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setName("col1")
+                .setOrder(SortOrder.DESC)
+                .build())
+        .addOrderBy(
+            OrderByExpression.newBuilder()
+                .setName("col2")
+                .build())
+        .build();
+    org.hypertrace.core.documentstore.Query transformedQuery =
+        DocStoreConverter.transform(TENANT_ID, query, List.of("selection1", "selection2"));
+    List<String> selections = transformedQuery.getSelections();
+    Assertions.assertEquals(2, selections.size());
+    Assertions.assertEquals("selection1", selections.get(0));
+    Assertions.assertEquals("selection2", selections.get(1));
+
+    List<OrderBy> transformedOrderBys = transformedQuery.getOrderBys();
 
     Assertions.assertEquals(2, transformedOrderBys.size());
     Assertions.assertEquals("col1", transformedOrderBys.get(0).getField());
@@ -226,7 +261,7 @@ public class DocStoreConverterTest {
             .build())
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
 
     Filter transformedFilter = transformedQuery.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
@@ -249,7 +284,7 @@ public class DocStoreConverterTest {
             .build())
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery2 =
-        DocStoreConverter.transform(TENANT_ID, query2);
+        DocStoreConverter.transform(TENANT_ID, query2, Collections.emptyList());
 
     Filter transformedFilter2 = transformedQuery2.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter2.getOp());
@@ -277,7 +312,7 @@ public class DocStoreConverterTest {
             .build())
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery3 =
-        DocStoreConverter.transform(TENANT_ID, query3);
+        DocStoreConverter.transform(TENANT_ID, query3, Collections.emptyList());
 
     Filter transformedFilter3 = transformedQuery3.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter3.getOp());
@@ -305,7 +340,7 @@ public class DocStoreConverterTest {
             .build())
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery4 =
-        DocStoreConverter.transform(TENANT_ID, query4);
+        DocStoreConverter.transform(TENANT_ID, query4, Collections.emptyList());
 
     Filter transformedFilter4 = transformedQuery4.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter4.getOp());
@@ -336,7 +371,7 @@ public class DocStoreConverterTest {
             .build())
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
 
     Filter transformedFilter = transformedQuery.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
@@ -376,7 +411,7 @@ public class DocStoreConverterTest {
         )
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
 
     Filter transformedFilter = transformedQuery.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
@@ -418,7 +453,7 @@ public class DocStoreConverterTest {
         )
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
 
     Filter transformedFilter = transformedQuery.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
@@ -480,7 +515,7 @@ public class DocStoreConverterTest {
         )
         .build();
     org.hypertrace.core.documentstore.Query transformedQuery =
-        DocStoreConverter.transform(TENANT_ID, query);
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
 
     Filter transformedFilter = transformedQuery.getFilter();
     Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
@@ -539,7 +574,7 @@ public class DocStoreConverterTest {
                   .build())
               .build())
           .build();
-      DocStoreConverter.transform(TENANT_ID, query);
+      DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
     });
   }
 
@@ -621,7 +656,7 @@ public class DocStoreConverterTest {
             .build())
         .build();
 
-    return DocStoreConverter.transform(TENANT_ID, query);
+    return DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
   }
 }
 
