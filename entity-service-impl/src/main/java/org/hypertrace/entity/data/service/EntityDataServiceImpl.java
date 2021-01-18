@@ -266,12 +266,15 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    // EntityDataService does not support projections, yet. Hence, passing empty projections
-    // to document store, which means it would return all the entries
-    searchByQueryAndStreamResponse(
-        DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList()),
-        responseObserver,
-        tenantId.get());
+    Streams.stream(entitiesCollection.search(DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList())))
+        .flatMap(
+            document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
+        .map(Entity::toBuilder)
+        .map(builder -> builder.setTenantId(tenantId.get()))
+        .map(Entity.Builder::build)
+        .forEach(responseObserver::onNext);
+
+    responseObserver.onCompleted();
   }
 
   @Override
@@ -616,30 +619,6 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       responseObserver.onNext((T) builder.build());
       responseObserver.onCompleted();
     }
-  }
-
-  private void searchByQueryAndStreamResponse(
-      org.hypertrace.core.documentstore.Query query,
-      StreamObserver<Entity> responseObserver,
-      String tenantId) {
-
-    List<Entity> entities =
-        Streams.stream(entitiesCollection.search(query))
-               .flatMap(
-                   document ->
-                       PARSER
-                           .<Entity>parseOrLog(document, Entity.newBuilder())
-                           .stream())
-               .map(Entity::toBuilder)
-               .map(builder -> builder.setTenantId(tenantId))
-               .map(Entity.Builder::build)
-               .peek(responseObserver::onNext)
-               .collect(Collectors.toList());
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Docstore query has returned the result: {}", entities);
-    }
-    responseObserver.onCompleted();
   }
 
   private void searchByQueryAndStreamRelationships(

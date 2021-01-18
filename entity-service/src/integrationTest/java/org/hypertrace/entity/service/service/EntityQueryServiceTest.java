@@ -1,14 +1,30 @@
 package org.hypertrace.entity.service.service;
 
+import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENTITY_TYPES_COLLECTION;
+import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.google.common.collect.Lists;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.grpc.Channel;
 import io.grpc.ClientInterceptors;
 import io.grpc.ManagedChannelBuilder;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.DatastoreProvider;
 import org.hypertrace.core.serviceframework.IntegrationTestServerUtil;
 import org.hypertrace.entity.constants.v1.ApiAttribute;
+import org.hypertrace.entity.constants.v1.CommonAttribute;
 import org.hypertrace.entity.constants.v1.ServiceAttribute;
 import org.hypertrace.entity.data.service.client.EntityDataServiceClient;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
@@ -18,8 +34,12 @@ import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
+import org.hypertrace.entity.query.service.v1.Filter;
+import org.hypertrace.entity.query.service.v1.LiteralConstant;
+import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.Row;
+import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.EntityServiceConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceTestConfig;
@@ -32,17 +52,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENTITY_TYPES_COLLECTION;
-import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
+/**
+ * Test for {@link org.hypertrace.entity.query.service.client.EntityQueryServiceClient}
+ */
 public class EntityQueryServiceTest {
   private static EntityQueryServiceClient entityQueryServiceClient;
   // needed to create entities
@@ -98,8 +110,18 @@ public class EntityQueryServiceTest {
   }
 
   private static void setupEntityTypes(Channel channel) {
-    org.hypertrace.entity.type.service.client.EntityTypeServiceClient entityTypeServiceV1Client =
-        new org.hypertrace.entity.type.service.client.EntityTypeServiceClient(channel);
+    org.hypertrace.entity.type.service.client.EntityTypeServiceClient entityTypeServiceV1Client
+        = new org.hypertrace.entity.type.service.client.EntityTypeServiceClient(channel);
+    entityTypeServiceV1Client.upsertEntityType(
+        TENANT_ID,
+        org.hypertrace.entity.type.service.v1.EntityType.newBuilder()
+            .setName(EntityType.SERVICE.name())
+            .addAttributeType(
+                AttributeType.newBuilder()
+                    .setName(EntityConstants.getValue(
+                        CommonAttribute.COMMON_ATTRIBUTE_FQN))
+                    .setIdentifyingAttribute(true))
+            .build());
     entityTypeServiceV1Client.upsertEntityType(
         TENANT_ID,
         org.hypertrace.entity.type.service.v1.EntityType.newBuilder()
@@ -126,6 +148,168 @@ public class EntityQueryServiceTest {
   }
 
   @Test
+  public void testExecute() {
+    // create and upsert some entities
+    Entity entity1 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.SERVICE.name())
+        .setEntityName("Some Service 1")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1);
+    assertFalse(createdEntity1.getEntityId().trim().isEmpty());
+
+    Entity entity2 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.SERVICE.name())
+        .setEntityName("Some Service 2")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2);
+    assertFalse(createdEntity2.getEntityId().trim().isEmpty());
+
+    Entity entity3 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.SERVICE.name())
+        .setEntityName("Some Service 3")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity3 = entityDataServiceClient.upsert(entity3);
+    assertNotNull(createdEntity3);
+    assertFalse(createdEntity3.getEntityId().trim().isEmpty());
+
+    Entity entity4 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.SERVICE.name())
+        .setEntityName("Some Service 4")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity4 = entityDataServiceClient.upsert(entity4);
+    assertNotNull(createdEntity4);
+    assertFalse(createdEntity4.getEntityId().trim().isEmpty());
+
+    Entity entity5 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.SERVICE.name())
+        .setEntityName("Some Service 5")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity5 = entityDataServiceClient.upsert(entity5);
+    assertNotNull(createdEntity5);
+    assertFalse(createdEntity5.getEntityId().trim().isEmpty());
+
+    EntityQueryRequest queryRequest = EntityQueryRequest.newBuilder()
+        .setEntityType(EntityType.SERVICE.name())
+        .setFilter(
+            Filter.newBuilder()
+                .setOperatorValue(Operator.LT.getNumber())
+                .setLhs(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("SERVICE.createdTime").build()).build())
+                .setRhs(Expression.newBuilder().setLiteral(
+                    LiteralConstant.newBuilder().setValue(
+                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                            .setLong(Instant.now().toEpochMilli())
+                            .setValueType(ValueType.LONG)
+                            .build())
+                        .build()).
+                    build())
+                .build())
+        .addSelection(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("SERVICE.id").build()).build())
+        .addSelection(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("SERVICE.name").build()).build())
+        .build();
+
+    // this entity will be filtered out
+    Entity entity6 = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.SERVICE.name())
+        .setEntityName("Some Service 6")
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+            generateRandomUUIDAttrValue())
+        .build();
+    Entity createdEntity6 = entityDataServiceClient.upsert(entity6);
+    assertNotNull(createdEntity6);
+    assertFalse(createdEntity6.getEntityId().trim().isEmpty());
+
+    Iterator<ResultSetChunk> resultSetChunkIterator = entityQueryServiceClient.execute(queryRequest, Map.of("x-tenant-id", TENANT_ID));
+    List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
+    assertEquals(3, list.size());
+    assertEquals(2, list.get(0).getRowCount());
+    assertEquals(0, list.get(0).getChunkId());
+    assertFalse(list.get(0).getIsLastChunk());
+    assertEquals(2, list.get(1).getRowCount());
+    assertEquals(1, list.get(1).getChunkId());
+    assertFalse(list.get(1).getIsLastChunk());
+    assertEquals(1, list.get(2).getRowCount());
+    assertEquals(2, list.get(2).getChunkId());
+    assertTrue(list.get(2).getIsLastChunk());
+
+    assertEquals(createdEntity1.getEntityId(), list.get(0).getRow(0).getColumn(0).getString());
+    assertEquals(createdEntity1.getEntityName(), list.get(0).getRow(0).getColumn(1).getString());
+    assertEquals(createdEntity2.getEntityId(), list.get(0).getRow(1).getColumn(0).getString());
+    assertEquals(createdEntity2.getEntityName(), list.get(0).getRow(1).getColumn(1).getString());
+    assertEquals(createdEntity3.getEntityId(), list.get(1).getRow(0).getColumn(0).getString());
+    assertEquals(createdEntity3.getEntityName(), list.get(1).getRow(0).getColumn(1).getString());
+    assertEquals(createdEntity4.getEntityId(), list.get(1).getRow(1).getColumn(0).getString());
+    assertEquals(createdEntity4.getEntityName(), list.get(1).getRow(1).getColumn(1).getString());
+    assertEquals(createdEntity5.getEntityId(), list.get(2).getRow(0).getColumn(0).getString());
+    assertEquals(createdEntity5.getEntityName(), list.get(2).getRow(0).getColumn(1).getString());
+
+    // metadata sent for each chunk
+    assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
+    assertTrue(list.get(1).getResultSetMetadata().getColumnMetadataCount() > 0);
+    assertTrue(list.get(2).getResultSetMetadata().getColumnMetadataCount() > 0);
+  }
+
+  @Test
+  public void testExecute_EmptyResponse() {
+    EntityQueryRequest queryRequestNoResult = EntityQueryRequest.newBuilder()
+        .setEntityType(EntityType.SERVICE.name())
+        .setFilter(
+            Filter.newBuilder()
+                .setOperatorValue(Operator.GT.getNumber())
+                .setLhs(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("SERVICE.createdTime").build()).build())
+                .setRhs(Expression.newBuilder().setLiteral(
+                    LiteralConstant.newBuilder().setValue(
+                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                            .setLong(Instant.now().toEpochMilli())
+                            .setValueType(ValueType.LONG)
+                            .build())
+                        .build()).
+                    build())
+                .build())
+        .addSelection(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("SERVICE.id").build()).build())
+        .addSelection(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("SERVICE.name").build()).build())
+        .build();
+
+    Iterator<ResultSetChunk> resultSetChunkIterator = entityQueryServiceClient.execute(queryRequestNoResult, Map.of("x-tenant-id", TENANT_ID));
+    List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
+
+    assertEquals(1, list.size());
+    assertEquals(0, list.get(0).getChunkId());
+    assertTrue(list.get(0).getIsLastChunk());
+    assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
+  }
+
+  private AttributeValue generateRandomUUIDAttrValue() {
+    return AttributeValue.newBuilder()
+        .setValue(Value.newBuilder()
+            .setString(UUID.randomUUID().toString())
+            .build())
+        .build();
+  }
+
   public void testCreateAndGetEntity() {
     // creating an api entity with attributes
     Entity.Builder apiEntityBuilder = createApiEntity(SERVICE_ID, API_NAME, API_TYPE);

@@ -21,6 +21,7 @@ import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
@@ -50,9 +51,13 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceImpl.class);
   private static final String ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.attributeMap";
   private static final Parser PARSER = DocStoreJsonFormat.parser().ignoringUnknownFields();
+  private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
+  private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
+  private static final int DEFAULT_CHUNK_SIZE = 10_000;
 
   private final Collection entitiesCollection;
   private final Map<String, Map<String, String>> attrNameToEDSAttrMap;
+  private final int CHUNK_SIZE;
 
   public EntityQueryServiceImpl(Datastore datastore, Config config) {
     this(
@@ -68,13 +73,16 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                   map.putAll(map2);
                   return map;
                 }
-            )));
+            )), !config.hasPathOrNull(CHUNK_SIZE_CONFIG) ? DEFAULT_CHUNK_SIZE : config.getInt(CHUNK_SIZE_CONFIG));
   }
 
-  public EntityQueryServiceImpl(Collection entitiesCollection,
-      Map<String, Map<String, String>> attrNameToEDSAttrMap) {
+  public EntityQueryServiceImpl(
+      Collection entitiesCollection,
+      Map<String, Map<String, String>> attrNameToEDSAttrMap,
+      int chunkSize) {
     this.entitiesCollection = entitiesCollection;
     this.attrNameToEDSAttrMap = attrNameToEDSAttrMap;
+    this.CHUNK_SIZE = chunkSize;
   }
 
   @Override
@@ -86,26 +94,63 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     //TODO: Optimize this later. For now converting to EDS Query and then again to DocStore Query.
-    Map<String, String> scopedAttrNameToEDSAttrMap = attrNameToEDSAttrMap.get(request.getEntityType());
-    Query query = EntityQueryConverter.convertToEDSQuery(request, scopedAttrNameToEDSAttrMap);
+    Query query = EntityQueryConverter
+        .convertToEDSQuery(request, attrNameToEDSAttrMap.get(request.getEntityType()));
     /**
      * {@link EntityQueryRequest} selections need to treated differently, since they don't transform
      * one to one to {@link org.hypertrace.entity.data.service.v1.EntityDataRequest} selections
      */
+    Map<String, String> scopedAttrNameToEDSAttrMap = attrNameToEDSAttrMap.get(request.getEntityType());
     List<String> docStoreSelections =
         EntityQueryConverter.convertSelectionsToDocStoreSelections(
             request.getSelectionList(), scopedAttrNameToEDSAttrMap);
-    Iterator<Document> documentIterator =
-        entitiesCollection.search(
-            DocStoreConverter.transform(tenantId.get(), query, docStoreSelections));
-    List<Entity> entities = convertDocsToEntities(documentIterator);
+    Iterator<Document> documentIterator = entitiesCollection.search(
+        DocStoreConverter.transform(tenantId.get(), query, docStoreSelections));
 
-    //Build result
-    //TODO : chunk response. For now sending everything in one chunk
-    responseObserver.onNext(convertEntitiesToResultSetChunk(
-        entities,
-        request.getSelectionList(),
-        attrNameToEDSAttrMap.get(request.getEntityType())));
+    ResultSetMetadata resultSetMetadata = ResultSetMetadata.newBuilder()
+        .addAllColumnMetadata(
+            () -> request.getSelectionList().stream().map(Expression::getColumnIdentifier)
+                .map(
+                    ColumnIdentifier::getColumnName)
+                .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build()).iterator())
+        .build();
+    if (!documentIterator.hasNext()) {
+      ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+      resultBuilder.setResultSetMetadata(resultSetMetadata);
+      resultBuilder.setIsLastChunk(true);
+      resultBuilder.setChunkId(0);
+      responseObserver.onNext(resultBuilder.build());
+      responseObserver.onCompleted();
+      return;
+    }
+    boolean isNewChunk = true;
+    int chunkId = 0, rowCount = 0;
+    ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+    while (documentIterator.hasNext()) {
+      Optional<Entity> entity = DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
+      // Set metadata for new chunk
+      if (isNewChunk) {
+        resultBuilder.setResultSetMetadata(resultSetMetadata);
+        isNewChunk = false;
+      }
+      if (entity.isPresent()) {
+        //Build data
+        resultBuilder.addRow(convertToEntityQueryResult(
+            entity.get(),
+            request.getSelectionList(),
+            attrNameToEDSAttrMap.get(request.getEntityType())));
+        rowCount++;
+      }
+      // current chunk is complete
+      if (rowCount >= CHUNK_SIZE || !documentIterator.hasNext()) {
+        resultBuilder.setChunkId(chunkId++);
+        resultBuilder.setIsLastChunk(!documentIterator.hasNext());
+        responseObserver.onNext(resultBuilder.build());
+        resultBuilder = ResultSetChunk.newBuilder();
+        isNewChunk = true;
+        rowCount = 0;
+      }
+    }
     responseObserver.onCompleted();
   }
 
@@ -124,7 +169,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return entities;
   }
 
-  private ResultSetChunk convertEntitiesToResultSetChunk(
+  private static ResultSetChunk convertEntitiesToResultSetChunk(
       List<Entity> entities,
       List<Expression> selections,
       Map<String, String> attributeFqnMapping) {
@@ -144,7 +189,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return resultBuilder.build();
   }
 
-  private Row convertToEntityQueryResult(
+  static Row convertToEntityQueryResult(
       Entity entity, List<Expression> selections, Map<String, String> egsToEdsAttrMapping) {
     Row.Builder result = Row.newBuilder();
     selections.stream()
