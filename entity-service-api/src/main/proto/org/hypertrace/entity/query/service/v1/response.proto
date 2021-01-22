@@ -5,7 +5,6 @@ package org.hypertrace.entity.query.service.v1;
 
 import "org/hypertrace/entity/query/service/v1/value.proto";
 
-
 message ColumnMetadata {
   string column_name = 1;
   ValueType value_type = 2;
@@ -29,8 +28,10 @@ message ResultSetChunk {
   string errorMessage = 7;
 }
 
-
 message Row {
   repeated Value column = 1;
 }
 
+message TotalEntitiesResponse {
+  int64 total = 1;
+}

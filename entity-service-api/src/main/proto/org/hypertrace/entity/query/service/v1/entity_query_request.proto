@@ -25,6 +25,11 @@ message EntityUpdateRequest {
   repeated Expression selection = 4;
 }
 
+message TotalEntitiesRequest {
+  string entityType = 1;
+  Filter filter = 2;
+}
+
 message UpdateOperation {
   oneof operation {
     SetAttribute setAttribute = 1;

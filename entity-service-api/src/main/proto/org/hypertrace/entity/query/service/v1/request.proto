@@ -16,7 +16,6 @@ message Expression {
 }
 
 message Filter {
-
   Expression lhs = 1;
   Operator operator = 2;
   Expression rhs = 3;
@@ -40,7 +39,6 @@ enum Operator {
   EXISTS = 13;
   NOT_EXISTS = 14;
 }
-
 
 message Function {
   string functionName = 1;
