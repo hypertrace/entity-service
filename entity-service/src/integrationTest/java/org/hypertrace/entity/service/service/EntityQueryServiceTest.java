@@ -39,6 +39,8 @@ import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.Row;
+import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
+import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.EntityServiceConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
@@ -50,6 +52,7 @@ import org.hypertrace.entity.v1.entitytype.EntityType;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -387,6 +390,83 @@ public class EntityQueryServiceTest {
     assertEquals(2, values.size());
     assertEquals("DISCOVERED", values.get(0));
     assertEquals("UNDER_DISCOVERY", values.get(1));
+  }
+
+  @Nested
+  class TotalEntities {
+    @Test
+    public void testTotal() {
+      // creating an api entity with attributes
+      Entity.Builder apiEntityBuilder1 = createApiEntity(SERVICE_ID, "api1", API_TYPE);
+      apiEntityBuilder1
+          .putAttributes(
+              apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
+          .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+      entityDataServiceClient.upsert(apiEntityBuilder1.build());
+
+      Entity.Builder apiEntityBuilder2 = createApiEntity(SERVICE_ID, "api2", API_TYPE);
+      apiEntityBuilder2
+          .putAttributes(
+              apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
+          .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+      entityDataServiceClient.upsert(apiEntityBuilder2.build());
+
+      TotalEntitiesRequest totalEntitiesRequest =
+          TotalEntitiesRequest.newBuilder().setEntityType(EntityType.API.name()).build();
+      TotalEntitiesResponse response =
+          entityQueryServiceClient.total(totalEntitiesRequest, Map.of("x-tenant-id", TENANT_ID));
+
+      assertEquals(2, response.getTotal());
+    }
+
+    @Test
+    public void testTotalWithFilter() {
+      // creating an api entity with attributes
+      Entity.Builder apiEntityBuilder1 = createApiEntity(SERVICE_ID, "api1", API_TYPE);
+      apiEntityBuilder1
+          .putAttributes(
+              apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
+          .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+      entityDataServiceClient.upsert(apiEntityBuilder1.build());
+
+      Entity.Builder apiEntityBuilder2 = createApiEntity(SERVICE_ID, "api2", API_TYPE);
+      apiEntityBuilder2
+          .putAttributes(
+              apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
+          .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+      entityDataServiceClient.upsert(apiEntityBuilder2.build());
+
+      TotalEntitiesRequest totalEntitiesRequest =
+          TotalEntitiesRequest.newBuilder()
+              .setEntityType(EntityType.API.name())
+              .setFilter(
+                  Filter.newBuilder()
+                      .setOperator(Operator.EQ)
+                      .setLhs(
+                          Expression.newBuilder()
+                              .setColumnIdentifier(
+                                  ColumnIdentifier.newBuilder()
+                                      .setColumnName(API_DISCOVERY_STATE_ATTR)
+                                      .build())
+                              .build())
+                      .setRhs(
+                          Expression.newBuilder()
+                              .setLiteral(
+                                  LiteralConstant.newBuilder()
+                                      .setValue(
+                                          org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                              .setString("DISCOVERED")
+                                              .setValueType(ValueType.STRING)
+                                              .build())
+                                      .build())
+                              .build())
+                      .build())
+              .build();
+      TotalEntitiesResponse response =
+          entityQueryServiceClient.total(totalEntitiesRequest, Map.of("x-tenant-id", TENANT_ID));
+
+      assertEquals(1, response.getTotal());
+    }
   }
 
   private static String generateRandomUUID() {

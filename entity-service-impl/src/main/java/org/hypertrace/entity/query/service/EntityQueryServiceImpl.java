@@ -36,6 +36,8 @@ import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.ResultSetMetadata;
 import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.SetAttribute;
+import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
+import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -93,14 +95,13 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
+    Map<String, String> scopedAttrNameToEDSAttrMap = attrNameToEDSAttrMap.get(request.getEntityType());
     //TODO: Optimize this later. For now converting to EDS Query and then again to DocStore Query.
-    Query query = EntityQueryConverter
-        .convertToEDSQuery(request, attrNameToEDSAttrMap.get(request.getEntityType()));
+    Query query = EntityQueryConverter.convertToEDSQuery(request, scopedAttrNameToEDSAttrMap);
     /**
      * {@link EntityQueryRequest} selections need to treated differently, since they don't transform
      * one to one to {@link org.hypertrace.entity.data.service.v1.EntityDataRequest} selections
      */
-    Map<String, String> scopedAttrNameToEDSAttrMap = attrNameToEDSAttrMap.get(request.getEntityType());
     List<String> docStoreSelections =
         EntityQueryConverter.convertSelectionsToDocStoreSelections(
             request.getSelectionList(), scopedAttrNameToEDSAttrMap);
@@ -292,5 +293,33 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         }
       }
     }
+  }
+
+  @Override
+  public void total(TotalEntitiesRequest request, StreamObserver<TotalEntitiesResponse> responseObserver) {
+    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
+    if (tenantId.isEmpty()) {
+      responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
+      return;
+    }
+
+    Map<String, String> scopedAttrNameToEDSAttrMap =
+        attrNameToEDSAttrMap.get(request.getEntityType());
+
+    // converting total entities request to entity query request
+    EntityQueryRequest entityQueryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(request.getEntityType())
+            .setFilter(request.getFilter())
+            .build();
+
+    // converting entity query request to entity data service query
+    Query query =
+        EntityQueryConverter.convertToEDSQuery(entityQueryRequest, scopedAttrNameToEDSAttrMap);
+    long total =
+        entitiesCollection.total(
+            DocStoreConverter.transform(tenantId.get(), query, Collections.emptyList()));
+    responseObserver.onNext(TotalEntitiesResponse.newBuilder().setTotal(total).build());
+    responseObserver.onCompleted();
   }
 }
