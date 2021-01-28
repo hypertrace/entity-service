@@ -20,7 +20,9 @@ import java.util.Optional;
 import java.util.UUID;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Document;
+import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.JSONDocument;
+import org.hypertrace.core.documentstore.Query;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
@@ -35,12 +37,17 @@ import org.hypertrace.entity.query.service.v1.OrderByExpression;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.SetAttribute;
+import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
+import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 
 public class EntityQueryServiceImplTest {
@@ -379,6 +386,76 @@ public class EntityQueryServiceImplTest {
     assertEquals(entityId, row.getColumn(0).getString());
     assertEquals(entityName, row.getColumn(1).getString());
     assertEquals("doing good", row.getColumn(2).getString());
+  }
+
+  @Nested
+  class TotalEntities {
+    @DisplayName("should build correct doc store query for total")
+    @Test
+    public void test_buildTotalQuery() throws Exception {
+      TotalEntitiesRequest totalEntitiesRequest =
+          TotalEntitiesRequest.newBuilder()
+              .setEntityType(TEST_ENTITY_TYPE)
+              .setFilter(org.hypertrace.entity.query.service.v1.Filter.getDefaultInstance())
+              .build();
+
+      ArgumentCaptor<Query> docStoreQueryCaptor = ArgumentCaptor.forClass(Query.class);
+
+      Collection mockCollection = mockEntitiesCollection();
+      EntityQueryServiceImpl eqs =
+          new EntityQueryServiceImpl(mockCollection, attributeFqnMaps, 1);
+      StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
+
+      Context.current()
+          .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
+          .call(
+              () -> {
+                eqs.total(totalEntitiesRequest, mockResponseObserver);
+                return null;
+              });
+
+      verify(mockCollection, times(1)).total(docStoreQueryCaptor.capture());
+      Query query = docStoreQueryCaptor.getValue();
+      assertEquals(Filter.Op.AND, query.getFilter().getOp());
+      assertEquals(2, query.getFilter().getChildFilters().length);
+      // tenant id filter
+      assertEquals(Filter.Op.EQ, query.getFilter().getChildFilters()[0].getOp());
+      assertEquals("tenantId", query.getFilter().getChildFilters()[0].getFieldName());
+      assertEquals("tenant1", query.getFilter().getChildFilters()[0].getValue());
+
+      // entity type filter
+      assertEquals(Filter.Op.EQ, query.getFilter().getChildFilters()[1].getOp());
+      assertEquals("entityType", query.getFilter().getChildFilters()[1].getFieldName());
+      assertEquals(TEST_ENTITY_TYPE, query.getFilter().getChildFilters()[1].getValue());
+    }
+
+    @DisplayName("should send correct total response")
+    @Test
+    public void test_sendCorrectTotalResponse() throws Exception {
+      TotalEntitiesRequest totalEntitiesRequest =
+          TotalEntitiesRequest.newBuilder()
+              .setEntityType(TEST_ENTITY_TYPE)
+              .setFilter(org.hypertrace.entity.query.service.v1.Filter.getDefaultInstance())
+              .build();
+
+      Collection mockCollection = mockEntitiesCollection();
+      EntityQueryServiceImpl eqs =
+          new EntityQueryServiceImpl(mockCollection, attributeFqnMaps, 1);
+      StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
+
+      when(mockCollection.total(any())).thenReturn(123L);
+      Context.current()
+          .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
+          .call(
+              () -> {
+                eqs.total(totalEntitiesRequest, mockResponseObserver);
+                return null;
+              });
+
+      verify(mockResponseObserver, times(1))
+          .onNext(TotalEntitiesResponse.newBuilder().setTotal(123L).build());
+      verify(mockResponseObserver, times(1)).onCompleted();
+    }
   }
 
   private RequestContext mockRequestContextWithTenantId() {

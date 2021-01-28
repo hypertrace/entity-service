@@ -10,6 +10,8 @@ import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceBlockingStub;
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
+import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
+import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 
 public class EntityQueryServiceClient {
 
@@ -29,5 +31,10 @@ public class EntityQueryServiceClient {
       Map<String, String> headers) {
     return GrpcClientRequestContextUtil
         .executeWithHeadersContext(headers, () -> blockingStub.update(updateRequest));
+  }
+
+  public TotalEntitiesResponse total(TotalEntitiesRequest request, Map<String, String> headers) {
+    return GrpcClientRequestContextUtil.executeWithHeadersContext(
+        headers, () -> blockingStub.total(request));
   }
 }
