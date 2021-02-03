@@ -101,6 +101,10 @@ logConfig:
       enabled: false
 
 config-bootstrapper:
-  job:
-    prefix: entity
-  configurationCommands: {}
+  jobs:
+    default:
+      enabled: false
+    entity:
+      prefix: entity
+      enabled: true
+      configurationCommands: {}
