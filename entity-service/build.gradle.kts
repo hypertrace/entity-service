@@ -62,14 +62,8 @@ dependencies {
   implementation("org.hypertrace.core.documentstore:document-store:0.5.1")
 
   runtimeOnly("io.grpc:grpc-netty:1.33.1")
-  constraints {
-    runtimeOnly("io.netty:netty-codec-http2:4.1.53.Final") {
-      because("https://snyk.io/vuln/SNYK-JAVA-IONETTY-1020439")
-    }
-    runtimeOnly("io.netty:netty-handler-proxy:4.1.53.Final") {
-      because("https://snyk.io/vuln/SNYK-JAVA-IONETTY-1020439s")
-    }
-  }
+  runtimeOnly("io.netty:netty-codec-http2:4.1.59.Final")
+  runtimeOnly("io.netty:netty-handler-proxy:4.1.59.Final")
 
   // Logging
   implementation("org.slf4j:slf4j-api:1.7.30")
