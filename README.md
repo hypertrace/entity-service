@@ -1,13 +1,10 @@
 # Entity Service
-###### org.hypertrace.entity.service
-
-[![CircleCI](https://circleci.com/gh/hypertrace/entity-service.svg?style=svg)](https://circleci.com/gh/hypertrace/entity-service)
 
 Service that provides CRUD operations for differently identified entities of observed applications.
 
 ## Description
 
-| ![space-1.jpg](https://hypertrace-docs.s3.amazonaws.com/hypertrace-query-arch.png) | 
+| ![space-1.jpg](https://hypertrace-docs.s3.amazonaws.com/arch/ht-query.png) | 
 |:--:| 
 | *Hypertrace Query Architecture* |
 
@@ -27,6 +24,8 @@ Run `./gradlew test` to execute unit tests.
 
 
 ### Testing image
+
+#### With docker-compose
 To test your image using the docker-compose setup follow the steps:
 
 - Commit you changes to a branch say `entity-service-test`.
@@ -44,6 +43,16 @@ cd entity-service && git checkout entity-service-test && cd ..
 ```
 - and then run `docker-compose up` to test the setup.
 
+
+#### With helm setup
+Add image repository and tag in values.yaml file [here](https://github.com/hypertrace/hypertrace/blob/main/kubernetes/platform-services/values.yaml) like below and then run `./hypertrace.sh install` again and you can test your image!
+
+```yaml
+entity-service:
+  image:
+    repository: "hypertrace/entity-service"
+    tagOverride: "test"
+ ```
+
 ## Docker Image Source:
 - [DockerHub > Entity service](https://hub.docker.com/r/hypertrace/entity-service)
-
