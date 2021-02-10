@@ -44,7 +44,7 @@ cd entity-service && git checkout entity-service-test && cd ..
 - and then run `docker-compose up` to test the setup.
 
 
-#### With Helm setup
+#### With helm setup
 Add image repository and tag in values.yaml file [here](https://github.com/hypertrace/hypertrace/blob/main/kubernetes/platform-services/values.yaml) like below and then run `./hypertrace.sh install` again and you can test your image!
 
 ```yaml
@@ -56,4 +56,3 @@ entity-service:
 
 ## Docker Image Source:
 - [DockerHub > Entity service](https://hub.docker.com/r/hypertrace/entity-service)
-
