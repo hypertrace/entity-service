@@ -7,7 +7,7 @@ Service that provides CRUD operations for differently identified entities of obs
 
 ## Description
 
-| ![space-1.jpg](https://hypertrace-docs.s3.amazonaws.com/hypertrace-query-arch.png) | 
+| ![space-1.jpg](https://hypertrace-docs.s3.amazonaws.com/arch/ht-query.png) | 
 |:--:| 
 | *Hypertrace Query Architecture* |
 
@@ -43,6 +43,17 @@ cd entity-service && git checkout entity-service-test && cd ..
     ...
 ```
 - and then run `docker-compose up` to test the setup.
+
+
+### Helm setup
+Add image repository and tag in values.yaml file [here](https://github.com/hypertrace/hypertrace/blob/main/kubernetes/platform-services/values.yaml) like below and then run `./hypertrace.sh install` again and you can test your image!
+
+```yaml
+entity-service:
+  image:
+    repository: "hypertrace/entity-service"
+    tagOverride: "test"
+ ```
 
 ## Docker Image Source:
 - [DockerHub > Entity service](https://hub.docker.com/r/hypertrace/entity-service)
