@@ -627,6 +627,12 @@ public class DocStoreConverterTest {
     Assertions.assertEquals(Op.NEQ, transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[2].getOp());
     Assertions.assertEquals(OBJECT_MAPPER.convertValue(OBJECT_MAPPER.readTree("{\"value\": {\"string\":\"l3\"}}"), Map.class),
         transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[2].getValue());
+
+    Assertions.assertEquals(ATTRIBUTES_LABELS_FIELD_NAME + ".valueList.values",
+        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[3].getFieldName());
+    Assertions.assertEquals(Op.EXISTS, transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[3].getOp());
+    Assertions.assertEquals(true,
+        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[3].getValue());
   }
 
   @Test

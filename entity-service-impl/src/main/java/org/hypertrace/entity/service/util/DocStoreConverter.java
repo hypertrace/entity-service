@@ -192,12 +192,17 @@ public class DocStoreConverter {
     f.setFieldName("");
     f.setOp(Op.AND);
 
-    f.setChildFilters(
-        attributeFilter.getAttributeValue().getValueList().getValuesList().stream()
-            .map(rhsAttributeValue -> createNeqFilterForAttributeValue(fieldName, rhsAttributeValue))
-            .collect(Collectors.toList())
-            .toArray(new Filter[]{})
-    );
+    Filter exists = new Filter();
+    exists.setFieldName(fieldName);
+    exists.setOp(Op.EXISTS);
+    exists.setValue(true);
+
+    List<Filter> filters = attributeFilter.getAttributeValue().getValueList().getValuesList().stream()
+        .map(rhsAttributeValue -> createNeqFilterForAttributeValue(fieldName, rhsAttributeValue))
+        .collect(Collectors.toList());
+
+    filters.add(exists);
+    f.setChildFilters(filters.toArray(new Filter[]{}));
 
     return f;
   }
