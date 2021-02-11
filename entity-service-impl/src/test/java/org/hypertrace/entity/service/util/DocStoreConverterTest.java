@@ -555,6 +555,81 @@ public class DocStoreConverterTest {
   }
 
   @Test
+  public void testStringArrayValueTypeColumnAndChain() throws JsonProcessingException {
+    Query query = Query.newBuilder()
+        .addEntityId("some id")
+        .setFilter(
+            AttributeFilter.newBuilder().setOperator(Operator.AND)
+                .addChildFilter(
+                    AttributeFilter.newBuilder()
+                        .setName("attributes.some_col")
+                        .setOperator(Operator.EQ)
+                        .setAttributeValue(AttributeValue.newBuilder()
+                            .setValue(Value.newBuilder().setString("some_val"))
+                        )
+                )
+                .addChildFilter(
+                    AttributeFilter.newBuilder()
+                        .setName(ATTRIBUTES_LABELS_FIELD_NAME)
+                        .setOperator(Operator.NOT_IN)
+                        .setAttributeValue(AttributeValue.newBuilder()
+                            .setValueList(
+                                AttributeValueList.newBuilder()
+                                    .addValues(
+                                        AttributeValue.newBuilder().setValue(Value.newBuilder().setString("l1"))
+                                    )
+                                    .addValues(
+                                        AttributeValue.newBuilder().setValue(Value.newBuilder().setString("l2"))
+                                    )
+                                    .addValues(
+                                        AttributeValue.newBuilder().setValue(Value.newBuilder().setString("l3"))
+                                    )
+                            )
+                        )
+                )
+        )
+        .build();
+    org.hypertrace.core.documentstore.Query transformedQuery =
+        DocStoreConverter.transform(TENANT_ID, query, Collections.emptyList());
+
+    Filter transformedFilter = transformedQuery.getFilter();
+    Assertions.assertEquals(Filter.Op.AND, transformedFilter.getOp());
+
+    Assertions.assertEquals(3, transformedFilter.getChildFilters().length);
+    Assertions.assertEquals(EntityServiceConstants.ENTITY_ID,
+        transformedFilter.getChildFilters()[1].getFieldName());
+    Assertions.assertEquals(Collections.singletonList("some id"),
+        transformedFilter.getChildFilters()[1].getValue());
+
+    Assertions.assertEquals(Op.AND, transformedFilter.getChildFilters()[2].getOp());
+
+    Assertions.assertEquals("attributes.some_col.value.string",
+        transformedFilter.getChildFilters()[2].getChildFilters()[0].getFieldName());
+    Assertions.assertEquals(Op.EQ, transformedFilter.getChildFilters()[2].getChildFilters()[0].getOp());
+    Assertions.assertEquals("some_val", transformedFilter.getChildFilters()[2].getChildFilters()[0].getValue());
+
+    Assertions.assertEquals(Op.AND, transformedFilter.getChildFilters()[2].getChildFilters()[1].getOp());
+
+    Assertions.assertEquals(ATTRIBUTES_LABELS_FIELD_NAME + ".valueList.values",
+        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[0].getFieldName());
+    Assertions.assertEquals(Op.NEQ, transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[0].getOp());
+    Assertions.assertEquals(OBJECT_MAPPER.convertValue(OBJECT_MAPPER.readTree("{\"value\": {\"string\":\"l1\"}}"), Map.class),
+        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[0].getValue());
+
+    Assertions.assertEquals(ATTRIBUTES_LABELS_FIELD_NAME + ".valueList.values",
+        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[1].getFieldName());
+    Assertions.assertEquals(Op.NEQ, transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[1].getOp());
+    Assertions.assertEquals(OBJECT_MAPPER.convertValue(OBJECT_MAPPER.readTree("{\"value\": {\"string\":\"l2\"}}"), Map.class),
+        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[1].getValue());
+
+    Assertions.assertEquals(ATTRIBUTES_LABELS_FIELD_NAME + ".valueList.values",
+        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[2].getFieldName());
+    Assertions.assertEquals(Op.NEQ, transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[2].getOp());
+    Assertions.assertEquals(OBJECT_MAPPER.convertValue(OBJECT_MAPPER.readTree("{\"value\": {\"string\":\"l3\"}}"), Map.class),
+        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[2].getValue());
+  }
+
+  @Test
   public void testNeqFilterConversionForValueListThrowsException() {
     Assertions.assertThrows(UnsupportedOperationException.class, () -> {
       Query query = Query.newBuilder()

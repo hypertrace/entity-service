@@ -130,6 +130,8 @@ public class DocStoreConverter {
         return transformToEqFilterWithValueListRhs(filter);
       } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.IN) {
         return transformToOrFilterChainForStrArray(filter);
+      } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.NOT_IN) {
+        return transformToAndFilterChainForStrArray(filter);
       } else {
         return transformNonListRhsFilterTypes(filter);
       }
@@ -183,6 +185,23 @@ public class DocStoreConverter {
     return f;
   }
 
+  private static Filter transformToAndFilterChainForStrArray(AttributeFilter attributeFilter) {
+    String fieldName = attributeFilter.getName() + VALUE_LIST_VALUES_CONST;
+
+    Filter f = new Filter();
+    f.setFieldName("");
+    f.setOp(Op.AND);
+
+    f.setChildFilters(
+        attributeFilter.getAttributeValue().getValueList().getValuesList().stream()
+            .map(rhsAttributeValue -> createNeqFilterForAttributeValue(fieldName, rhsAttributeValue))
+            .collect(Collectors.toList())
+            .toArray(new Filter[]{})
+    );
+
+    return f;
+  }
+
   private static Filter transformToEqFilterWithValueListRhs(AttributeFilter attributeFilter) {
     String fieldName = attributeFilter.getName() + VALUE_LIST_VALUES_CONST;
     return createEqFilterForAttributeValue(fieldName, attributeFilter.getAttributeValue());
@@ -192,13 +211,29 @@ public class DocStoreConverter {
     Filter f = new Filter();
     f.setFieldName(fieldName);
     f.setOp(Op.EQ);
+    f.setValue(prepareRhsValueForSpecialValueListCase(attributeValue));
+    // Set child filters to empty array
+    f.setChildFilters(new Filter[]{});
+    return f;
+  }
 
+  private static Filter createNeqFilterForAttributeValue(String fieldName, AttributeValue attributeValue) {
+    Filter f = new Filter();
+    f.setFieldName(fieldName);
+    f.setOp(Op.NEQ);
+    f.setValue(prepareRhsValueForSpecialValueListCase(attributeValue));
+    // Set child filters to empty array
+    f.setChildFilters(new Filter[]{});
+    return f;
+  }
+
+  private static Object prepareRhsValueForSpecialValueListCase(AttributeValue attributeValue) {
     org.hypertrace.entity.data.service.v1.AttributeValue.TypeCase typeCase = attributeValue.getTypeCase();
     if (typeCase == TypeCase.VALUE) {
       try {
         JsonNode mapNode = OBJECT_MAPPER.readTree(JSONFORMAT_PRINTER.print(attributeValue));
         Map map = OBJECT_MAPPER.convertValue(mapNode, Map.class);
-        f.setValue(map);
+        return map;
       } catch (JsonProcessingException | InvalidProtocolBufferException e) {
         throw new RuntimeException(e);
       }
@@ -206,10 +241,6 @@ public class DocStoreConverter {
       throw new UnsupportedOperationException(
           String.format("The RHS of filter for string array types can only be VALUE: %s", attributeValue));
     }
-
-    // Set child filters to empty array
-    f.setChildFilters(new Filter[]{});
-    return f;
   }
 
   private static void transform(AttributeValue attributeValue, Filter filter,
