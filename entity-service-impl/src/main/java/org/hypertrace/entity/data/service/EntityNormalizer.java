@@ -90,7 +90,7 @@ class EntityNormalizer {
               "No identifying attributes defined for EntityType: %s", request.getEntityType()));
     }
 
-    if (!idAttrNames.equals(request.getIdentifyingAttributesMap().keySet())) {
+    if (!request.getIdentifyingAttributesMap().keySet().containsAll(idAttrNames)) {
       throw new IllegalArgumentException(
           String.format(
               "Received and expected identifying attributes differ. Received: %s . Expected: %s",
