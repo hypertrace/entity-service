@@ -874,6 +874,99 @@ public class EntityDataServiceTest {
 
   }
 
+  @Test
+  public void testNotInFilterForMatchingLabelsQuery() {
+    Entity entity = createEntityWithAttributeLabels("Some Service 1",
+        List.of("v1", "v2", "v3"));
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity);
+    assertNotNull(createdEntity1);
+    assertNotNull(createdEntity1.getEntityId().trim());
+
+    entity = createEntityWithAttributeLabels("Some Service 2",
+        List.of("v01", "v02", "v03"));
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity);
+    assertNotNull(createdEntity2);
+    assertNotNull(createdEntity2.getEntityId().trim());
+
+    entity = createEntityWithAttributeLabels("Some Service 3",
+        List.of("v01", "v2", "v4"));
+    Entity createdEntity3 = entityDataServiceClient.upsert(entity);
+    assertNotNull(createdEntity3);
+    assertNotNull(createdEntity3.getEntityId().trim());
+
+    entity = createEntityWithAttributeLabels("Some Service 4",
+        List.of("b1", "b2", "b3"));
+    Entity createdEntity4 = entityDataServiceClient.upsert(entity);
+    assertNotNull(createdEntity4);
+    assertNotNull(createdEntity4.getEntityId().trim());
+
+    entity = createEntityWithOutAttributeLabels("Some Service 5",
+        "foo", "bar");
+    Entity createdEntity5 = entityDataServiceClient.upsert(entity);
+    assertNotNull(createdEntity5);
+    assertNotNull(createdEntity5.getEntityId().trim());
+
+    AttributeFilter attributeFilter = AttributeFilter.newBuilder()
+        .setName("attributes.labels")
+        .setOperator(Operator.NOT_IN)
+        .setAttributeValue(AttributeValue.newBuilder()
+            .setValueList(
+                AttributeValueList.newBuilder()
+                    .addValues(
+                        AttributeValue.newBuilder().setValue(Value.newBuilder().setString("b1"))
+                    )
+                    .addValues(
+                        AttributeValue.newBuilder().setValue(Value.newBuilder().setString("v4"))
+                    )
+            )
+        ).build();
+
+    Query query = Query.newBuilder()
+        .setEntityType(EntityType.K8S_POD.name())
+        .setFilter(attributeFilter).build();
+    List<Entity> entitiesList = entityDataServiceClient.query(TENANT_ID, query);
+    assertTrue(entitiesList.size() == 2);
+    assertTrue(entitiesList.contains(createdEntity1) && entitiesList.contains(createdEntity2));
+  }
+
+  private Entity createEntityWithAttributeLabels(String entityName, List<String> labels) {
+    AttributeValueList.Builder listBuilder = AttributeValueList.newBuilder();
+    labels.forEach(label -> listBuilder.addValues(
+          AttributeValue.newBuilder().setValue(Value.newBuilder().setString(label)))
+    );
+    AttributeValue value = AttributeValue.newBuilder().setValueList(listBuilder.build()).build();
+
+    Entity entity = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.K8S_POD.name())
+        .setEntityName(entityName)
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+            generateRandomUUIDAttrValue())
+        .putAttributes(
+            "labels", value)
+        .build();
+
+    return entity;
+  }
+
+  private Entity createEntityWithOutAttributeLabels(String entityName, String attrName, String attrValue) {
+    Entity entity = Entity.newBuilder()
+        .setTenantId(TENANT_ID)
+        .setEntityType(EntityType.K8S_POD.name())
+        .setEntityName(entityName)
+        .putIdentifyingAttributes(
+            EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+            generateRandomUUIDAttrValue())
+        .putAttributes(
+            attrName,
+            AttributeValue.newBuilder()
+                .setValue(Value.newBuilder().setString(attrValue).build())
+                .build())
+        .build();
+    return entity;
+  }
+
   private AttributeValue generateRandomUUIDAttrValue() {
     return AttributeValue.newBuilder()
         .setValue(Value.newBuilder()
