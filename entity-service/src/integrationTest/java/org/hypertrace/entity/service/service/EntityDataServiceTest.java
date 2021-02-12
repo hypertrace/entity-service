@@ -977,7 +977,7 @@ public class EntityDataServiceTest {
         .build();
     entitiesList = entityDataServiceClient.query(TENANT_ID, query);
     assertTrue(entitiesList.size() == 2);
-    assertTrue(entitiesList.contains(createdEntity2) && entitiesList.contains(createdEntity2));
+    assertTrue(entitiesList.contains(createdEntity2) && entitiesList.contains(createdEntity5));
 
 
     // test EQ
