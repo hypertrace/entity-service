@@ -952,6 +952,32 @@ public class EntityDataServiceTest {
     assertTrue(entitiesList.size() == 2);
     assertTrue(entitiesList.contains(createdEntity3) && entitiesList.contains(createdEntity4));
 
+    // test NEQ
+    attributeFilter = AttributeFilter.newBuilder().setOperator(Operator.AND)
+        .addChildFilter(
+            AttributeFilter.newBuilder()
+                .setName("attributes.labels")
+                .setOperator(Operator.NEQ)
+                .setAttributeValue(AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("v2"))
+                )
+        )
+        .addChildFilter(
+            AttributeFilter.newBuilder()
+                .setName("attributes.labels")
+                .setOperator(Operator.NEQ)
+                .setAttributeValue(AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("b1"))
+                )
+        ).build();
+
+    query = Query.newBuilder().setEntityType(EntityType.K8S_POD.name()).setFilter(attributeFilter)
+        .build();
+    entitiesList = entityDataServiceClient.query(TENANT_ID, query);
+    assertTrue(entitiesList.size() == 1);
+    assertTrue(entitiesList.contains(createdEntity2));
+
+
     // test EQ
     attributeFilter = AttributeFilter.newBuilder()
         .setName("attributes.labels")
@@ -964,7 +990,9 @@ public class EntityDataServiceTest {
         .build();
     entitiesList = entityDataServiceClient.query(TENANT_ID, query);
     assertTrue(entitiesList.size() == 2);
-    assertTrue(entitiesList.contains(createdEntity1) && entitiesList.contains(createdEntity3));
+    assertTrue(entitiesList.contains(createdEntity1)
+        && entitiesList.contains(createdEntity3));
+
   }
 
   private Entity createEntityWithAttributeLabels(String entityName, List<String> labels) {

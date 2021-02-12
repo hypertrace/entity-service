@@ -128,6 +128,8 @@ public class DocStoreConverter {
     if (filter.hasAttributeValue()) {
       if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.EQ) {
         return transformToEqFilterWithValueListRhs(filter);
+      } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.NEQ) {
+        return transformToNeqFilterWithValueListRhs(filter);
       } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.IN) {
         return transformToOrFilterChainForStrArray(filter);
       } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName()) && filter.getOperator() == Operator.NOT_IN) {
@@ -210,6 +212,32 @@ public class DocStoreConverter {
   private static Filter transformToEqFilterWithValueListRhs(AttributeFilter attributeFilter) {
     String fieldName = attributeFilter.getName() + VALUE_LIST_VALUES_CONST;
     return createEqFilterForAttributeValue(fieldName, attributeFilter.getAttributeValue());
+  }
+
+  private static Filter transformToNeqFilterWithValueListRhs(AttributeFilter attributeFilter) {
+    String fieldName = attributeFilter.getName() + VALUE_LIST_VALUES_CONST;
+
+    Filter f = new Filter();
+    f.setFieldName("");
+    f.setOp(Op.AND);
+
+    Filter [] childFilters = new Filter[2];
+
+    Filter exists = new Filter();
+    exists.setFieldName(fieldName);
+    exists.setOp(Op.EXISTS);
+    exists.setValue(true);
+    childFilters[0] = exists;
+
+    Filter neq = new Filter();
+    neq.setFieldName(fieldName);
+    neq.setOp(Op.NEQ);
+    neq.setValue(prepareRhsValueForSpecialValueListCase(attributeFilter.getAttributeValue()));
+    childFilters[1] = neq;
+
+    // Set child filters to empty array
+    f.setChildFilters(childFilters);
+    return f;
   }
 
   private static Filter createEqFilterForAttributeValue(String fieldName, AttributeValue attributeValue) {
