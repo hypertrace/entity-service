@@ -71,9 +71,11 @@ class EntityNormalizerTest {
   }
 
   @Test
-  void throwsOnV1EntityTypeWithExtraIdAttr() {
+  void normalizesV1EntityTypeWithExtraIdAttr() {
     Map<String, AttributeValue> valueMap =
         buildValueMap(Map.of(V1_ID_ATTR.getName(), "foo-value", "other", "other-value"));
+    when(this.mockIdGenerator.generateEntityId(TENANT_ID, V1_ENTITY_TYPE, valueMap))
+        .thenReturn("generated-id");
     when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
         .thenReturn(List.of(V1_ID_ATTR));
     when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
@@ -84,13 +86,13 @@ class EntityNormalizerTest {
             .putAllIdentifyingAttributes(valueMap)
             .build();
 
-    Exception exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> this.normalizer.normalize(TENANT_ID, inputEntity));
-    assertEquals(
-        "Received and expected identifying attributes differ. Received: [other, required-attr] . Expected: [required-attr]",
-        exception.getMessage());
+    Entity expectedNormalized =
+        inputEntity.toBuilder()
+            .setEntityId("generated-id")
+            .setTenantId(TENANT_ID)
+            .putAllAttributes(valueMap)
+            .build();
+    assertEquals(expectedNormalized, this.normalizer.normalize(TENANT_ID, inputEntity));
   }
 
   @Test
