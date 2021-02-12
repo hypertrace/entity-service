@@ -194,16 +194,10 @@ public class DocStoreConverter {
     f.setFieldName("");
     f.setOp(Op.AND);
 
-    Filter exists = new Filter();
-    exists.setFieldName(fieldName);
-    exists.setOp(Op.EXISTS);
-    exists.setValue(true);
-
     List<Filter> filters = attributeFilter.getAttributeValue().getValueList().getValuesList().stream()
         .map(rhsAttributeValue -> createNeqFilterForAttributeValue(fieldName, rhsAttributeValue))
         .collect(Collectors.toList());
 
-    filters.add(exists);
     f.setChildFilters(filters.toArray(new Filter[]{}));
 
     return f;
@@ -216,27 +210,12 @@ public class DocStoreConverter {
 
   private static Filter transformToNeqFilterWithValueListRhs(AttributeFilter attributeFilter) {
     String fieldName = attributeFilter.getName() + VALUE_LIST_VALUES_CONST;
-
     Filter f = new Filter();
-    f.setFieldName("");
-    f.setOp(Op.AND);
-
-    Filter [] childFilters = new Filter[2];
-
-    Filter exists = new Filter();
-    exists.setFieldName(fieldName);
-    exists.setOp(Op.EXISTS);
-    exists.setValue(true);
-    childFilters[0] = exists;
-
-    Filter neq = new Filter();
-    neq.setFieldName(fieldName);
-    neq.setOp(Op.NEQ);
-    neq.setValue(prepareRhsValueForSpecialValueListCase(attributeFilter.getAttributeValue()));
-    childFilters[1] = neq;
-
+    f.setFieldName(fieldName);
+    f.setOp(Op.NEQ);
+    f.setValue(prepareRhsValueForSpecialValueListCase(attributeFilter.getAttributeValue()));
     // Set child filters to empty array
-    f.setChildFilters(childFilters);
+    f.setChildFilters(new Filter[]{});
     return f;
   }
 

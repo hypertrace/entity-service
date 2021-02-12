@@ -927,8 +927,10 @@ public class EntityDataServiceTest {
         .setEntityType(EntityType.K8S_POD.name())
         .setFilter(attributeFilter).build();
     List<Entity> entitiesList = entityDataServiceClient.query(TENANT_ID, query);
-    assertTrue(entitiesList.size() == 2);
-    assertTrue(entitiesList.contains(createdEntity1) && entitiesList.contains(createdEntity2));
+    assertTrue(entitiesList.size() == 3);
+    assertTrue(entitiesList.contains(createdEntity1)
+        && entitiesList.contains(createdEntity2)
+        && entitiesList.contains(createdEntity5));
 
     // test IN
     attributeFilter = AttributeFilter.newBuilder()
@@ -974,8 +976,8 @@ public class EntityDataServiceTest {
     query = Query.newBuilder().setEntityType(EntityType.K8S_POD.name()).setFilter(attributeFilter)
         .build();
     entitiesList = entityDataServiceClient.query(TENANT_ID, query);
-    assertTrue(entitiesList.size() == 1);
-    assertTrue(entitiesList.contains(createdEntity2));
+    assertTrue(entitiesList.size() == 2);
+    assertTrue(entitiesList.contains(createdEntity2) && entitiesList.contains(createdEntity2));
 
 
     // test EQ

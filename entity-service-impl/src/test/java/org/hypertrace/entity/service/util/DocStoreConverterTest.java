@@ -518,26 +518,16 @@ public class DocStoreConverterTest {
     Assertions.assertEquals(Op.AND, transformedFilter.getChildFilters()[2].getOp());
 
     Assertions.assertEquals(ATTRIBUTES_LABELS_FIELD_NAME + ".valueList.values",
-        transformedFilter.getChildFilters()[2].getChildFilters()[0].getChildFilters()[0].getFieldName());
-    Assertions.assertEquals(Op.EXISTS, transformedFilter.getChildFilters()[2].getChildFilters()[0].getChildFilters()[0].getOp());
-    Assertions.assertEquals(true, transformedFilter.getChildFilters()[2].getChildFilters()[0].getChildFilters()[0].getValue());
-
-    Assertions.assertEquals(ATTRIBUTES_LABELS_FIELD_NAME + ".valueList.values",
-        transformedFilter.getChildFilters()[2].getChildFilters()[0].getChildFilters()[1].getFieldName());
-    Assertions.assertEquals(Op.NEQ, transformedFilter.getChildFilters()[2].getChildFilters()[0].getChildFilters()[1].getOp());
+        transformedFilter.getChildFilters()[2].getChildFilters()[0].getFieldName());
+    Assertions.assertEquals(Op.NEQ, transformedFilter.getChildFilters()[2].getChildFilters()[0].getOp());
     Assertions.assertEquals(OBJECT_MAPPER.convertValue(OBJECT_MAPPER.readTree("{\"value\": {\"string\":\"l1\"}}"), Map.class),
-        transformedFilter.getChildFilters()[2].getChildFilters()[0].getChildFilters()[1].getValue());
+        transformedFilter.getChildFilters()[2].getChildFilters()[0].getValue());
 
     Assertions.assertEquals(ATTRIBUTES_LABELS_FIELD_NAME + ".valueList.values",
-        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[0].getFieldName());
-    Assertions.assertEquals(Op.EXISTS, transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[0].getOp());
-    Assertions.assertEquals(true, transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[0].getValue());
-
-    Assertions.assertEquals(ATTRIBUTES_LABELS_FIELD_NAME + ".valueList.values",
-        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[1].getFieldName());
-    Assertions.assertEquals(Op.NEQ, transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[1].getOp());
+        transformedFilter.getChildFilters()[2].getChildFilters()[1].getFieldName());
+    Assertions.assertEquals(Op.NEQ, transformedFilter.getChildFilters()[2].getChildFilters()[1].getOp());
     Assertions.assertEquals(OBJECT_MAPPER.convertValue(OBJECT_MAPPER.readTree("{\"value\": {\"string\":\"l2\"}}"), Map.class),
-        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[1].getValue());
+        transformedFilter.getChildFilters()[2].getChildFilters()[1].getValue());
   }
 
   @Test
@@ -688,12 +678,6 @@ public class DocStoreConverterTest {
     Assertions.assertEquals(Op.NEQ, transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[2].getOp());
     Assertions.assertEquals(OBJECT_MAPPER.convertValue(OBJECT_MAPPER.readTree("{\"value\": {\"string\":\"l3\"}}"), Map.class),
         transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[2].getValue());
-
-    Assertions.assertEquals(ATTRIBUTES_LABELS_FIELD_NAME + ".valueList.values",
-        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[3].getFieldName());
-    Assertions.assertEquals(Op.EXISTS, transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[3].getOp());
-    Assertions.assertEquals(true,
-        transformedFilter.getChildFilters()[2].getChildFilters()[1].getChildFilters()[3].getValue());
   }
 
   @Test
