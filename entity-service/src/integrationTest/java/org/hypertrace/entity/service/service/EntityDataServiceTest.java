@@ -54,10 +54,10 @@ import org.junit.jupiter.api.Test;
  */
 public class EntityDataServiceTest {
 
-  private static EntityDataServiceClient entityDataServiceClient;
   private static final String TENANT_ID =
       "__testTenant__" + EntityDataServiceTest.class.getSimpleName();
   private static final String TEST_ENTITY_TYPE_V2 = "TEST_ENTITY";
+  private static EntityDataServiceClient entityDataServiceClient;
 
   @BeforeAll
   public static void setUp() {
@@ -574,7 +574,7 @@ public class EntityDataServiceTest {
             Query.newBuilder().setFilter(notExistsFilter).build());
 
     assertTrue(entities.size() > 0);
-    
+
     // test with AND operator
     AttributeFilter eqFilter = AttributeFilter.newBuilder()
             .setName(EntityConstants.attributeMapPathFor("test" + "-" + stringRandomizer2))
@@ -653,7 +653,8 @@ public class EntityDataServiceTest {
     }
 
     // Try getAndBulkUpsert, verify that the returned entities were in previous state.
-    Iterator<Entity> iterator = entityDataServiceClient.getAndBulkUpsert(TENANT_ID, externalIdToEntity.values());
+    Iterator<Entity> iterator = entityDataServiceClient
+        .getAndBulkUpsert(TENANT_ID, externalIdToEntity.values());
     while (iterator.hasNext()) {
       Entity entity = iterator.next();
       assertNotNull(entityMap.get(entity.getEntityId()));
@@ -875,7 +876,7 @@ public class EntityDataServiceTest {
   }
 
   @Test
-  public void testNotInFilterForMatchingLabelsQuery() {
+  public void testDifferentFilterForMatchingLabelsQuery() {
     Entity entity = createEntityWithAttributeLabels("Some Service 1",
         List.of("v1", "v2", "v3"));
     Entity createdEntity1 = entityDataServiceClient.upsert(entity);
@@ -906,6 +907,7 @@ public class EntityDataServiceTest {
     assertNotNull(createdEntity5);
     assertNotNull(createdEntity5.getEntityId().trim());
 
+    // test NOT_IN
     AttributeFilter attributeFilter = AttributeFilter.newBuilder()
         .setName("attributes.labels")
         .setOperator(Operator.NOT_IN)
@@ -927,12 +929,48 @@ public class EntityDataServiceTest {
     List<Entity> entitiesList = entityDataServiceClient.query(TENANT_ID, query);
     assertTrue(entitiesList.size() == 2);
     assertTrue(entitiesList.contains(createdEntity1) && entitiesList.contains(createdEntity2));
+
+    // test IN
+    attributeFilter = AttributeFilter.newBuilder()
+        .setName("attributes.labels")
+        .setOperator(Operator.IN)
+        .setAttributeValue(AttributeValue.newBuilder()
+            .setValueList(
+                AttributeValueList.newBuilder()
+                    .addValues(
+                        AttributeValue.newBuilder().setValue(Value.newBuilder().setString("b1"))
+                    )
+                    .addValues(
+                        AttributeValue.newBuilder().setValue(Value.newBuilder().setString("v4"))
+                    )
+            )
+        ).build();
+
+    query = Query.newBuilder().setEntityType(EntityType.K8S_POD.name()).setFilter(attributeFilter)
+        .build();
+    entitiesList = entityDataServiceClient.query(TENANT_ID, query);
+    assertTrue(entitiesList.size() == 2);
+    assertTrue(entitiesList.contains(createdEntity3) && entitiesList.contains(createdEntity4));
+
+    // test EQ
+    attributeFilter = AttributeFilter.newBuilder()
+        .setName("attributes.labels")
+        .setOperator(Operator.EQ)
+        .setAttributeValue(AttributeValue.newBuilder()
+            .setValue(Value.newBuilder().setString("v2")))
+        .build();
+
+    query = Query.newBuilder().setEntityType(EntityType.K8S_POD.name()).setFilter(attributeFilter)
+        .build();
+    entitiesList = entityDataServiceClient.query(TENANT_ID, query);
+    assertTrue(entitiesList.size() == 2);
+    assertTrue(entitiesList.contains(createdEntity1) && entitiesList.contains(createdEntity3));
   }
 
   private Entity createEntityWithAttributeLabels(String entityName, List<String> labels) {
     AttributeValueList.Builder listBuilder = AttributeValueList.newBuilder();
     labels.forEach(label -> listBuilder.addValues(
-          AttributeValue.newBuilder().setValue(Value.newBuilder().setString(label)))
+        AttributeValue.newBuilder().setValue(Value.newBuilder().setString(label)))
     );
     AttributeValue value = AttributeValue.newBuilder().setValueList(listBuilder.build()).build();
 
@@ -950,7 +988,8 @@ public class EntityDataServiceTest {
     return entity;
   }
 
-  private Entity createEntityWithOutAttributeLabels(String entityName, String attrName, String attrValue) {
+  private Entity createEntityWithOutAttributeLabels(String entityName, String attrName,
+      String attrValue) {
     Entity entity = Entity.newBuilder()
         .setTenantId(TENANT_ID)
         .setEntityType(EntityType.K8S_POD.name())
