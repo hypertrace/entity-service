@@ -22,4 +22,6 @@ test-output
 .idea/codeStyles/
 .idea/.name
 .java-version
+helm/Chart.lock
+helm/charts
 # Local config to handle using Java 8 vs java 11.
