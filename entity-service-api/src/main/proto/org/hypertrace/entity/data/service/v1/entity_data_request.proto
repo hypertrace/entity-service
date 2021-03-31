@@ -8,6 +8,7 @@ import "org/hypertrace/entity/data/service/v1/enriched_entity.proto";
 
 message ByIdRequest {
   string entity_id = 2;
+  string entity_type = 3;
 }
 
 message ByTypeAndIdentifyingAttributes {

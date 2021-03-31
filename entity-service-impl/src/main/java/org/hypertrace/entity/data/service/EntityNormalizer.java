@@ -1,7 +1,12 @@
 package org.hypertrace.entity.data.service;
 
+import static java.util.function.Predicate.not;
+
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.hypertrace.core.documentstore.Key;
+import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl.ErrorMessages;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.service.util.StringUtils;
@@ -40,6 +45,22 @@ class EntityNormalizer {
     return this.normalizeEntityWithProvidedId(tenantId, receivedEntity);
   }
 
+  Key getEntityDocKey(String tenantId, Entity entity) {
+    String entityId =
+        Optional.of(entity.getEntityId())
+            .filter(not(String::isEmpty))
+            .orElseGet(() -> this.normalize(tenantId, entity).getEntityId());
+
+    return this.getEntityDocKey(tenantId, entity.getEntityType(), entityId);
+  }
+
+  Key getEntityDocKey(String tenantId, String entityType, String entityId) {
+    if (!entityType.isEmpty() && this.isV2Type(entityType)) {
+      return new EntityV2TypeDocKey(tenantId, entityType, entityId);
+    }
+    return new SingleValueKey(tenantId, entityId);
+  }
+
   private Entity normalizeEntityByIdentifyingAttributes(String tenantId, Entity receivedEntity) {
     // Validate if all identifying attributes are present in the incoming entity
     this.verifyMatchingIdentifyingAttributes(tenantId, receivedEntity);
@@ -58,6 +79,10 @@ class EntityNormalizer {
   }
 
   private Entity normalizeEntityWithProvidedId(String tenantId, Entity receivedEntity) {
+    if (StringUtils.isEmpty(receivedEntity.getEntityId())) {
+      throw new IllegalArgumentException(ErrorMessages.ENTITY_ID_EMPTY);
+    }
+
     return receivedEntity.toBuilder()
         .putAllAttributes(receivedEntity.getIdentifyingAttributesMap())
         .setTenantId(tenantId)
@@ -65,14 +90,14 @@ class EntityNormalizer {
   }
 
   private boolean requiresIdentifyingAttributes(Entity entity) {
+    return !this.isV2Type(entity.getEntityType());
+  }
+
+  private boolean isV2Type(String entityType) {
     return this.entityTypeV2Client
-        .get(entity.getEntityType())
-        .map(
-            unused ->
-                entity
-                    .getEntityId()
-                    .isEmpty()) // If entity type is present, we require only if entity id is empty
-        .onErrorReturnItem(true)
+        .get(entityType)
+        .map(unused -> true)
+        .onErrorReturnItem(false)
         .blockingGet();
   }
 
