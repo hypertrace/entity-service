@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import io.grpc.Channel;
 import io.grpc.ClientInterceptors;
@@ -179,27 +179,17 @@ public class EntityDataServiceTest {
 
   @Test
   public void testCreateV1EntityTypeWithoutIdentifyingAttributes() {
-    boolean upsertFailed = false;
-    Entity entity = Entity.newBuilder()
-        .setTenantId(TENANT_ID)
-        .setEntityType(EntityType.K8S_POD.name())
-        .setEntityName("Some Service")
-        .build();
-    try {
-      entityDataServiceClient.upsert(entity);
-    } catch (RuntimeException re) {
-      Throwable throwable = re.getCause();
-      assertTrue(throwable instanceof StatusRuntimeException);
-      StatusRuntimeException sre = (StatusRuntimeException) throwable;
-      upsertFailed = true;
-      assertEquals(Code.INTERNAL, sre.getStatus().getCode());
-      assertNotNull(sre.getStatus().getDescription());
-      assertTrue(sre.getStatus().getDescription().contains(
-          "expected identifying attributes"));
-    }
-    if (!upsertFailed) {
-      fail("Expecting upsert v1 typed entity to fail as identifying attributes are not set");
-    }
+    Entity entity =
+        Entity.newBuilder()
+              .setTenantId(TENANT_ID)
+              .setEntityType(EntityType.K8S_POD.name())
+              .setEntityName("Some Service")
+              .build();
+
+    StatusRuntimeException exception =
+        assertThrows(StatusRuntimeException.class, () -> entityDataServiceClient.upsert(entity));
+    assertEquals(Code.INTERNAL, exception.getStatus().getCode());
+    assertTrue(exception.getStatus().getDescription().contains("expected identifying attributes"));
   }
 
   @Test
