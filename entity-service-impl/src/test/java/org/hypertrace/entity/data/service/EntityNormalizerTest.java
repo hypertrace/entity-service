@@ -193,6 +193,18 @@ class EntityNormalizerTest {
                 .build()));
   }
 
+  @Test
+  void returnsSimpleKeyIfNoEntityTypeProvided() {
+    assertEquals(
+        new SingleValueKey(TENANT_ID, "id-in"),
+        this.normalizer.getEntityDocKey(TENANT_ID, "", "id-in"));
+
+    assertEquals(
+        new SingleValueKey(TENANT_ID, "id-in"),
+        this.normalizer.getEntityDocKey(
+            TENANT_ID, Entity.newBuilder().setEntityId("id-in").build()));
+  }
+
   private Map<String, AttributeValue> buildValueMap(Map<String, String> stringMap) {
     return stringMap.entrySet().stream()
         .map(
