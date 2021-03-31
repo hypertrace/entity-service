@@ -1,11 +1,12 @@
 package org.hypertrace.entity.data.service.client;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.google.rpc.Code;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.Status;
@@ -20,21 +21,17 @@ import java.util.Map;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/**
- * Unit tests for {@link EntityDataServiceClient}
- */
+/** Unit tests for {@link EntityDataServiceClient} */
 @ExtendWith(MockitoExtension.class)
 public class EntityDataServiceClientRetriesTest {
 
-  @Mock
-  EntityDataServiceGrpc.EntityDataServiceImplBase mockDataService;
+  @Mock EntityDataServiceGrpc.EntityDataServiceImplBase mockDataService;
 
   EntityDataServiceClient edsClient;
   Server grpcServer;
@@ -80,42 +77,38 @@ public class EntityDataServiceClientRetriesTest {
   @Test
   public void testRetryForUnavailable() {
     doAnswer(
-        invocation -> {
-          StreamObserver<Entity> observer = invocation.getArgument(1, StreamObserver.class);
-          observer.onError(new RuntimeException(new StatusRuntimeException(Status.UNAVAILABLE)));
-          return null;
-        })
+            invocation -> {
+              StreamObserver<Entity> observer = invocation.getArgument(1, StreamObserver.class);
+              observer.onError(
+                  new RuntimeException(new StatusRuntimeException(Status.UNAVAILABLE)));
+              return null;
+            })
         .when(this.mockDataService)
         .getById(any(), any());
 
-    try {
-      edsClient.getById("__default", "id1");
-    } catch (RuntimeException e) {
-      e.printStackTrace();
-      Assertions.assertTrue(e.getCause() instanceof StatusRuntimeException);
-      Assertions.assertEquals(Code.UNAVAILABLE.name(), ((StatusRuntimeException) e.getCause()).getStatus().getCode().name());
-    }
+    StatusRuntimeException exception =
+        assertThrows(StatusRuntimeException.class, () -> edsClient.getById("__default", "id1"));
+
+    assertEquals(Status.UNAVAILABLE, exception.getStatus());
+
     verify(this.mockDataService, times(3)).getById(any(), any());
   }
 
   @Test
   public void testRetryForInternalError() {
     doAnswer(
-        invocation -> {
-          StreamObserver<Entity> observer = invocation.getArgument(1, StreamObserver.class);
-          observer.onError(new RuntimeException(new StatusRuntimeException(Status.INTERNAL)));
-          return null;
-        })
+            invocation -> {
+              StreamObserver<Entity> observer = invocation.getArgument(1, StreamObserver.class);
+              observer.onError(new RuntimeException(new StatusRuntimeException(Status.INTERNAL)));
+              return null;
+            })
         .when(this.mockDataService)
         .getById(any(), any());
 
-    try {
-      edsClient.getById("__default", "id1");
-    } catch (RuntimeException e) {
-      e.printStackTrace();
-      Assertions.assertTrue(e.getCause() instanceof StatusRuntimeException);
-      Assertions.assertEquals(Code.INTERNAL.name(), ((StatusRuntimeException) e.getCause()).getStatus().getCode().name());
-    }
+    StatusRuntimeException exception =
+        assertThrows(StatusRuntimeException.class, () -> edsClient.getById("__default", "id1"));
+
+    assertEquals(Status.INTERNAL, exception.getStatus());
     verify(this.mockDataService, times(3)).getById(any(), any());
   }
 }

@@ -56,25 +56,31 @@ tasks.integrationTest {
 dependencies {
   implementation(project(":entity-service-impl"))
 
-  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.3.1")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.3.1")
-  implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.21")
+  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.4.0")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.4.0")
+  implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.22")
   implementation("org.hypertrace.core.documentstore:document-store:0.5.4")
 
-  runtimeOnly("io.grpc:grpc-netty:1.33.1")
-  runtimeOnly("io.netty:netty-codec-http2:4.1.59.Final")
-  runtimeOnly("io.netty:netty-handler-proxy:4.1.59.Final")
+  runtimeOnly("io.grpc:grpc-netty:1.36.1")
+  constraints {
+    runtimeOnly("io.netty:netty-codec-http2:4.1.61.Final") {
+      because("https://snyk.io/vuln/SNYK-JAVA-IONETTY-1089809")
+    }
+    runtimeOnly("io.netty:netty-handler-proxy:4.1.61.Final") {
+      because("https://snyk.io/vuln/SNYK-JAVA-IONETTY-1089809")
+    }
+  }
 
   // Logging
   implementation("org.slf4j:slf4j-api:1.7.30")
-  runtimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:2.13.3")
+  runtimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:2.14.1")
 
   // Config
-  implementation("com.typesafe:config:1.4.0")
+  implementation("com.typesafe:config:1.4.1")
 
   integrationTestImplementation(project(":entity-service-client"))
-  integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
-  integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.21")
+  integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
+  integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.22")
 }
 
 application {
