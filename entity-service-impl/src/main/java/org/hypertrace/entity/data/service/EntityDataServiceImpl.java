@@ -1,5 +1,6 @@
 package org.hypertrace.entity.data.service;
 
+import static java.util.Objects.isNull;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENRICHED_ENTITIES_COLLECTION;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENTITY_RELATIONSHIPS_COLLECTION;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
@@ -21,13 +22,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.Key;
-import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
@@ -36,6 +37,7 @@ import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entities;
 import org.hypertrace.entity.data.service.v1.Entity;
+import org.hypertrace.entity.data.service.v1.Entity.Builder;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc.EntityDataServiceImplBase;
 import org.hypertrace.entity.data.service.v1.EntityRelationship;
 import org.hypertrace.entity.data.service.v1.EntityRelationships;
@@ -61,7 +63,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private final Collection entitiesCollection;
   private final Collection relationshipsCollection;
   private final Collection enrichedEntitiesCollection;
-  private final EntityNormalizer upsertNormalizer;
+  private final EntityNormalizer entityNormalizer;
   private final EntityIdGenerator entityIdGenerator;
 
   public EntityDataServiceImpl(Datastore datastore, Channel entityTypeChannel) {
@@ -72,7 +74,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     this.entityIdGenerator = new EntityIdGenerator();
     EntityTypeClient entityTypeClient = EntityTypeClient.builder(entityTypeChannel).build();
     IdentifyingAttributeCache identifyingAttributeCache = new IdentifyingAttributeCache(datastore);
-    this.upsertNormalizer =
+    this.entityNormalizer =
         new EntityNormalizer(entityTypeClient, this.entityIdGenerator, identifyingAttributeCache);
   }
 
@@ -94,10 +96,11 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
 
     try {
-      Entity normalizedEntity = this.upsertNormalizer.normalize(tenantId, request);
+      Entity normalizedEntity = this.entityNormalizer.normalize(tenantId, request);
       upsertEntity(
           tenantId,
           normalizedEntity.getEntityId(),
+          normalizedEntity.getEntityType(),
           normalizedEntity,
           Entity.newBuilder(),
           entitiesCollection,
@@ -117,11 +120,13 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
 
     try {
-      Map<String, Entity> entities =
+      Map<Key, Entity> entities =
           request.getEntityList().stream()
-              .map(entity -> this.upsertNormalizer.normalize(tenantId, entity))
-              .collect(Collectors.toUnmodifiableMap(Entity::getEntityId, Function.identity()));
-      upsertEntities(tenantId, entities, entitiesCollection, responseObserver);
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      entity -> this.entityNormalizer.getEntityDocKey(tenantId, entity),
+                      entity -> this.entityNormalizer.normalize(tenantId, entity)));
+      upsertEntities(entities, entitiesCollection, responseObserver);
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -137,15 +142,12 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
 
     try {
-      Map<String, Entity> entityMap =
-          request.getEntityList().stream()
-              .map(entity -> this.upsertNormalizer.normalize(tenantId, entity))
-              .collect(Collectors.toUnmodifiableMap(Entity::getEntityId, Function.identity()));
 
       Map<Key, Document> documentMap = new HashMap<>();
-      for (Map.Entry<String, Entity> entry : entityMap.entrySet()) {
-        Document doc = convertEntityToDocument(entry.getValue());
-        SingleValueKey key = new SingleValueKey(tenantId, entry.getKey());
+      for (Entity entity : request.getEntityList()) {
+        Entity normalizedEntity = this.entityNormalizer.normalize(tenantId, entity);
+        Document doc = convertEntityToDocument(normalizedEntity);
+        Key key = this.entityNormalizer.getEntityDocKey(tenantId, normalizedEntity);
         documentMap.put(key, doc);
       }
 
@@ -187,6 +189,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     searchByIdAndStreamSingleResponse(
         tenantId.get(),
         request.getEntityId(),
+        request.getEntityType(),
         entitiesCollection,
         Entity.newBuilder(),
         responseObserver);
@@ -218,7 +221,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         this.entityIdGenerator.generateEntityId(
             tenantId, request.getEntityType(), request.getIdentifyingAttributesMap());
     searchByIdAndStreamSingleResponse(
-        tenantId, entityId, entitiesCollection, Entity.newBuilder(), responseObserver);
+        tenantId, entityId, request.getEntityType(), entitiesCollection, Entity.newBuilder(), responseObserver);
   }
 
   /**
@@ -241,8 +244,9 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    SingleValueKey key = new SingleValueKey(tenantId.get(), request.getEntityId());
-
+    Key key =
+        this.entityNormalizer.getEntityDocKey(
+            tenantId.get(), request.getEntityType(), request.getEntityId());
     if (entitiesCollection.delete(key)) {
       responseObserver.onNext(Empty.newBuilder().build());
       responseObserver.onCompleted();
@@ -266,12 +270,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    Streams.stream(entitiesCollection.search(DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList())))
-        .flatMap(
-            document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
-        .map(Entity::toBuilder)
-        .map(builder -> builder.setTenantId(tenantId.get()))
-        .map(Entity.Builder::build)
+    this.doQuery(DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList()))
         .forEach(responseObserver::onNext);
 
     responseObserver.onCompleted();
@@ -393,6 +392,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     upsertEntity(
         tenantId.get(),
         request.getEntityId(),
+        request.getEntityType(),
         request,
         EnrichedEntity.newBuilder(),
         enrichedEntitiesCollection,
@@ -402,8 +402,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   @Override
   public void upsertEnrichedEntities(
       EnrichedEntities request, StreamObserver<Empty> responseObserver) {
-    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
-    if (tenantId.isEmpty()) {
+    String tenantId = RequestContext.CURRENT.get().getTenantId().orElse(null);
+    if (isNull(tenantId)) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
@@ -426,11 +426,14 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       }
     }
 
-    Map<String, EnrichedEntity> entityMap =
+    Map<Key, EnrichedEntity> entities =
         request.getEntitiesList().stream()
-            .collect(Collectors.toMap(EnrichedEntity::getEntityId, Function.identity()));
+               .collect(
+                   Collectors.toUnmodifiableMap(
+                       entity -> this.entityNormalizer.getEntityDocKey(tenantId, entity.getEntityType(), entity.getEntityId()),
+                       Function.identity()));
 
-    upsertEntities(tenantId.get(), entityMap, enrichedEntitiesCollection, responseObserver);
+    upsertEntities(entities, enrichedEntitiesCollection, responseObserver);
   }
 
   @Override
@@ -452,6 +455,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     searchByIdAndStreamSingleResponse(
         tenantId.get(),
         request.getEntityId(),
+        request.getEntityType(),
         enrichedEntitiesCollection,
         EnrichedEntity.newBuilder(),
         responseObserver);
@@ -479,6 +483,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     searchByIdAndStreamSingleResponse(
         tenantId,
         entityId,
+        request.getEntityType(),
         enrichedEntitiesCollection,
         EnrichedEntity.newBuilder(),
         responseObserver);
@@ -512,30 +517,29 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private <T extends GeneratedMessageV3> void upsertEntity(
       String tenantId,
       String entityId,
+      String entityType,
       T entity,
       Message.Builder builder,
       Collection collection,
       StreamObserver<T> responseObserver) {
     try {
       Document document = convertEntityToDocument(entity);
-      collection.upsertAndReturn(new SingleValueKey(tenantId, entityId), document);
-      searchByIdAndStreamSingleResponse(tenantId, entityId, collection, builder, responseObserver);
+      collection.upsertAndReturn(
+          this.entityNormalizer.getEntityDocKey(tenantId, entityType, entityId), document);
+      searchByIdAndStreamSingleResponse(tenantId, entityId, entityType, collection, builder, responseObserver);
     } catch (IOException e) {
       responseObserver.onError(new RuntimeException("Could not create entity.", e));
     }
   }
 
   private <T extends GeneratedMessageV3> void upsertEntities(
-      String tenantId,
-      Map<String, T> map,
+      Map<Key, T> map,
       Collection collection,
       StreamObserver<Empty> responseObserver) {
     try {
       Map<Key, Document> entities = new HashMap<>();
-      for (Map.Entry<String, T> entry : map.entrySet()) {
-        Document doc = convertEntityToDocument(entry.getValue());
-        SingleValueKey key = new SingleValueKey(tenantId, entry.getKey());
-        entities.put(key, doc);
+      for (Map.Entry<Key, T> entry : map.entrySet()) {
+        entities.put(entry.getKey(), convertEntityToDocument(entry.getValue()));
       }
 
       boolean status = collection.bulkUpsert(entities);
@@ -576,11 +580,12 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private <T extends Message> void searchByIdAndStreamSingleResponse(
       String tenantId,
       String entityId,
+      String entityType,
       Collection collection,
       Message.Builder builder,
       StreamObserver<T> responseObserver) {
     org.hypertrace.core.documentstore.Query query = new org.hypertrace.core.documentstore.Query();
-    String docId = new SingleValueKey(tenantId, entityId).toString();
+    String docId = this.entityNormalizer.getEntityDocKey(tenantId, entityType, entityId).toString();
     query.setFilter(new Filter(Filter.Op.EQ, EntityServiceConstants.ID, docId));
 
     Iterator<Document> result = collection.search(query);
@@ -619,6 +624,18 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       responseObserver.onNext((T) builder.build());
       responseObserver.onCompleted();
     }
+  }
+
+  private Stream<Entity> doQuery(org.hypertrace.core.documentstore.Query query) {
+    return Streams.stream(entitiesCollection.search(query))
+        .map(this::entityFromDocument)
+        .flatMap(Optional::stream)
+        .map(Entity::toBuilder)
+        .map(Entity.Builder::build);
+  }
+
+  private Optional<Entity> entityFromDocument(Document document) {
+    return PARSER.parseOrLog(document, Entity.newBuilder());
   }
 
   private void searchByQueryAndStreamRelationships(

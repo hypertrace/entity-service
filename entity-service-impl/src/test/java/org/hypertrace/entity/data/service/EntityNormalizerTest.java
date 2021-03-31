@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
+import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl.ErrorMessages;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
@@ -103,9 +104,9 @@ class EntityNormalizerTest {
 
     Exception exception =
         assertThrows(
-            RuntimeException.class, () -> this.normalizer.normalize(TENANT_ID, inputEntity));
-    assertEquals(
-        exception.getMessage(), "No identifying attributes defined for EntityType: v2-entity");
+            IllegalArgumentException.class,
+            () -> this.normalizer.normalize(TENANT_ID, inputEntity));
+    assertEquals("Entity ID is empty", exception.getMessage());
   }
 
   @Test
@@ -141,6 +142,55 @@ class EntityNormalizerTest {
 
     Entity expectedNormalized = inputEntity.toBuilder().setTenantId(TENANT_ID).build();
     assertEquals(expectedNormalized, this.normalizer.normalize(TENANT_ID, inputEntity));
+  }
+
+  @Test
+  void returnsV2TypeKeyForV2Entity() {
+    when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
+        .thenReturn(Single.just(EntityType.getDefaultInstance()));
+
+    assertEquals(
+        new EntityV2TypeDocKey(TENANT_ID, V2_ENTITY_TYPE, "id-in"),
+        this.normalizer.getEntityDocKey(TENANT_ID, V2_ENTITY_TYPE, "id-in"));
+    assertEquals(
+        new EntityV2TypeDocKey(TENANT_ID, V2_ENTITY_TYPE, "id-in"),
+        this.normalizer.getEntityDocKey(
+            TENANT_ID,
+            Entity.newBuilder().setEntityType(V2_ENTITY_TYPE).setEntityId("id-in").build()));
+  }
+
+  @Test
+  void returnsSimpleKeyForV1Entity() {
+    when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
+        .thenReturn(Single.error(new RuntimeException()));
+
+    // Getting a key for a v1 entity when provided with direct id
+    assertEquals(
+        new SingleValueKey(TENANT_ID, "id-in"),
+        this.normalizer.getEntityDocKey(TENANT_ID, V1_ENTITY_TYPE, "id-in"));
+
+    // Getting a key for a v1 entity whose ID is already set
+    assertEquals(
+        new SingleValueKey(TENANT_ID, "id-in"),
+        this.normalizer.getEntityDocKey(
+            TENANT_ID,
+            Entity.newBuilder().setEntityType(V1_ENTITY_TYPE).setEntityId("id-in").build()));
+
+    // Getting a key for a v1 entity whose ID is not yet generated
+    Map<String, AttributeValue> valueMap = buildValueMap(Map.of(V1_ID_ATTR.getName(), "foo-value"));
+    when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
+        .thenReturn(List.of(V1_ID_ATTR));
+    when(this.mockIdGenerator.generateEntityId(TENANT_ID, V1_ENTITY_TYPE, valueMap))
+        .thenReturn("generated-id");
+
+    assertEquals(
+        new SingleValueKey(TENANT_ID, "generated-id"),
+        this.normalizer.getEntityDocKey(
+            TENANT_ID,
+            Entity.newBuilder()
+                .setEntityType(V1_ENTITY_TYPE)
+                .putAllIdentifyingAttributes(valueMap)
+                .build()));
   }
 
   private Map<String, AttributeValue> buildValueMap(Map<String, String> stringMap) {
