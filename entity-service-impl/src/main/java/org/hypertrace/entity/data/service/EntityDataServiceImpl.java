@@ -37,7 +37,6 @@ import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entities;
 import org.hypertrace.entity.data.service.v1.Entity;
-import org.hypertrace.entity.data.service.v1.Entity.Builder;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc.EntityDataServiceImplBase;
 import org.hypertrace.entity.data.service.v1.EntityRelationship;
 import org.hypertrace.entity.data.service.v1.EntityRelationships;
@@ -122,10 +121,11 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     try {
       Map<Key, Entity> entities =
           request.getEntityList().stream()
+              .map(entity -> this.entityNormalizer.normalize(tenantId, entity))
               .collect(
                   Collectors.toUnmodifiableMap(
                       entity -> this.entityNormalizer.getEntityDocKey(tenantId, entity),
-                      entity -> this.entityNormalizer.normalize(tenantId, entity)));
+                      Function.identity()));
       upsertEntities(entities, entitiesCollection, responseObserver);
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
@@ -221,7 +221,12 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         this.entityIdGenerator.generateEntityId(
             tenantId, request.getEntityType(), request.getIdentifyingAttributesMap());
     searchByIdAndStreamSingleResponse(
-        tenantId, entityId, request.getEntityType(), entitiesCollection, Entity.newBuilder(), responseObserver);
+        tenantId,
+        entityId,
+        request.getEntityType(),
+        entitiesCollection,
+        Entity.newBuilder(),
+        responseObserver);
   }
 
   /**
@@ -428,10 +433,12 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
 
     Map<Key, EnrichedEntity> entities =
         request.getEntitiesList().stream()
-               .collect(
-                   Collectors.toUnmodifiableMap(
-                       entity -> this.entityNormalizer.getEntityDocKey(tenantId, entity.getEntityType(), entity.getEntityId()),
-                       Function.identity()));
+            .collect(
+                Collectors.toUnmodifiableMap(
+                    entity ->
+                        this.entityNormalizer.getEntityDocKey(
+                            tenantId, entity.getEntityType(), entity.getEntityId()),
+                    Function.identity()));
 
     upsertEntities(entities, enrichedEntitiesCollection, responseObserver);
   }
@@ -526,16 +533,15 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       Document document = convertEntityToDocument(entity);
       collection.upsertAndReturn(
           this.entityNormalizer.getEntityDocKey(tenantId, entityType, entityId), document);
-      searchByIdAndStreamSingleResponse(tenantId, entityId, entityType, collection, builder, responseObserver);
+      searchByIdAndStreamSingleResponse(
+          tenantId, entityId, entityType, collection, builder, responseObserver);
     } catch (IOException e) {
       responseObserver.onError(new RuntimeException("Could not create entity.", e));
     }
   }
 
   private <T extends GeneratedMessageV3> void upsertEntities(
-      Map<Key, T> map,
-      Collection collection,
-      StreamObserver<Empty> responseObserver) {
+      Map<Key, T> map, Collection collection, StreamObserver<Empty> responseObserver) {
     try {
       Map<Key, Document> entities = new HashMap<>();
       for (Map.Entry<Key, T> entry : map.entrySet()) {
@@ -620,7 +626,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     } else {
       // When there is no result, we should return the default instance, which is a way
       // of saying it's null.
-      //TODO : Not convinced with the default instance
+      // TODO : Not convinced with the default instance
       responseObserver.onNext((T) builder.build());
       responseObserver.onCompleted();
     }
