@@ -8,8 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.common.collect.ImmutableMap;
 import io.grpc.Channel;
-import io.grpc.ClientInterceptors;
+import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Status.Code;
 import io.grpc.StatusRuntimeException;
@@ -18,7 +19,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executor;
+import org.hypertrace.core.grpcutils.client.RequestContextAsCreds;
+import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.core.serviceframework.IntegrationTestServerUtil;
 import org.hypertrace.entity.constants.v1.BackendAttribute;
 import org.hypertrace.entity.constants.v1.CommonAttribute;
@@ -27,10 +32,17 @@ import org.hypertrace.entity.data.service.v1.AttributeFilter;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.AttributeValueMap;
+import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
 import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entity;
+import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc;
+import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc.EntityDataServiceBlockingStub;
+import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest;
+import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest.UpsertCondition;
+import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest.UpsertCondition.Predicate;
+import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest.UpsertCondition.Predicate.PredicateOperator;
 import org.hypertrace.entity.data.service.v1.Operator;
 import org.hypertrace.entity.data.service.v1.OrderByExpression;
 import org.hypertrace.entity.data.service.v1.Query;
@@ -58,27 +70,31 @@ public class EntityDataServiceTest {
       "__testTenant__" + EntityDataServiceTest.class.getSimpleName();
   private static final String TEST_ENTITY_TYPE_V2 = "TEST_ENTITY";
   private static EntityDataServiceClient entityDataServiceClient;
+  private static ManagedChannel channel;
 
   @BeforeAll
   public static void setUp() {
-    IntegrationTestServerUtil.startServices(new String[]{"entity-service"});
+    IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
     EntityServiceClientConfig esConfig = EntityServiceTestConfig.getClientConfig();
-    Channel channel = ClientInterceptors.intercept(ManagedChannelBuilder.forAddress(
-        esConfig.getHost(), esConfig.getPort()).usePlaintext().build());
+    channel =
+        ManagedChannelBuilder.forAddress(esConfig.getHost(), esConfig.getPort())
+            .usePlaintext()
+            .build();
     entityDataServiceClient = new EntityDataServiceClient(channel);
-    setupEntityTypes(channel);
+    setupEntityTypes(channel, TENANT_ID);
   }
 
   @AfterAll
   public static void teardown() {
+    channel.shutdown();
     IntegrationTestServerUtil.shutdownServices();
   }
 
-  private static void setupEntityTypes(Channel channel) {
+  private static void setupEntityTypes(Channel channel, String tenant) {
     org.hypertrace.entity.type.service.client.EntityTypeServiceClient entityTypeServiceV1Client = new org.hypertrace.entity.type.service.client.EntityTypeServiceClient(channel);
     EntityTypeServiceClient entityTypeServiceV2Client = new EntityTypeServiceClient(channel);
     entityTypeServiceV1Client.upsertEntityType(
-        TENANT_ID,
+        tenant,
         org.hypertrace.entity.type.service.v1.EntityType.newBuilder()
             .setName(EntityType.K8S_POD.name())
             .addAttributeType(
@@ -89,7 +105,7 @@ public class EntityDataServiceTest {
                     .build())
             .build());
     entityTypeServiceV1Client.upsertEntityType(
-        TENANT_ID,
+        tenant,
         org.hypertrace.entity.type.service.v1.EntityType.newBuilder()
             .setName(EntityType.BACKEND.name())
             .addAttributeType(
@@ -113,7 +129,7 @@ public class EntityDataServiceTest {
             .build());
 
     entityTypeServiceV2Client.upsertEntityType(
-        TENANT_ID, org.hypertrace.entity.type.service.v2.EntityType.newBuilder()
+        tenant, org.hypertrace.entity.type.service.v2.EntityType.newBuilder()
                                                                    .setName(TEST_ENTITY_TYPE_V2)
                                                                    .setAttributeScope(TEST_ENTITY_TYPE_V2)
                                                                    .setIdAttributeKey("id")
@@ -917,10 +933,7 @@ public class EntityDataServiceTest {
         .setEntityType(EntityType.K8S_POD.name())
         .setFilter(attributeFilter).build();
     List<Entity> entitiesList = entityDataServiceClient.query(TENANT_ID, query);
-    assertTrue(entitiesList.size() == 3);
-    assertTrue(entitiesList.contains(createdEntity1)
-        && entitiesList.contains(createdEntity2)
-        && entitiesList.contains(createdEntity5));
+    assertEquals(Set.of(createdEntity1, createdEntity2, createdEntity5), Set.copyOf(entitiesList));
 
     // test IN
     attributeFilter = AttributeFilter.newBuilder()
@@ -985,6 +998,255 @@ public class EntityDataServiceTest {
     assertTrue(entitiesList.contains(createdEntity1)
         && entitiesList.contains(createdEntity3));
 
+  }
+
+  @Test
+  public void testCreateEntityViaUpsertAndMerge() {
+    // Scope this test to its own tenant for isolation
+    String TENANT_ID = EntityDataServiceTest.TENANT_ID + "_testCreateEntityViaUpsertAndMerge";
+    EntityDataServiceBlockingStub entityDataServiceStub = buildStubForTenant(TENANT_ID);
+    setupEntityTypes(channel, TENANT_ID);
+    // V1 entity
+    Entity entityToCreate =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.K8S_POD.name())
+            .setEntityName("V1 POD")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity =
+        entityDataServiceStub
+            .mergeAndUpsertEntity(
+                MergeAndUpsertEntityRequest.newBuilder().setEntity(entityToCreate).build())
+            .getEntity();
+
+    Entity fetchedEntity =
+        entityDataServiceStub.getById(
+            ByIdRequest.newBuilder()
+                .setEntityId(createdEntity.getEntityId())
+                .setEntityType(createdEntity.getEntityType())
+                .build());
+
+    assertEquals(createdEntity, fetchedEntity);
+
+    // V2 Entity
+
+    entityToCreate =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityId(UUID.randomUUID().toString())
+            .setEntityType(TEST_ENTITY_TYPE_V2)
+            .setEntityName("V2 entity")
+            .build();
+    createdEntity =
+        entityDataServiceStub
+            .mergeAndUpsertEntity(
+                MergeAndUpsertEntityRequest.newBuilder().setEntity(entityToCreate).build())
+            .getEntity();
+
+    assertEquals(entityToCreate, createdEntity);
+
+    fetchedEntity =
+        entityDataServiceStub.getById(
+            ByIdRequest.newBuilder()
+                .setEntityId(createdEntity.getEntityId())
+                .setEntityType(createdEntity.getEntityType())
+                .build());
+
+    assertEquals(createdEntity, fetchedEntity);
+  }
+
+  @Test
+  public void testUpdateEntityViaUpsertAndMerge() {
+    // Scope this test to its own tenant for isolation
+    String TENANT_ID = EntityDataServiceTest.TENANT_ID + "_testUpdateEntityViaUpsertAndMerge";
+    EntityDataServiceBlockingStub entityDataServiceStub = buildStubForTenant(TENANT_ID);
+    setupEntityTypes(channel, TENANT_ID);
+
+    Map<String, AttributeValue> createAttributes = Map.of("some-attr", stringValue("v1"));
+    Map<String, AttributeValue> updateAttributes = Map.of("some-other-attr", stringValue("v2"));
+
+    // V1 entity
+    Entity entityToCreate =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.K8S_POD.name())
+            .setEntityName("V1 UPDATE POD")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+                generateRandomUUIDAttrValue())
+            .putAllAttributes(createAttributes)
+            .build();
+
+    entityDataServiceStub.mergeAndUpsertEntity(
+        MergeAndUpsertEntityRequest.newBuilder().setEntity(entityToCreate).build());
+
+    Entity entityUpdate =
+        entityToCreate.toBuilder().clearAttributes().putAllAttributes(updateAttributes).build();
+    Entity updatedEntity =
+        entityDataServiceStub
+            .mergeAndUpsertEntity(
+                MergeAndUpsertEntityRequest.newBuilder().setEntity(entityUpdate).build())
+            .getEntity();
+
+    Map<String, AttributeValue> combinedAttributes =
+        ImmutableMap.<String, AttributeValue>builder()
+            .putAll(createAttributes)
+            .putAll(entityToCreate.getIdentifyingAttributesMap())
+            .putAll(updateAttributes)
+            .build();
+
+    assertEquals(combinedAttributes, updatedEntity.getAttributesMap());
+
+    // V2 Entity
+
+    entityToCreate =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityId(UUID.randomUUID().toString())
+            .setEntityType(TEST_ENTITY_TYPE_V2)
+            .setEntityName("V2 entity update")
+            .putAllAttributes(createAttributes)
+            .build();
+    entityDataServiceStub.mergeAndUpsertEntity(
+        MergeAndUpsertEntityRequest.newBuilder().setEntity(entityToCreate).build());
+    entityUpdate =
+        entityToCreate.toBuilder().clearAttributes().putAllAttributes(updateAttributes).build();
+
+    updatedEntity =
+        entityDataServiceStub
+            .mergeAndUpsertEntity(
+                MergeAndUpsertEntityRequest.newBuilder().setEntity(entityUpdate).build())
+            .getEntity();
+
+    combinedAttributes =
+        ImmutableMap.<String, AttributeValue>builder()
+            .putAll(createAttributes)
+            .putAll(updateAttributes)
+            .build();
+    assertEquals(
+        entityToCreate.toBuilder().clearAttributes().putAllAttributes(combinedAttributes).build(),
+        updatedEntity);
+  }
+
+  @Test
+  public void testUpdateEntityWithPredicateViaUpsertAndMerge() {
+    // Scope this test to its own tenant for isolation
+    String TENANT_ID =
+        EntityDataServiceTest.TENANT_ID + "testUpdateEntityWithPredicateViaUpsertAndMerge";
+    EntityDataServiceBlockingStub entityDataServiceStub = buildStubForTenant(TENANT_ID);
+    setupEntityTypes(channel, TENANT_ID);
+
+    Map<String, AttributeValue> createAttributes = Map.of("some-attr", stringValue("v1"));
+    Map<String, AttributeValue> updateAttributes = Map.of("some-attr", stringValue("v2"));
+    // Expect create and the first update to succeed, the second to fail
+    UpsertCondition condition =
+        UpsertCondition.newBuilder()
+            .setPropertyPredicate(
+                Predicate.newBuilder()
+                    .setAttributeKey("some-attr")
+                    .setOperator(PredicateOperator.PREDICATE_OPERATOR_EQUALS)
+                    .setValue(stringValue("v1")))
+            .build();
+
+    // V1 entity
+    Entity entityToCreate =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.K8S_POD.name())
+            .setEntityName("V1 UPDATE PREDICATE POD")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_EXTERNAL_ID),
+                generateRandomUUIDAttrValue())
+            .putAllAttributes(createAttributes)
+            .build();
+    // Successful create
+    Entity createdEntity =
+        entityDataServiceStub
+            .mergeAndUpsertEntity(
+                MergeAndUpsertEntityRequest.newBuilder()
+                    .setEntity(entityToCreate)
+                    .setUpsertCondition(condition)
+                    .build())
+            .getEntity();
+
+    assertEquals(stringValue("v1"), createdEntity.getAttributesMap().get("some-attr"));
+
+    Entity entityUpdate = entityToCreate.toBuilder().putAllAttributes(updateAttributes).build();
+    Entity updatedEntity =
+        entityDataServiceStub
+            .mergeAndUpsertEntity(
+                MergeAndUpsertEntityRequest.newBuilder()
+                    .setEntity(entityUpdate)
+                    .setUpsertCondition(condition)
+                    .build())
+            .getEntity();
+    // Successful update
+    assertEquals(stringValue("v2"), updatedEntity.getAttributesMap().get("some-attr"));
+
+    Entity secondEntityUpdate =
+        entityToCreate.toBuilder().putAttributes("some-new-attr", stringValue("foo")).build();
+    Entity secondUpdatedEntity =
+        entityDataServiceStub
+            .mergeAndUpsertEntity(
+                MergeAndUpsertEntityRequest.newBuilder()
+                    .setEntity(secondEntityUpdate)
+                    .setUpsertCondition(condition)
+                    .build())
+            .getEntity();
+    // No change, update rejected
+    assertFalse(secondUpdatedEntity.getAttributesMap().containsKey("some-new-attr"));
+    assertEquals(stringValue("v2"), secondUpdatedEntity.getAttributesMap().get("some-attr"));
+
+    // V2 Entity
+    entityToCreate =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityId(UUID.randomUUID().toString())
+            .setEntityType(TEST_ENTITY_TYPE_V2)
+            .setEntityName("V2 entity predicate update")
+            .putAllAttributes(createAttributes)
+            .build();
+
+    // Successful create
+    createdEntity =
+        entityDataServiceStub
+            .mergeAndUpsertEntity(
+                MergeAndUpsertEntityRequest.newBuilder()
+                    .setEntity(entityToCreate)
+                    .setUpsertCondition(condition)
+                    .build())
+            .getEntity();
+
+    assertEquals(stringValue("v1"), createdEntity.getAttributesMap().get("some-attr"));
+
+    entityUpdate = entityToCreate.toBuilder().putAllAttributes(updateAttributes).build();
+    updatedEntity =
+        entityDataServiceStub
+            .mergeAndUpsertEntity(
+                MergeAndUpsertEntityRequest.newBuilder()
+                    .setEntity(entityUpdate)
+                    .setUpsertCondition(condition)
+                    .build())
+            .getEntity();
+    // Successful update
+    assertEquals(stringValue("v2"), updatedEntity.getAttributesMap().get("some-attr"));
+
+    secondEntityUpdate =
+        entityToCreate.toBuilder().putAttributes("some-new-attr", stringValue("foo")).build();
+    secondUpdatedEntity =
+        entityDataServiceStub
+            .mergeAndUpsertEntity(
+                MergeAndUpsertEntityRequest.newBuilder()
+                    .setEntity(secondEntityUpdate)
+                    .setUpsertCondition(condition)
+                    .build())
+            .getEntity();
+    // No change, update rejected
+    assertFalse(secondUpdatedEntity.getAttributesMap().containsKey("some-new-attr"));
+    assertEquals(stringValue("v2"), secondUpdatedEntity.getAttributesMap().get("some-attr"));
   }
 
   private Entity createEntityWithAttributeLabels(String entityName, List<String> labels) {
@@ -1053,5 +1315,22 @@ public class EntityDataServiceTest {
     EnrichedEntity actualBackendEntity = entityDataServiceClient
         .getEnrichedEntityById(TENANT_ID, createdEntity.getEntityId());
     assertEquals(createdEntity, actualBackendEntity);
+  }
+
+  private EntityDataServiceBlockingStub buildStubForTenant(String tenant) {
+    return EntityDataServiceGrpc.newBlockingStub(channel)
+        .withCallCredentials(
+            new RequestContextAsCreds() {
+              @Override
+              public void applyRequestMetadata(
+                  RequestInfo requestInfo, Executor appExecutor, MetadataApplier applier) {
+                // Make it a bit easier to use in tests to build the into the stub
+                this.applyRequestContext(applier, RequestContext.forTenantId(tenant));
+              }
+            });
+  }
+
+  private AttributeValue stringValue(String value) {
+    return AttributeValue.newBuilder().setValue(Value.newBuilder().setString(value)).build();
   }
 }

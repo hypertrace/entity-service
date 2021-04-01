@@ -70,3 +70,32 @@ enum SortOrder {
   ASC = 0;
   DESC = 1;
 }
+
+message MergeAndUpsertEntityRequest {
+  Entity entity = 1;
+  UpsertCondition upsertCondition = 2;
+
+  message UpsertCondition {
+    oneof update_condition {
+      Predicate property_predicate = 2;
+    }
+
+    message Predicate {
+      string attribute_key = 1;
+      PredicateOperator operator = 2;
+      AttributeValue value = 3;
+
+      enum PredicateOperator {
+        PREDICATE_OPERATOR_UNSPECIFIED = 0;
+        PREDICATE_OPERATOR_EQUALS = 1;
+        PREDICATE_OPERATOR_NOT_EQUALS = 2;
+        PREDICATE_OPERATOR_GREATER_THAN = 3;
+        PREDICATE_OPERATOR_LESS_THAN = 4;
+      }
+    }
+  }
+}
+
+message MergeAndUpsertEntityResponse {
+  Entity entity = 1;
+}

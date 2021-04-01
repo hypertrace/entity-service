@@ -8,6 +8,7 @@ message EntityType {
   string attribute_scope = 2;
   string id_attribute_key = 3;
   string name_attribute_key = 4;
+  string timestamp_attribute_key = 5;
 }
 
 message UpsertEntityTypeRequest {
