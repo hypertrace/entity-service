@@ -87,6 +87,9 @@ entityServiceConfig:
     host: postgres
     port: 5432
     url: ""
+  attributeService:
+    host: attribute-service
+    port: 9012
 
 attributes: []
 extraAttributes: []

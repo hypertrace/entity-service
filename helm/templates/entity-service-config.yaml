@@ -19,6 +19,10 @@ data:
         }
       }
     }
+    attribute.service.config = {
+      host = {{ .Values.entityServiceConfig.attributeService.host }}
+      port = {{ .Values.entityServiceConfig.attributeService.port }}
+    }
   {{- if .Values.attributes }}
     entity.service.attributeMap = [
   {{- range $i, $v := .Values.attributes }}

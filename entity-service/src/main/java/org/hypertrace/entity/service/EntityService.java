@@ -1,6 +1,7 @@
 package org.hypertrace.entity.service;
 
 import com.typesafe.config.Config;
+import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
@@ -11,6 +12,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.DatastoreProvider;
+import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.server.InterceptorUtil;
 import org.hypertrace.core.serviceframework.PlatformService;
 import org.hypertrace.core.serviceframework.config.ConfigClient;
@@ -49,15 +51,18 @@ public class EntityService extends PlatformService {
         entityServiceConfig.getDataStoreConfig(entityServiceConfig.getDataStoreType());
     this.datastore =
         DatastoreProvider.getDatastore(entityServiceConfig.getDataStoreType(), dataStoreConfig);
-    ManagedChannel localChannel =
-        ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build();
-    this.getLifecycle().shutdownComplete().thenRun(localChannel::shutdown);
+
+    GrpcChannelRegistry channelRegistry = new GrpcChannelRegistry();
+    this.getLifecycle().shutdownComplete().thenRun(channelRegistry::shutdown);
+
+    Channel localChannel = channelRegistry.forAddress("localhost", port);
+
     server = ServerBuilder.forPort(port)
         .addService(InterceptorUtil.wrapInterceptors(new org.hypertrace.entity.type.service.EntityTypeServiceImpl(datastore)))
         .addService(InterceptorUtil.wrapInterceptors(new EntityTypeServiceImpl(datastore)))
         .addService(InterceptorUtil.wrapInterceptors(new EntityDataServiceImpl(datastore, localChannel)))
         .addService(
-            InterceptorUtil.wrapInterceptors(new EntityQueryServiceImpl(datastore, getAppConfig())))
+            InterceptorUtil.wrapInterceptors(new EntityQueryServiceImpl(datastore, getAppConfig(), channelRegistry)))
         .build();
     scheduledExecutorService.scheduleAtFixedRate(() -> {
       if (!datastore.healthCheck()) {
