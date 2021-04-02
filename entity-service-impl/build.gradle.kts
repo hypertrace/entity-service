@@ -6,7 +6,7 @@ plugins {
 
 dependencies {
   api(project(":entity-service-api"))
-  api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.22")
+  api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.23")
   implementation("org.hypertrace.core.documentstore:document-store:0.5.4")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.4.0")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.4.0")
