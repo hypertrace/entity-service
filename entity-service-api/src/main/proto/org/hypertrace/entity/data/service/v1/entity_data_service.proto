@@ -10,6 +10,8 @@ import "org/hypertrace/entity/data/service/v1/entity_data_request.proto";
 service EntityDataService {
   rpc upsert (Entity) returns (Entity) {
   }
+  rpc MergeAndUpsertEntity(MergeAndUpsertEntityRequest) returns (MergeAndUpsertEntityResponse){}
+
   rpc upsertEntities (Entities) returns (Empty) {
   }
   rpc getAndUpsertEntities (Entities) returns (stream Entity) {

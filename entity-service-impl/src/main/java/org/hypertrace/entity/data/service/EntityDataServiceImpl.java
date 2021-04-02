@@ -37,9 +37,12 @@ import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entities;
 import org.hypertrace.entity.data.service.v1.Entity;
+import org.hypertrace.entity.data.service.v1.Entity.Builder;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc.EntityDataServiceImplBase;
 import org.hypertrace.entity.data.service.v1.EntityRelationship;
 import org.hypertrace.entity.data.service.v1.EntityRelationships;
+import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest;
+import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityResponse;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.data.service.v1.RelationshipsQuery;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -63,6 +66,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private final Collection relationshipsCollection;
   private final Collection enrichedEntitiesCollection;
   private final EntityNormalizer entityNormalizer;
+  private final UpsertConditionMatcher upsertConditionMatcher = new UpsertConditionMatcher();
   private final EntityIdGenerator entityIdGenerator;
 
   public EntityDataServiceImpl(Datastore datastore, Channel entityTypeChannel) {
@@ -496,6 +500,58 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         responseObserver);
   }
 
+  @Override
+  public void mergeAndUpsertEntity(
+      MergeAndUpsertEntityRequest request,
+      StreamObserver<MergeAndUpsertEntityResponse> responseObserver) {
+    RequestContext requestContext = RequestContext.CURRENT.get();
+    String tenantId = requestContext.getTenantId().orElse(null);
+    if (tenantId == null) {
+      responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
+      return;
+    }
+
+    Entity receivedEntity = this.entityNormalizer.normalize(tenantId, request.getEntity());
+    Optional<Entity> existingEntity =
+        this.doQuery(
+                this.buildExistingEntityQuery(
+                    tenantId, receivedEntity.getEntityType(), receivedEntity.getEntityId()))
+            .findFirst();
+
+    boolean rejectUpsertForConditionMismatch =
+        existingEntity
+            .map(
+                entity ->
+                    !this.upsertConditionMatcher.matches(entity, request.getUpsertCondition()))
+            .orElse(false);
+
+    if (rejectUpsertForConditionMismatch) {
+      // There's an existing entity and the update doesn't meet the condition, return existing
+      responseObserver.onNext(
+          MergeAndUpsertEntityResponse.newBuilder()
+              .setEntity(existingEntity.get())
+              .build());
+      responseObserver.onCompleted();
+    } else {
+      // There's either a new entity or a valid update to upsert
+      Entity entityToUpsert =
+          existingEntity
+              .map(Entity::toBuilder)
+              .map(builder -> builder.mergeFrom(receivedEntity))
+              .map(Builder::build)
+              .orElse(receivedEntity);
+      try {
+        responseObserver.onNext(
+            MergeAndUpsertEntityResponse.newBuilder()
+                .setEntity(this.upsertEntity(tenantId, entityToUpsert))
+                .build());
+        responseObserver.onCompleted();
+      } catch (IOException e) {
+        responseObserver.onError(e);
+      }
+    }
+  }
+
   private void validate(ByIdRequest request) throws InvalidRequestException {
     if (StringUtils.isEmpty(request.getEntityId())) {
       LOG.info("{}. Invalid get request:{}", request, ErrorMessages.ENTITY_ID_EMPTY);
@@ -538,6 +594,14 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     } catch (IOException e) {
       responseObserver.onError(new RuntimeException("Could not create entity.", e));
     }
+  }
+
+  private Entity upsertEntity(String tenantId, Entity entity) throws IOException {
+    Document document = convertEntityToDocument(entity);
+    Document result =
+        entitiesCollection.upsertAndReturn(
+            this.entityNormalizer.getEntityDocKey(tenantId, entity), document);
+    return this.entityFromDocument(result).orElseThrow();
   }
 
   private <T extends GeneratedMessageV3> void upsertEntities(
@@ -630,6 +694,14 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       responseObserver.onNext((T) builder.build());
       responseObserver.onCompleted();
     }
+  }
+
+  private org.hypertrace.core.documentstore.Query buildExistingEntityQuery(
+      String tenantId, String entityType, String entityId) {
+    org.hypertrace.core.documentstore.Query query = new org.hypertrace.core.documentstore.Query();
+    String docId = this.entityNormalizer.getEntityDocKey(tenantId, entityType, entityId).toString();
+    query.setFilter(new Filter(Filter.Op.EQ, EntityServiceConstants.ID, docId));
+    return query;
   }
 
   private Stream<Entity> doQuery(org.hypertrace.core.documentstore.Query query) {
