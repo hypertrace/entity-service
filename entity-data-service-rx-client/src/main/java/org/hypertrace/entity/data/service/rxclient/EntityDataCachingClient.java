@@ -28,11 +28,8 @@ import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc.EntityDataSer
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest;
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest.UpsertCondition;
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class EntityDataCachingClient implements EntityDataClient {
-  private static final Logger LOG = LoggerFactory.getLogger(EntityDataCachingClient.class);
   private final EntityDataServiceStub entityDataClient;
   private final LoadingCache<EntityKey, Single<Entity>> cache;
   private final ConcurrentMap<EntityKey, PendingEntityUpdate> pendingEntityUpdates =
@@ -81,7 +78,8 @@ class EntityDataCachingClient implements EntityDataClient {
     return this.createOrUpdateEntity(EntityKey.entityInCurrentContext(entity), upsertCondition);
   }
 
-  private Single<Entity> createOrUpdateEntity(EntityKey entityKey, UpsertCondition upsertCondition) {
+  private Single<Entity> createOrUpdateEntity(
+      EntityKey entityKey, UpsertCondition upsertCondition) {
     Single<Entity> updateResult =
         this.upsertEntityWithoutCaching(entityKey, upsertCondition).cache();
     EntityDataCachingClient.this.cache.put(entityKey, updateResult);
@@ -114,8 +112,6 @@ class EntityDataCachingClient implements EntityDataClient {
     private UpsertCondition condition;
 
     private void executeUpdate() {
-      LOG.warn(
-          "Executing update for {} at {}", entityKey.getInputEntity().getEntityId(), Instant.now());
 
       EntityDataCachingClient.this.pendingEntityUpdates.remove(entityKey);
 

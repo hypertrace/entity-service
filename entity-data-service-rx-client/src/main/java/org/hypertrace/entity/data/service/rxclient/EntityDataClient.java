@@ -36,6 +36,20 @@ public interface EntityDataClient {
    * excessive overhead. Each returned single will propagate the result of the server call that
    * eventually satisfies its deadline.
    *
+   * <p>Example:
+   *
+   * <ol>
+   *   <li>entity-1.v1 arrives at t=0ms with a max delay of 500ms
+   *   <li>entity-1.v2 arrives at t=100ms with a max delay of 300ms
+   *   <li>entity-2.v1 arrives at t=200ms with a max delay of 300ms
+   *   <li>entity-1.v3 arrives at t=300ms with a max delay of 500ms
+   * </ol>
+   *
+   * At t=400ms (the deadline for the second invocation) entity-1 is upserted, using the most recent
+   * values (the fourth invocation - entity-1.v3). When this returns, the result will be given to
+   * the first, second and fourth invocations (the ones for that entity). At t=500ms, the deadline
+   * for the third invocation entity-2 is upserted and returned to the third invocation.
+   *
    * @param entity
    * @param upsertCondition
    * @param maximumUpsertDelay
