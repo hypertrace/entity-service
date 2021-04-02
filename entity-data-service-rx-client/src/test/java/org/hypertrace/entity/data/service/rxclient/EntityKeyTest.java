@@ -16,7 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class EntityCacheKeyTest {
+class EntityKeyTest {
 
   @Mock RequestContext mockRequestContext;
 
@@ -46,8 +46,8 @@ class EntityCacheKeyTest {
     Entity matchingEntity = this.entityV2.toBuilder().clearAttributes().build();
 
     assertEquals(
-        new EntityCacheKey(this.mockRequestContext, this.entityV2),
-        new EntityCacheKey(matchingContext, matchingEntity));
+        new EntityKey(this.mockRequestContext, this.entityV2),
+        new EntityKey(matchingContext, matchingEntity));
   }
 
   @Test
@@ -56,8 +56,8 @@ class EntityCacheKeyTest {
     when(this.mockRequestContext.getTenantId()).thenReturn(Optional.of("tenant id 1"));
     when(differentContext.getTenantId()).thenReturn(Optional.of("tenant id 2"));
     assertNotEquals(
-        new EntityCacheKey(this.mockRequestContext, this.entityV2),
-        new EntityCacheKey(differentContext, this.entityV2));
+        new EntityKey(this.mockRequestContext, this.entityV2),
+        new EntityKey(differentContext, this.entityV2));
   }
 
   @Test
@@ -66,8 +66,8 @@ class EntityCacheKeyTest {
     Entity differentEntity = this.entityV2.toBuilder().setEntityId("id-2").build();
 
     assertNotEquals(
-        new EntityCacheKey(this.mockRequestContext, this.entityV2),
-        new EntityCacheKey(this.mockRequestContext, differentEntity));
+        new EntityKey(this.mockRequestContext, this.entityV2),
+        new EntityKey(this.mockRequestContext, differentEntity));
   }
 
   @Test
@@ -80,8 +80,8 @@ class EntityCacheKeyTest {
     Entity matchingEntity = this.entityV1.toBuilder().clearAttributes().build();
 
     assertEquals(
-        new EntityCacheKey(this.mockRequestContext, this.entityV1),
-        new EntityCacheKey(matchingContext, matchingEntity));
+        new EntityKey(this.mockRequestContext, this.entityV1),
+        new EntityKey(matchingContext, matchingEntity));
   }
 
   @Test
@@ -92,8 +92,8 @@ class EntityCacheKeyTest {
         this.entityV1.toBuilder().putIdentifyingAttributes("key-2", buildValue("value-2")).build();
 
     assertNotEquals(
-        new EntityCacheKey(this.mockRequestContext, this.entityV1),
-        new EntityCacheKey(this.mockRequestContext, diffEntity));
+        new EntityKey(this.mockRequestContext, this.entityV1),
+        new EntityKey(this.mockRequestContext, diffEntity));
   }
 
   @Test
@@ -103,8 +103,8 @@ class EntityCacheKeyTest {
     when(otherContext.getTenantId()).thenReturn(Optional.of("tenant id 2"));
 
     assertNotEquals(
-        new EntityCacheKey(this.mockRequestContext, this.entityV1),
-        new EntityCacheKey(otherContext, this.entityV1));
+        new EntityKey(this.mockRequestContext, this.entityV1),
+        new EntityKey(otherContext, this.entityV1));
   }
 
   private static AttributeValue buildValue(String value) {
