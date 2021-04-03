@@ -7,9 +7,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-/**
- * Unit test for {@link EntityServiceClientCacheConfig}
- * */
+/** Unit test for {@link EntityServiceClientCacheConfig} */
 public class EntityServiceClientCacheConfigTest {
 
   @Test
@@ -28,7 +26,6 @@ public class EntityServiceClientCacheConfigTest {
     cacheConfigMap.put("entity.ids.max.cache.size", 30000);
     map.put("cache", cacheConfigMap);
 
-
     entityServiceClientConfigMap.put("entity.service.config", map);
     Config config = ConfigFactory.parseMap(entityServiceClientConfigMap);
 
@@ -40,7 +37,6 @@ public class EntityServiceClientCacheConfigTest {
     Assertions.assertEquals(20000, cacheConfig.getEnrichedEntityMaxCacheSize());
     Assertions.assertEquals(7000, cacheConfig.getEntityIdsCacheExpiryMs());
     Assertions.assertEquals(30000, cacheConfig.getEntityIdsMaxCacheSize());
-
   }
 
   @Test
@@ -60,7 +56,5 @@ public class EntityServiceClientCacheConfigTest {
     Assertions.assertEquals(1000, cacheConfig.getEnrichedEntityMaxCacheSize());
     Assertions.assertEquals(300000L, cacheConfig.getEntityIdsCacheExpiryMs());
     Assertions.assertEquals(1000, cacheConfig.getEntityIdsMaxCacheSize());
-
   }
-
 }

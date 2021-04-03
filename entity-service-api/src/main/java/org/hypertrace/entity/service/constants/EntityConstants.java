@@ -3,9 +3,7 @@ package org.hypertrace.entity.service.constants;
 import com.google.protobuf.ProtocolMessageEnum;
 import org.hypertrace.entity.constants.v1.EnumExtension;
 
-/**
- * Constants used by the entities and entity service.
- */
+/** Constants used by the entities and entity service. */
 public class EntityConstants {
 
   public static final String ATTRIBUTES_MAP_PATH = "attributes";

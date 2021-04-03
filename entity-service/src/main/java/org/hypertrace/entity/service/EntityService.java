@@ -2,8 +2,6 @@ package org.hypertrace.entity.service;
 
 import com.typesafe.config.Config;
 import io.grpc.Channel;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import java.io.IOException;
@@ -57,24 +55,34 @@ public class EntityService extends PlatformService {
 
     Channel localChannel = channelRegistry.forAddress("localhost", port);
 
-    server = ServerBuilder.forPort(port)
-        .addService(InterceptorUtil.wrapInterceptors(new org.hypertrace.entity.type.service.EntityTypeServiceImpl(datastore)))
-        .addService(InterceptorUtil.wrapInterceptors(new EntityTypeServiceImpl(datastore)))
-        .addService(InterceptorUtil.wrapInterceptors(new EntityDataServiceImpl(datastore, localChannel)))
-        .addService(
-            InterceptorUtil.wrapInterceptors(new EntityQueryServiceImpl(datastore, getAppConfig(), channelRegistry)))
-        .build();
-    scheduledExecutorService.scheduleAtFixedRate(() -> {
-      if (!datastore.healthCheck()) {
-        consecutiveFailedHealthCheck++;
-        if (consecutiveFailedHealthCheck > 5) {
-          LOG.warn("Failed 5 times to connect to data store, shut down EntityService...");
-          System.exit(2);
-        }
-      } else {
-        consecutiveFailedHealthCheck = 0;
-      }
-    }, 60, 60, TimeUnit.SECONDS);
+    server =
+        ServerBuilder.forPort(port)
+            .addService(
+                InterceptorUtil.wrapInterceptors(
+                    new org.hypertrace.entity.type.service.EntityTypeServiceImpl(datastore)))
+            .addService(InterceptorUtil.wrapInterceptors(new EntityTypeServiceImpl(datastore)))
+            .addService(
+                InterceptorUtil.wrapInterceptors(
+                    new EntityDataServiceImpl(datastore, localChannel)))
+            .addService(
+                InterceptorUtil.wrapInterceptors(
+                    new EntityQueryServiceImpl(datastore, getAppConfig(), channelRegistry)))
+            .build();
+    scheduledExecutorService.scheduleAtFixedRate(
+        () -> {
+          if (!datastore.healthCheck()) {
+            consecutiveFailedHealthCheck++;
+            if (consecutiveFailedHealthCheck > 5) {
+              LOG.warn("Failed 5 times to connect to data store, shut down EntityService...");
+              System.exit(2);
+            }
+          } else {
+            consecutiveFailedHealthCheck = 0;
+          }
+        },
+        60,
+        60,
+        TimeUnit.SECONDS);
   }
 
   @Override

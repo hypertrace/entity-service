@@ -55,8 +55,7 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
 
   public EntityTypeServiceImpl(Datastore datastore) {
     this.entityTypeCol = datastore.getCollection(ENTITY_TYPES_COLLECTION);
-    this.entityTypeRelationsCol =
-        datastore.getCollection(ENTITY_TYPE_RELATIONS_COLLECTION);
+    this.entityTypeRelationsCol = datastore.getCollection(ENTITY_TYPE_RELATIONS_COLLECTION);
   }
 
   @Override
@@ -73,7 +72,8 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
       //  We need to split these objects later.
       EntityType newRequest = EntityType.newBuilder(request).setTenantId(tenantId.get()).build();
 
-      entityTypeCol.upsert(new SingleValueKey(tenantId.get(), request.getName()),
+      entityTypeCol.upsert(
+          new SingleValueKey(tenantId.get(), request.getName()),
           new JSONDocument(PROTO_PRINTER.print(newRequest)));
       responseObserver.onNext(newRequest);
       responseObserver.onCompleted();
@@ -83,8 +83,8 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
   }
 
   @Override
-  public void upsertEntityRelationshipType(EntityRelationshipType request,
-      StreamObserver<EntityRelationshipType> responseObserver) {
+  public void upsertEntityRelationshipType(
+      EntityRelationshipType request, StreamObserver<EntityRelationshipType> responseObserver) {
     Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
@@ -95,11 +95,11 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
       // TODO: Since we currently use the same object that's received in the request while
       //  persisting in the doc store, we need to add tenantId explicitly here.
       //  We need to split these objects later.
-      EntityRelationshipType newRequest = EntityRelationshipType.newBuilder(request)
-          .setTenantId(tenantId.get())
-          .build();
+      EntityRelationshipType newRequest =
+          EntityRelationshipType.newBuilder(request).setTenantId(tenantId.get()).build();
 
-      entityTypeRelationsCol.upsert(new SingleValueKey(tenantId.get(), request.getName()),
+      entityTypeRelationsCol.upsert(
+          new SingleValueKey(tenantId.get(), request.getName()),
           new JSONDocument(PROTO_PRINTER.print(newRequest)));
       responseObserver.onNext(newRequest);
       responseObserver.onCompleted();
@@ -117,23 +117,25 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
     }
 
     try {
-      Iterator<Document> documents = entityTypeCol
-          .search(transform(tenantId.get(), request, false));
-      StreamSupport
-          .stream(Spliterators.spliteratorUnknownSize(documents, 0), false)
-          .map(document -> {
-            try {
-              EntityType.Builder builder = EntityType.newBuilder();
-              PARSER.merge(document.toJson(), builder);
-              return builder;
-            } catch (InvalidProtocolBufferException e) {
-              LOG.warn(String.format("Error processing entityType: %s", document.toJson()), e);
-              return null;
-            }
-          })
+      Iterator<Document> documents =
+          entityTypeCol.search(transform(tenantId.get(), request, false));
+      StreamSupport.stream(Spliterators.spliteratorUnknownSize(documents, 0), false)
+          .map(
+              document -> {
+                try {
+                  EntityType.Builder builder = EntityType.newBuilder();
+                  PARSER.merge(document.toJson(), builder);
+                  return builder;
+                } catch (InvalidProtocolBufferException e) {
+                  LOG.warn(String.format("Error processing entityType: %s", document.toJson()), e);
+                  return null;
+                }
+              })
           .filter(Objects::nonNull)
-          .forEach(entityTypeBuilder -> entityTypeCol.delete(
-              new SingleValueKey(tenantId.get(), entityTypeBuilder.getName())));
+          .forEach(
+              entityTypeBuilder ->
+                  entityTypeCol.delete(
+                      new SingleValueKey(tenantId.get(), entityTypeBuilder.getName())));
       responseObserver.onNext(Empty.newBuilder().build());
       responseObserver.onCompleted();
     } catch (Exception ex) {
@@ -152,25 +154,28 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
     }
 
     try {
-      Iterator<Document> documents = entityTypeRelationsCol
-          .search(transform(tenantId.get(), request, false));
-      StreamSupport
-          .stream(Spliterators.spliteratorUnknownSize(documents, 0), false)
-          .map(document -> {
-            try {
-              EntityRelationshipType.Builder builder = EntityRelationshipType.newBuilder();
-              PARSER.merge(document.toJson(), builder);
-              return builder;
-            } catch (InvalidProtocolBufferException e) {
-              LOG.warn(String.format(
-                  "Error processing entityRelationshipType: %s", document.toJson()), e);
-              return null;
-            }
-          })
+      Iterator<Document> documents =
+          entityTypeRelationsCol.search(transform(tenantId.get(), request, false));
+      StreamSupport.stream(Spliterators.spliteratorUnknownSize(documents, 0), false)
+          .map(
+              document -> {
+                try {
+                  EntityRelationshipType.Builder builder = EntityRelationshipType.newBuilder();
+                  PARSER.merge(document.toJson(), builder);
+                  return builder;
+                } catch (InvalidProtocolBufferException e) {
+                  LOG.warn(
+                      String.format(
+                          "Error processing entityRelationshipType: %s", document.toJson()),
+                      e);
+                  return null;
+                }
+              })
           .filter(Objects::nonNull)
-          .forEach(entityRelationshipTypeBuilder ->
-              entityTypeRelationsCol.delete(
-                  new SingleValueKey(tenantId.get(), entityRelationshipTypeBuilder.getName())));
+          .forEach(
+              entityRelationshipTypeBuilder ->
+                  entityTypeRelationsCol.delete(
+                      new SingleValueKey(tenantId.get(), entityRelationshipTypeBuilder.getName())));
       responseObserver.onNext(Empty.newBuilder().build());
       responseObserver.onCompleted();
     } catch (Exception ex) {
@@ -180,16 +185,15 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
   }
 
   @Override
-  public void queryEntityTypes(EntityTypeFilter request,
-      StreamObserver<EntityType> responseObserver) {
+  public void queryEntityTypes(
+      EntityTypeFilter request, StreamObserver<EntityType> responseObserver) {
     Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
 
-    Iterator<Document> entityTypes =
-        entityTypeCol.search(transform(tenantId.get(), request, true));
+    Iterator<Document> entityTypes = entityTypeCol.search(transform(tenantId.get(), request, true));
 
     while (entityTypes.hasNext()) {
       Document entityType = entityTypes.next();
@@ -212,7 +216,8 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
   }
 
   @Override
-  public void queryRelationshipTypes(EntityRelationshipTypeFilter request,
+  public void queryRelationshipTypes(
+      EntityRelationshipTypeFilter request,
       StreamObserver<EntityRelationshipType> responseObserver) {
     Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
@@ -220,13 +225,12 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
       return;
     }
 
-    searchByQueryAndStreamResponse(responseObserver,
-        transform(tenantId.get(), request, true), tenantId.get());
+    searchByQueryAndStreamResponse(
+        responseObserver, transform(tenantId.get(), request, true), tenantId.get());
   }
 
   private void searchByQueryAndStreamResponse(
-      StreamObserver<EntityRelationshipType> responseObserver,
-      Query query, String tenantId) {
+      StreamObserver<EntityRelationshipType> responseObserver, Query query, String tenantId) {
     Iterator<Document> entityTypeRels = entityTypeRelationsCol.search(query);
 
     while (entityTypeRels.hasNext()) {
@@ -250,8 +254,8 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
     responseObserver.onCompleted();
   }
 
-  private static Query transform(String tenantId, EntityTypeFilter filter,
-      boolean useTenantHierarchy) {
+  private static Query transform(
+      String tenantId, EntityTypeFilter filter, boolean useTenantHierarchy) {
     Query docStoreQuery = new Query();
     List<Filter> filters = new ArrayList<>();
     filters.add(getTenantIdFilter(tenantId, useTenantHierarchy));
@@ -266,7 +270,7 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
       } else {
         Filter f = new Filter();
         f.setOp(Filter.Op.AND);
-        f.setChildFilters(filters.toArray(new Filter[]{}));
+        f.setChildFilters(filters.toArray(new Filter[] {}));
         docStoreQuery.setFilter(f);
       }
     }
@@ -275,14 +279,14 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
 
   private static Filter getTenantIdFilter(String tenantId, boolean useTenantHierarchy) {
     if (useTenantHierarchy) {
-      return new Filter(Op.IN, EntityServiceConstants.TENANT_ID,
-          TenantUtils.getTenantHierarchy(tenantId));
+      return new Filter(
+          Op.IN, EntityServiceConstants.TENANT_ID, TenantUtils.getTenantHierarchy(tenantId));
     }
     return DocStoreConverter.getTenantIdEqFilter(tenantId);
   }
 
-  private static Query transform(String tenantId, EntityRelationshipTypeFilter filter,
-      boolean useTenantHierarchy) {
+  private static Query transform(
+      String tenantId, EntityRelationshipTypeFilter filter, boolean useTenantHierarchy) {
     Query docStoreQuery = new Query();
     List<Filter> filters = new ArrayList<>();
     if (StringUtils.isNotEmpty(filter.getFromEntityType())) {
@@ -312,7 +316,7 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
       } else {
         Filter f = new Filter();
         f.setOp(Filter.Op.AND);
-        f.setChildFilters(filters.toArray(new Filter[]{}));
+        f.setChildFilters(filters.toArray(new Filter[] {}));
         docStoreQuery.setFilter(f);
       }
     }

@@ -6,15 +6,12 @@ import java.util.HashMap;
 import java.util.Map;
 import org.hypertrace.core.serviceframework.config.IntegrationTestConfigClientFactory;
 
-/**
- * Entity Service Client config used by integration tests
- */
+/** Entity Service Client config used by integration tests */
 public class EntityServiceTestConfig {
 
   public static EntityServiceClientConfig getClientConfig() {
-    Config serviceConfig = IntegrationTestConfigClientFactory
-        .getConfigClientForService("entity-service")
-        .getConfig();
+    Config serviceConfig =
+        IntegrationTestConfigClientFactory.getConfigClientForService("entity-service").getConfig();
     Map<String, Object> entityServiceClientConfigMap = new HashMap<>();
     Map<String, Object> map = new HashMap<>();
     map.put("host", "localhost");

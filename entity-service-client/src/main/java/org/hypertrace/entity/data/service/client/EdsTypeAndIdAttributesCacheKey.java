@@ -8,8 +8,8 @@ public class EdsTypeAndIdAttributesCacheKey {
   public final String tenantId;
   public final ByTypeAndIdentifyingAttributes byTypeAndIdentifyingAttributes;
 
-  public EdsTypeAndIdAttributesCacheKey(String tenantId, ByTypeAndIdentifyingAttributes
-      byTypeAndIdentifyingAttributes) {
+  public EdsTypeAndIdAttributesCacheKey(
+      String tenantId, ByTypeAndIdentifyingAttributes byTypeAndIdentifyingAttributes) {
     this.tenantId = tenantId;
     this.byTypeAndIdentifyingAttributes = byTypeAndIdentifyingAttributes;
   }
@@ -36,5 +36,4 @@ public class EdsTypeAndIdAttributesCacheKey {
     return Objects.equals(tenantId, that.tenantId)
         && Objects.equals(byTypeAndIdentifyingAttributes, that.byTypeAndIdentifyingAttributes);
   }
-
 }

@@ -28,8 +28,8 @@ public class EdsCacheClientTest {
   @BeforeEach
   public void setUp() {
     entityDataServiceClient = mock(EntityDataServiceClient.class);
-    edsCacheClient = new EdsCacheClient(entityDataServiceClient,
-        EntityServiceClientCacheConfig.DEFAULT);
+    edsCacheClient =
+        new EdsCacheClient(entityDataServiceClient, EntityServiceClientCacheConfig.DEFAULT);
   }
 
   @Test
@@ -38,35 +38,40 @@ public class EdsCacheClientTest {
     String entityId = "entity-12345";
 
     Map<String, AttributeValue> identifyingAttributesMap = new HashMap<>();
-    identifyingAttributesMap.put("entity_name", AttributeValue.newBuilder()
-        .setValue(Value.newBuilder().setString("GET /products").build()).build());
-    identifyingAttributesMap.put("is_active", AttributeValue.newBuilder()
-        .setValue(Value.newBuilder().setBoolean(true).build()).build());
+    identifyingAttributesMap.put(
+        "entity_name",
+        AttributeValue.newBuilder()
+            .setValue(Value.newBuilder().setString("GET /products").build())
+            .build());
+    identifyingAttributesMap.put(
+        "is_active",
+        AttributeValue.newBuilder().setValue(Value.newBuilder().setBoolean(true).build()).build());
 
-    Entity entity = Entity.newBuilder()
-        .setTenantId(tenantId)
-        .setEntityId(entityId)
-        .setEntityType("API")
-        .setEntityName("GET /products")
-        .putAllIdentifyingAttributes(identifyingAttributesMap)
-        .build();
+    Entity entity =
+        Entity.newBuilder()
+            .setTenantId(tenantId)
+            .setEntityId(entityId)
+            .setEntityType("API")
+            .setEntityName("GET /products")
+            .putAllIdentifyingAttributes(identifyingAttributesMap)
+            .build();
 
     when(entityDataServiceClient.getById(anyString(), anyString())).thenReturn(entity);
     when(entityDataServiceClient.getByTypeAndIdentifyingAttributes(anyString(), any()))
         .thenReturn(entity);
 
-    ByTypeAndIdentifyingAttributes attributes = ByTypeAndIdentifyingAttributes.newBuilder()
-        .setEntityType("API")
-        .putAllIdentifyingAttributes(identifyingAttributesMap)
-        .build();
+    ByTypeAndIdentifyingAttributes attributes =
+        ByTypeAndIdentifyingAttributes.newBuilder()
+            .setEntityType("API")
+            .putAllIdentifyingAttributes(identifyingAttributesMap)
+            .build();
 
     edsCacheClient.getByTypeAndIdentifyingAttributes(tenantId, attributes);
     edsCacheClient.getByTypeAndIdentifyingAttributes(tenantId, attributes);
 
-    verify(entityDataServiceClient, times(1)).
-        getByTypeAndIdentifyingAttributes("tenant", attributes);
-    verify(entityDataServiceClient, never()).
-        getById("tenant", "entity-12345");
+    verify(entityDataServiceClient, times(1))
+        .getByTypeAndIdentifyingAttributes("tenant", attributes);
+    verify(entityDataServiceClient, never()).getById("tenant", "entity-12345");
   }
 
   @Test
@@ -74,18 +79,23 @@ public class EdsCacheClientTest {
     String tenantId = "tenant";
 
     Map<String, AttributeValue> identifyingAttributesMap = new HashMap<>();
-    identifyingAttributesMap.put("entity_name", AttributeValue.newBuilder()
-        .setValue(Value.newBuilder().setString("GET /products").build()).build());
-    identifyingAttributesMap.put("is_active", AttributeValue.newBuilder()
-        .setValue(Value.newBuilder().setBoolean(true).build()).build());
+    identifyingAttributesMap.put(
+        "entity_name",
+        AttributeValue.newBuilder()
+            .setValue(Value.newBuilder().setString("GET /products").build())
+            .build());
+    identifyingAttributesMap.put(
+        "is_active",
+        AttributeValue.newBuilder().setValue(Value.newBuilder().setBoolean(true).build()).build());
 
     when(entityDataServiceClient.getByTypeAndIdentifyingAttributes(anyString(), any()))
         .thenReturn(null);
 
-    ByTypeAndIdentifyingAttributes attributes = ByTypeAndIdentifyingAttributes.newBuilder()
-        .setEntityType("API")
-        .putAllIdentifyingAttributes(identifyingAttributesMap)
-        .build();
+    ByTypeAndIdentifyingAttributes attributes =
+        ByTypeAndIdentifyingAttributes.newBuilder()
+            .setEntityType("API")
+            .putAllIdentifyingAttributes(identifyingAttributesMap)
+            .build();
 
     Entity entity = edsCacheClient.getByTypeAndIdentifyingAttributes(tenantId, attributes);
     Assertions.assertNull(entity);
@@ -93,10 +103,9 @@ public class EdsCacheClientTest {
     entity = edsCacheClient.getByTypeAndIdentifyingAttributes(tenantId, attributes);
     Assertions.assertNull(entity);
 
-    verify(entityDataServiceClient, times(2)).
-        getByTypeAndIdentifyingAttributes("tenant", attributes);
-    verify(entityDataServiceClient, never()).
-        getById("tenant", "entity-12345");
+    verify(entityDataServiceClient, times(2))
+        .getByTypeAndIdentifyingAttributes("tenant", attributes);
+    verify(entityDataServiceClient, never()).getById("tenant", "entity-12345");
   }
 
   @Test
@@ -105,17 +114,22 @@ public class EdsCacheClientTest {
     String enrichedEntityId = "enriched-12345";
 
     Map<String, AttributeValue> identifyingAttributesMap = new HashMap<>();
-    identifyingAttributesMap.put("entity_name", AttributeValue.newBuilder()
-        .setValue(Value.newBuilder().setString("GET /products").build()).build());
-    identifyingAttributesMap.put("is_active", AttributeValue.newBuilder()
-        .setValue(Value.newBuilder().setBoolean(true).build()).build());
+    identifyingAttributesMap.put(
+        "entity_name",
+        AttributeValue.newBuilder()
+            .setValue(Value.newBuilder().setString("GET /products").build())
+            .build());
+    identifyingAttributesMap.put(
+        "is_active",
+        AttributeValue.newBuilder().setValue(Value.newBuilder().setBoolean(true).build()).build());
 
-    EnrichedEntity enrichedEntity = EnrichedEntity.newBuilder()
-        .setEntityId(enrichedEntityId)
-        .setEntityType("API")
-        .setEntityName("GET /products")
-        .putAllIdentifyingAttributes(identifyingAttributesMap)
-        .build();
+    EnrichedEntity enrichedEntity =
+        EnrichedEntity.newBuilder()
+            .setEntityId(enrichedEntityId)
+            .setEntityType("API")
+            .setEntityName("GET /products")
+            .putAllIdentifyingAttributes(identifyingAttributesMap)
+            .build();
 
     when(entityDataServiceClient.getEnrichedEntityById(anyString(), anyString()))
         .thenReturn(enrichedEntity);
@@ -123,8 +137,7 @@ public class EdsCacheClientTest {
     edsCacheClient.getEnrichedEntityById(tenantId, enrichedEntityId);
     edsCacheClient.getEnrichedEntityById(tenantId, enrichedEntityId);
 
-    verify(entityDataServiceClient, times(1)).
-        getEnrichedEntityById("tenant", "enriched-12345");
+    verify(entityDataServiceClient, times(1)).getEnrichedEntityById("tenant", "enriched-12345");
   }
 
   @Test
@@ -132,18 +145,16 @@ public class EdsCacheClientTest {
     String tenantId = "tenant";
     String enrichedEntityId = "enriched-12345";
 
-    when(entityDataServiceClient.getEnrichedEntityById(anyString(), anyString()))
-        .thenReturn(null);
+    when(entityDataServiceClient.getEnrichedEntityById(anyString(), anyString())).thenReturn(null);
 
-    EnrichedEntity enrichedEntity = edsCacheClient
-        .getEnrichedEntityById(tenantId, enrichedEntityId);
+    EnrichedEntity enrichedEntity =
+        edsCacheClient.getEnrichedEntityById(tenantId, enrichedEntityId);
     Assertions.assertNull(enrichedEntity);
 
     enrichedEntity = edsCacheClient.getEnrichedEntityById(tenantId, enrichedEntityId);
     Assertions.assertNull(enrichedEntity);
 
-    verify(entityDataServiceClient, times(2)).
-        getEnrichedEntityById("tenant", "enriched-12345");
+    verify(entityDataServiceClient, times(2)).getEnrichedEntityById("tenant", "enriched-12345");
   }
 
   @Test
@@ -152,26 +163,30 @@ public class EdsCacheClientTest {
     String entityId = "entity-12346";
 
     Map<String, AttributeValue> identifyingAttributesMap = new HashMap<>();
-    identifyingAttributesMap.put("entity_name", AttributeValue.newBuilder()
-        .setValue(Value.newBuilder().setString("GET /products").build()).build());
-    identifyingAttributesMap.put("is_active", AttributeValue.newBuilder()
-        .setValue(Value.newBuilder().setBoolean(true).build()).build());
+    identifyingAttributesMap.put(
+        "entity_name",
+        AttributeValue.newBuilder()
+            .setValue(Value.newBuilder().setString("GET /products").build())
+            .build());
+    identifyingAttributesMap.put(
+        "is_active",
+        AttributeValue.newBuilder().setValue(Value.newBuilder().setBoolean(true).build()).build());
 
-    Entity entity = Entity.newBuilder()
-        .setTenantId(tenantId)
-        .setEntityId(entityId)
-        .setEntityType("API")
-        .setEntityName("GET /products")
-        .putAllIdentifyingAttributes(identifyingAttributesMap)
-        .build();
+    Entity entity =
+        Entity.newBuilder()
+            .setTenantId(tenantId)
+            .setEntityId(entityId)
+            .setEntityType("API")
+            .setEntityName("GET /products")
+            .putAllIdentifyingAttributes(identifyingAttributesMap)
+            .build();
 
     when(entityDataServiceClient.getById(anyString(), anyString())).thenReturn(entity);
 
     edsCacheClient.getById(tenantId, entityId);
     edsCacheClient.getById(tenantId, entityId);
 
-    verify(entityDataServiceClient, times(1)).
-        getById("tenant", "entity-12346");
+    verify(entityDataServiceClient, times(1)).getById("tenant", "entity-12346");
   }
 
   @Test
@@ -187,8 +202,6 @@ public class EdsCacheClientTest {
     entity = edsCacheClient.getById(tenantId, entityId);
     Assertions.assertNull(entity);
 
-    verify(entityDataServiceClient, times(2)).
-        getById("tenant", "entity-12346");
+    verify(entityDataServiceClient, times(2)).getById("tenant", "entity-12346");
   }
-
 }

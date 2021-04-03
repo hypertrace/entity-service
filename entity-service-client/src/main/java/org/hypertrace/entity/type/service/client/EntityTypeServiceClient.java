@@ -13,17 +13,16 @@ import org.hypertrace.entity.type.service.v1.EntityTypeFilter;
 import org.hypertrace.entity.type.service.v1.EntityTypeServiceGrpc;
 import org.hypertrace.entity.type.service.v1.EntityTypeServiceGrpc.EntityTypeServiceBlockingStub;
 
-/**
- * Client for all operations on EntityTypes stored in the Document Store
- */
+/** Client for all operations on EntityTypes stored in the Document Store */
 public class EntityTypeServiceClient {
 
   private final EntityTypeServiceBlockingStub blockingStub;
 
   public EntityTypeServiceClient(Channel channel) {
-    blockingStub = EntityTypeServiceGrpc.newBlockingStub(channel)
-        .withCallCredentials(
-            RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
+    blockingStub =
+        EntityTypeServiceGrpc.newBlockingStub(channel)
+            .withCallCredentials(
+                RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
   }
 
   private <V> V execute(String tenantId, Callable<V> c) {
@@ -34,8 +33,8 @@ public class EntityTypeServiceClient {
     execute(tenantId, () -> blockingStub.upsertEntityType(entityType));
   }
 
-  public void upsertEntityRelationshipType(String tenantId,
-      EntityRelationshipType entityRelationshipType) {
+  public void upsertEntityRelationshipType(
+      String tenantId, EntityRelationshipType entityRelationshipType) {
     execute(tenantId, () -> blockingStub.upsertEntityRelationshipType(entityRelationshipType));
   }
 
@@ -43,30 +42,34 @@ public class EntityTypeServiceClient {
     execute(tenantId, () -> blockingStub.deleteEntityTypes(entityTypeFilter));
   }
 
-  public void deleteEntityRelationshipTypes(String tenantId,
-      EntityRelationshipTypeFilter entityRelationshipTypeFilter) {
-    execute(tenantId,
-        () -> blockingStub.deleteEntityRelationshipTypes(entityRelationshipTypeFilter));
+  public void deleteEntityRelationshipTypes(
+      String tenantId, EntityRelationshipTypeFilter entityRelationshipTypeFilter) {
+    execute(
+        tenantId, () -> blockingStub.deleteEntityRelationshipTypes(entityRelationshipTypeFilter));
   }
 
   public List<EntityType> getAllEntityTypes(String tenantId) {
-    return Lists.newArrayList(execute(tenantId,
-        () -> blockingStub.queryEntityTypes(EntityTypeFilter.newBuilder().build())));
+    return Lists.newArrayList(
+        execute(
+            tenantId, () -> blockingStub.queryEntityTypes(EntityTypeFilter.newBuilder().build())));
   }
 
   public List<EntityType> queryEntityTypes(String tenantId, EntityTypeFilter entityTypeFilter) {
-    return Lists
-        .newArrayList(execute(tenantId, () -> blockingStub.queryEntityTypes(entityTypeFilter)));
+    return Lists.newArrayList(
+        execute(tenantId, () -> blockingStub.queryEntityTypes(entityTypeFilter)));
   }
 
   public List<EntityRelationshipType> getAllEntityRelationshipTypes(String tenantId) {
-    return Lists.newArrayList(execute(tenantId,
-        () -> blockingStub.queryRelationshipTypes(
-            EntityRelationshipTypeFilter.newBuilder().build())));
+    return Lists.newArrayList(
+        execute(
+            tenantId,
+            () ->
+                blockingStub.queryRelationshipTypes(
+                    EntityRelationshipTypeFilter.newBuilder().build())));
   }
 
-  public List<EntityRelationshipType> queryRelationshipTypes(String tenantId,
-      EntityRelationshipTypeFilter filter) {
+  public List<EntityRelationshipType> queryRelationshipTypes(
+      String tenantId, EntityRelationshipTypeFilter filter) {
     return Lists.newArrayList(execute(tenantId, () -> blockingStub.queryRelationshipTypes(filter)));
   }
 }

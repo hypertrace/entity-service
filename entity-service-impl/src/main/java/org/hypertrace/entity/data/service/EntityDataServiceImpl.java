@@ -528,9 +528,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     if (rejectUpsertForConditionMismatch) {
       // There's an existing entity and the update doesn't meet the condition, return existing
       responseObserver.onNext(
-          MergeAndUpsertEntityResponse.newBuilder()
-              .setEntity(existingEntity.get())
-              .build());
+          MergeAndUpsertEntityResponse.newBuilder().setEntity(existingEntity.get()).build());
       responseObserver.onCompleted();
     } else {
       // There's either a new entity or a valid update to upsert

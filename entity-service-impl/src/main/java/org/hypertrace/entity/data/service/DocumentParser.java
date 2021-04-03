@@ -15,7 +15,8 @@ public class DocumentParser {
   private static final Parser PARSER = DocStoreJsonFormat.parser().ignoringUnknownFields();
 
   @SuppressWarnings("unchecked")
-  <T extends Message> T parseOrThrow(@Nonnull Document document, @Nonnull Message.Builder messageBuilder)
+  <T extends Message> T parseOrThrow(
+      @Nonnull Document document, @Nonnull Message.Builder messageBuilder)
       throws InvalidProtocolBufferException {
     PARSER.merge(document.toJson(), messageBuilder);
     return (T) messageBuilder.build();

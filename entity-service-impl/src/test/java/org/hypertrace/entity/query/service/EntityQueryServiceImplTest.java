@@ -67,8 +67,7 @@ public class EntityQueryServiceImplTest {
   @Test
   public void testUpdate_noTenantId() throws Exception {
     StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
-    when(requestContext.getTenantId())
-        .thenReturn(Optional.empty());
+    when(requestContext.getTenantId()).thenReturn(Optional.empty());
     Context.current()
         .withValue(RequestContext.CURRENT, requestContext)
         .call(
@@ -79,8 +78,8 @@ public class EntityQueryServiceImplTest {
               eqs.update(null, mockResponseObserver);
 
               verify(mockResponseObserver, times(1))
-                  .onError(argThat(
-                      new ExceptionMessageMatcher("Tenant id is missing in the request.")));
+                  .onError(
+                      argThat(new ExceptionMessageMatcher("Tenant id is missing in the request.")));
               return null;
             });
   }
@@ -99,8 +98,9 @@ public class EntityQueryServiceImplTest {
               eqs.update(EntityUpdateRequest.newBuilder().build(), mockResponseObserver);
 
               verify(mockResponseObserver, times(1))
-                  .onError(argThat(
-                      new ExceptionMessageMatcher("Entity type is missing in the request.")));
+                  .onError(
+                      argThat(
+                          new ExceptionMessageMatcher("Entity type is missing in the request.")));
               return null;
             });
   }
@@ -116,13 +116,14 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1);
 
-              eqs.update(EntityUpdateRequest.newBuilder()
-                  .setEntityType(TEST_ENTITY_TYPE)
-                  .build(), mockResponseObserver);
+              eqs.update(
+                  EntityUpdateRequest.newBuilder().setEntityType(TEST_ENTITY_TYPE).build(),
+                  mockResponseObserver);
 
               verify(mockResponseObserver, times(1))
-                  .onError(argThat(
-                      new ExceptionMessageMatcher("Entity IDs are missing in the request.")));
+                  .onError(
+                      argThat(
+                          new ExceptionMessageMatcher("Entity IDs are missing in the request.")));
               return null;
             });
   }
@@ -138,14 +139,16 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1);
 
-              eqs.update(EntityUpdateRequest.newBuilder()
-                  .setEntityType(TEST_ENTITY_TYPE)
-                  .addEntityIds("entity-id-1")
-                  .build(), mockResponseObserver);
+              eqs.update(
+                  EntityUpdateRequest.newBuilder()
+                      .setEntityType(TEST_ENTITY_TYPE)
+                      .addEntityIds("entity-id-1")
+                      .build(),
+                  mockResponseObserver);
 
               verify(mockResponseObserver, times(1))
-                  .onError(argThat(
-                      new ExceptionMessageMatcher("Operation is missing in the request.")));
+                  .onError(
+                      argThat(new ExceptionMessageMatcher("Operation is missing in the request.")));
               return null;
             });
   }
@@ -171,7 +174,8 @@ public class EntityQueryServiceImplTest {
                             .setValue(newStatus)))
             .addSelection(
                 Expression.newBuilder()
-                    .setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID1)))
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID1)))
             .addSelection(
                 Expression.newBuilder()
                     .setColumnIdentifier(
@@ -228,8 +232,10 @@ public class EntityQueryServiceImplTest {
             .setEntityName("Test entity 1")
             .putAttributes(
                 EDS_COLUMN_NAME1,
-                AttributeValue.newBuilder().setValue(
-                    org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo1")).build())
+                AttributeValue.newBuilder()
+                    .setValue(
+                        org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo1"))
+                    .build())
             .build();
     Entity entity2 =
         Entity.newBuilder()
@@ -239,26 +245,31 @@ public class EntityQueryServiceImplTest {
             .setEntityName("Test entity 2")
             .putAttributes(
                 EDS_COLUMN_NAME1,
-                AttributeValue.newBuilder().setValue(
-                    org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo2")).build())
+                AttributeValue.newBuilder()
+                    .setValue(
+                        org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo2"))
+                    .build())
             .build();
 
-    List<Document> docs = List.of(
-        new JSONDocument(JsonFormat.printer().print(entity1)),
-        new JSONDocument(JsonFormat.printer().print(entity2)),
-        // this doc will result in parsing error
-        new JSONDocument("{\"entityId\": [1, 2]}"));
+    List<Document> docs =
+        List.of(
+            new JSONDocument(JsonFormat.printer().print(entity1)),
+            new JSONDocument(JsonFormat.printer().print(entity2)),
+            // this doc will result in parsing error
+            new JSONDocument("{\"entityId\": [1, 2]}"));
     when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
-    EntityQueryRequest request = EntityQueryRequest.newBuilder()
-        .setEntityType(TEST_ENTITY_TYPE)
-        .addOrderBy(
-            OrderByExpression.newBuilder()
-                .setExpression(
-                    Expression.newBuilder().setColumnIdentifier(
-                        ColumnIdentifier.newBuilder()
-                            .setColumnName(ATTRIBUTE_ID1)
-                            .build()))
-        ).build();
+    EntityQueryRequest request =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(TEST_ENTITY_TYPE)
+            .addOrderBy(
+                OrderByExpression.newBuilder()
+                    .setExpression(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder()
+                                    .setColumnName(ATTRIBUTE_ID1)
+                                    .build())))
+            .build();
     StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
     Context.current()
         .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
@@ -287,8 +298,10 @@ public class EntityQueryServiceImplTest {
             .setEntityName("Test entity 1")
             .putAttributes(
                 EDS_COLUMN_NAME1,
-                AttributeValue.newBuilder().setValue(
-                    org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo1")).build())
+                AttributeValue.newBuilder()
+                    .setValue(
+                        org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo1"))
+                    .build())
             .build();
     Entity entity2 =
         Entity.newBuilder()
@@ -298,8 +311,10 @@ public class EntityQueryServiceImplTest {
             .setEntityName("Test entity 2")
             .putAttributes(
                 EDS_COLUMN_NAME1,
-                AttributeValue.newBuilder().setValue(
-                    org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo2")).build())
+                AttributeValue.newBuilder()
+                    .setValue(
+                        org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo2"))
+                    .build())
             .build();
 
     Entity entity3 =
@@ -310,27 +325,32 @@ public class EntityQueryServiceImplTest {
             .setEntityName("Test entity 3")
             .putAttributes(
                 EDS_COLUMN_NAME1,
-                AttributeValue.newBuilder().setValue(
-                    org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo2")).build())
+                AttributeValue.newBuilder()
+                    .setValue(
+                        org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("foo2"))
+                    .build())
             .build();
 
-    List<Document> docs = List.of(
-        new JSONDocument(JsonFormat.printer().print(entity1)),
-        new JSONDocument(JsonFormat.printer().print(entity2)),
-        new JSONDocument(JsonFormat.printer().print(entity3)),
-        // this doc will result in parsing error
-        new JSONDocument("{\"entityId\": [1, 2]}"));
+    List<Document> docs =
+        List.of(
+            new JSONDocument(JsonFormat.printer().print(entity1)),
+            new JSONDocument(JsonFormat.printer().print(entity2)),
+            new JSONDocument(JsonFormat.printer().print(entity3)),
+            // this doc will result in parsing error
+            new JSONDocument("{\"entityId\": [1, 2]}"));
     when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
-    EntityQueryRequest request = EntityQueryRequest.newBuilder()
-        .setEntityType(TEST_ENTITY_TYPE)
-        .addOrderBy(
-            OrderByExpression.newBuilder()
-                .setExpression(
-                    Expression.newBuilder().setColumnIdentifier(
-                        ColumnIdentifier.newBuilder()
-                            .setColumnName(ATTRIBUTE_ID1)
-                            .build()))
-        ).build();
+    EntityQueryRequest request =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(TEST_ENTITY_TYPE)
+            .addOrderBy(
+                OrderByExpression.newBuilder()
+                    .setExpression(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder()
+                                    .setColumnName(ATTRIBUTE_ID1)
+                                    .build())))
+            .build();
     StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
     Context.current()
         .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
@@ -360,8 +380,11 @@ public class EntityQueryServiceImplTest {
             .setEntityName(entityName)
             .putAttributes(
                 "status",
-                AttributeValue.newBuilder().setValue(
-                    org.hypertrace.entity.data.service.v1.Value.newBuilder().setString("doing good")).build())
+                AttributeValue.newBuilder()
+                    .setValue(
+                        org.hypertrace.entity.data.service.v1.Value.newBuilder()
+                            .setString("doing good"))
+                    .build())
             .build();
 
     List<Expression> selections = Lists.newArrayList();
@@ -469,14 +492,11 @@ public class EntityQueryServiceImplTest {
 
   private RequestContext mockRequestContextWithTenantId() {
     // mock successful update
-    return when(requestContext.getTenantId())
-        .thenReturn(Optional.of("tenant1"))
-        .getMock();
+    return when(requestContext.getTenantId()).thenReturn(Optional.of("tenant1")).getMock();
   }
 
   private EntityAttributeMapping mockMappingForAttribute1() {
-    return when(mockAttributeMapping.getDocStorePathByAttributeId(
-        requestContext, ATTRIBUTE_ID1))
+    return when(mockAttributeMapping.getDocStorePathByAttributeId(requestContext, ATTRIBUTE_ID1))
         .thenReturn(Optional.of(EDS_COLUMN_NAME1))
         .getMock();
   }

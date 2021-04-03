@@ -18,8 +18,7 @@ class EntityKey {
   private static final String DEFAULT_TENANT_ID = "default";
 
   static EntityKey entityInCurrentContext(Entity inputEntity) {
-    return new EntityKey(
-        requireNonNull(RequestContext.CURRENT.get()), requireNonNull(inputEntity));
+    return new EntityKey(requireNonNull(RequestContext.CURRENT.get()), requireNonNull(inputEntity));
   }
 
   private final Entity inputEntity;

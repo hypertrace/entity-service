@@ -8,9 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-/**
- * Unit test for {@link EntityServiceClientConfig}
- */
+/** Unit test for {@link EntityServiceClientConfig} */
 public class EntityServiceClientConfigTest {
 
   @Test
@@ -33,8 +31,10 @@ public class EntityServiceClientConfigTest {
     map.put("host", "localhost");
     map.put("port", 50061);
     Config config = ConfigFactory.parseMap(map);
-    Assertions.assertThrows(ConfigException.Missing.class, () -> {
-      EntityServiceClientConfig.from(config);
-    });
+    Assertions.assertThrows(
+        ConfigException.Missing.class,
+        () -> {
+          EntityServiceClientConfig.from(config);
+        });
   }
 }
