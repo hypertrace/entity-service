@@ -18,8 +18,10 @@ public class EntityTypeServiceClient {
   private final EntityTypeServiceBlockingStub blockingStub;
 
   public EntityTypeServiceClient(Channel channel) {
-    blockingStub = EntityTypeServiceGrpc.newBlockingStub(channel).withCallCredentials(
-        RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
+    blockingStub =
+        EntityTypeServiceGrpc.newBlockingStub(channel)
+            .withCallCredentials(
+                RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
   }
 
   private <V> V execute(String tenantId, Callable<V> c) {
@@ -27,33 +29,46 @@ public class EntityTypeServiceClient {
   }
 
   public UpsertEntityTypeResponse upsertEntityType(String tenantId, EntityType entityType) {
-    return execute(tenantId, () -> blockingStub.upsertEntityType(
-        UpsertEntityTypeRequest.newBuilder().setEntityType(entityType).build()));
+    return execute(
+        tenantId,
+        () ->
+            blockingStub.upsertEntityType(
+                UpsertEntityTypeRequest.newBuilder().setEntityType(entityType).build()));
   }
 
   public void deleteAllEntityTypes(String tenantId) {
     List<String> names =
         getAllEntityTypes(tenantId).stream().map(EntityType::getName).collect(Collectors.toList());
     if (!names.isEmpty()) {
-      execute(tenantId, () -> blockingStub.deleteEntityTypes(
-          DeleteEntityTypesRequest.newBuilder().addAllName(names).build()));
+      execute(
+          tenantId,
+          () ->
+              blockingStub.deleteEntityTypes(
+                  DeleteEntityTypesRequest.newBuilder().addAllName(names).build()));
     }
   }
 
   public void deleteEntityTypes(String tenantId, List<String> entityTypes) {
-    execute(tenantId, () -> blockingStub.deleteEntityTypes(
-        DeleteEntityTypesRequest.newBuilder().addAllName(entityTypes).build()));
+    execute(
+        tenantId,
+        () ->
+            blockingStub.deleteEntityTypes(
+                DeleteEntityTypesRequest.newBuilder().addAllName(entityTypes).build()));
   }
 
   public List<EntityType> getAllEntityTypes(String tenantId) {
-    return execute(tenantId,
-        () -> blockingStub.queryEntityTypes(QueryEntityTypesRequest.newBuilder().build()))
+    return execute(
+            tenantId,
+            () -> blockingStub.queryEntityTypes(QueryEntityTypesRequest.newBuilder().build()))
         .getEntityTypeList();
   }
 
   public List<EntityType> queryEntityTypes(String tenantId, List<String> names) {
-    return execute(tenantId, () -> blockingStub.queryEntityTypes(
-        QueryEntityTypesRequest.newBuilder().addAllName(names).build())).getEntityTypeList();
+    return execute(
+            tenantId,
+            () ->
+                blockingStub.queryEntityTypes(
+                    QueryEntityTypesRequest.newBuilder().addAllName(names).build()))
+        .getEntityTypeList();
   }
 }
-

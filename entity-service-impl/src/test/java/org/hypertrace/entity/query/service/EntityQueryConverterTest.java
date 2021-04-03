@@ -34,10 +34,8 @@ public class EntityQueryConverterTest {
   private static final String ATTRIBUTE_ID_NAME2 = "eqsColumn2";
   private static final String EDS_COLUMN_NAME2 = "edsColumn2";
 
-  @Mock
-  EntityAttributeMapping mockAttributeMapping;
-  @Mock
-  RequestContext mockRequestContext;
+  @Mock EntityAttributeMapping mockAttributeMapping;
+  @Mock RequestContext mockRequestContext;
   private EntityQueryConverter queryConverter;
 
   @BeforeEach
@@ -65,77 +63,94 @@ public class EntityQueryConverterTest {
   public void test_convertToEdsQuery_orderByExpression() {
     mockAttribute1();
     mockAttribute2();
-    EntityQueryRequest request = EntityQueryRequest.newBuilder()
-        .addOrderBy(
-            OrderByExpression.newBuilder()
-                .setExpression(
-                    Expression.newBuilder().setColumnIdentifier(
-                        ColumnIdentifier.newBuilder()
-                          .setColumnName(ATTRIBUTE_ID_NAME1)
-                          .build()))
-                .setOrder(SortOrder.ASC)
-            .build())
-        .addOrderBy(
-            OrderByExpression.newBuilder()
-                .setExpression(
-                    Expression.newBuilder().setColumnIdentifier(
-                        ColumnIdentifier.newBuilder()
-                            .setColumnName(ATTRIBUTE_ID_NAME2)
-                            .build()))
-                .setOrder(SortOrder.DESC)
-                .build())
-        .build();
+    EntityQueryRequest request =
+        EntityQueryRequest.newBuilder()
+            .addOrderBy(
+                OrderByExpression.newBuilder()
+                    .setExpression(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder()
+                                    .setColumnName(ATTRIBUTE_ID_NAME1)
+                                    .build()))
+                    .setOrder(SortOrder.ASC)
+                    .build())
+            .addOrderBy(
+                OrderByExpression.newBuilder()
+                    .setExpression(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder()
+                                    .setColumnName(ATTRIBUTE_ID_NAME2)
+                                    .build()))
+                    .setOrder(SortOrder.DESC)
+                    .build())
+            .build();
     Query convertedQuery = queryConverter.convertToEDSQuery(mockRequestContext, request);
     assertEquals(2, convertedQuery.getOrderByCount());
     // ensure that the order of OrderByExpression is maintained
     assertEquals(EDS_COLUMN_NAME1, convertedQuery.getOrderByList().get(0).getName());
-    assertEquals(org.hypertrace.entity.data.service.v1.SortOrder.ASC,
+    assertEquals(
+        org.hypertrace.entity.data.service.v1.SortOrder.ASC,
         convertedQuery.getOrderBy(0).getOrder());
     assertEquals(EDS_COLUMN_NAME2, convertedQuery.getOrderByList().get(1).getName());
-    assertEquals(org.hypertrace.entity.data.service.v1.SortOrder.DESC,
+    assertEquals(
+        org.hypertrace.entity.data.service.v1.SortOrder.DESC,
         convertedQuery.getOrderBy(1).getOrder());
-
   }
 
   @Test
   public void test_convertToEdsQuery_missingSortOrderByExpression_assignWithAscByDefault() {
     mockAttribute1();
-    EntityQueryRequest request = EntityQueryRequest.newBuilder()
-        .addOrderBy(
-            OrderByExpression.newBuilder()
-                .setExpression(
-                    Expression.newBuilder().setColumnIdentifier(
-                        ColumnIdentifier.newBuilder()
-                            .setColumnName(ATTRIBUTE_ID_NAME1)
-                            .build()))
-        ).build();
+    EntityQueryRequest request =
+        EntityQueryRequest.newBuilder()
+            .addOrderBy(
+                OrderByExpression.newBuilder()
+                    .setExpression(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder()
+                                    .setColumnName(ATTRIBUTE_ID_NAME1)
+                                    .build())))
+            .build();
     Query convertedQuery = queryConverter.convertToEDSQuery(mockRequestContext, request);
     assertEquals(1, convertedQuery.getOrderByCount());
     // ensure that the order of OrderByExpression is maintained
     assertEquals(EDS_COLUMN_NAME1, convertedQuery.getOrderByList().get(0).getName());
-    assertEquals(org.hypertrace.entity.data.service.v1.SortOrder.ASC,
+    assertEquals(
+        org.hypertrace.entity.data.service.v1.SortOrder.ASC,
         convertedQuery.getOrderBy(0).getOrder());
   }
 
   @Test
   public void test_filter() {
     mockAttribute2();
-    EntityQueryRequest queryRequest = EntityQueryRequest.newBuilder()
-        .setEntityType(EntityType.SERVICE.name())
-        .setFilter(
-            Filter.newBuilder()
-                .setOperatorValue(Operator.LT.getNumber())
-                .setLhs(Expression.newBuilder().setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID_NAME2).build()).build())
-                .setRhs(Expression.newBuilder().setLiteral(
-                    LiteralConstant.newBuilder().setValue(
-                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
-                            .setLong(Instant.now().toEpochMilli())
-                            .setValueType(ValueType.LONG)
+    EntityQueryRequest queryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(EntityType.SERVICE.name())
+            .setFilter(
+                Filter.newBuilder()
+                    .setOperatorValue(Operator.LT.getNumber())
+                    .setLhs(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder()
+                                    .setColumnName(ATTRIBUTE_ID_NAME2)
+                                    .build())
                             .build())
-                        .build()).
-                    build())
-                .build())
-        .build();
+                    .setRhs(
+                        Expression.newBuilder()
+                            .setLiteral(
+                                LiteralConstant.newBuilder()
+                                    .setValue(
+                                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                            .setLong(Instant.now().toEpochMilli())
+                                            .setValueType(ValueType.LONG)
+                                            .build())
+                                    .build())
+                            .build())
+                    .build())
+            .build();
     Query query = queryConverter.convertToEDSQuery(mockRequestContext, queryRequest);
     Assertions.assertEquals(EntityType.SERVICE.name(), query.getEntityType());
     Assertions.assertNotNull(query.getFilter());
@@ -143,16 +158,17 @@ public class EntityQueryConverterTest {
 
   @Test
   public void test_convertToEdsQuery_functionExpressionOrderByExpression_throwsException() {
-    EntityQueryRequest request = EntityQueryRequest.newBuilder()
-        .addOrderBy(
-            OrderByExpression.newBuilder()
-                .setExpression(Expression.newBuilder()
-                    .setFunction(
-                        Function.newBuilder().build())
+    EntityQueryRequest request =
+        EntityQueryRequest.newBuilder()
+            .addOrderBy(
+                OrderByExpression.newBuilder()
+                    .setExpression(
+                        Expression.newBuilder().setFunction(Function.newBuilder().build()).build())
+                    .setOrder(SortOrder.ASC)
                     .build())
-                .setOrder(SortOrder.ASC).build()
-        ).build();
-    assertThrows(UnsupportedOperationException.class,
+            .build();
+    assertThrows(
+        UnsupportedOperationException.class,
         () -> queryConverter.convertToEDSQuery(mockRequestContext, request));
   }
 

@@ -4,13 +4,13 @@ public class EntityServiceConstants {
 
   public static final String TENANT_ID = "tenantId";
 
-  //EntityType constants
+  // EntityType constants
   public static final String NAME = "name";
   public static final String VERSION = "version";
   public static final String ATTRIBUTE_TYPE = "attributeType";
   public static final String ID_ATTR = ATTRIBUTE_TYPE + ".identifyingAttribute";
 
-  //Entity constants
+  // Entity constants
   public static final String ID = "_id";
   public static final String ENTITY_TYPE = "entityType";
   public static final String ENTITY_ID = "entityId";

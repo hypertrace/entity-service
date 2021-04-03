@@ -18,18 +18,18 @@ import org.hypertrace.entity.data.service.v1.Value;
  */
 public class UUIDGenerator {
 
-  //A randomly generated UUID required for the UUID(type 5) generation
-  //TODO: Need to see if this should be dynamically generated based on the Tenant ID
-  private static final UUID NAMESPACE_UUID = UUID
-      .fromString("5088c92d-5e9c-43f4-a35b-2589474d5642");
+  // A randomly generated UUID required for the UUID(type 5) generation
+  // TODO: Need to see if this should be dynamically generated based on the Tenant ID
+  private static final UUID NAMESPACE_UUID =
+      UUID.fromString("5088c92d-5e9c-43f4-a35b-2589474d5642");
 
   // version bits for UUID 3
   private static final long VERSION_BITS = 3 << 12;
 
   /**
-   * <b>IMPORTANT: This is to be used only by the Entity Service.</b>
-   * This ID generation is bound to change and no consumer can make an assumption that this will be
-   * the UUID generation logic for ever
+   * <b>IMPORTANT: This is to be used only by the Entity Service.</b> This ID generation is bound to
+   * change and no consumer can make an assumption that this will be the UUID generation logic for
+   * ever
    */
   public static String generateUUID(Map<String, AttributeValue> attributes) {
     if (attributes.isEmpty()) {
@@ -40,12 +40,12 @@ public class UUIDGenerator {
 
   /**
    * Explicitly set the version of UUID to UUIDv3
-   * <p>
-   * Priori, we were using UUID implementation from http://commons.apache.org/sandbox/commons-id/source-repository.html
-   * for generating UUID using SHA-1 and with a namespace using method nameUUIDFromString. It has an
-   * issue, as per rfc4122, the version would have been 5, but it generates UUID with version 3. To
-   * support backward compatibility with our data, we decided to continue resetting the UUID version
-   * to 3.
+   *
+   * <p>Priori, we were using UUID implementation from
+   * http://commons.apache.org/sandbox/commons-id/source-repository.html for generating UUID using
+   * SHA-1 and with a namespace using method nameUUIDFromString. It has an issue, as per rfc4122,
+   * the version would have been 5, but it generates UUID with version 3. To support backward
+   * compatibility with our data, we decided to continue resetting the UUID version to 3.
    */
   private static UUID getUUIDWithVersion3(String name) {
     UUID uuid5 = UuidCreator.getNameBasedSha1(NAMESPACE_UUID, name);
@@ -77,7 +77,7 @@ public class UUIDGenerator {
     if (attributeValueList.isEmpty()) {
       return null;
     }
-    //Assuming uniform type for all values in the AttributeList. So get type from the first one
+    // Assuming uniform type for all values in the AttributeList. So get type from the first one
     AttributeValue.TypeCase attributeValueType = attributeValueList.get(0).getTypeCase();
     switch (attributeValueType) {
       case VALUE:

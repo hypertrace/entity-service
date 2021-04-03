@@ -13,9 +13,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/**
- * Integration test for testing {@link EntityTypeServiceImpl}
- */
+/** Integration test for testing {@link EntityTypeServiceImpl} */
 public class EntityTypeServiceTest {
   private static final String TENANT_ID =
       "__testTenant__" + EntityTypeServiceTest.class.getSimpleName();
@@ -24,10 +22,14 @@ public class EntityTypeServiceTest {
 
   @BeforeAll
   public static void setUp() {
-    IntegrationTestServerUtil.startServices(new String[]{"entity-service"});
-    Channel channel = ClientInterceptors.intercept(ManagedChannelBuilder.forAddress(
-        EntityServiceTestConfig.getClientConfig().getHost(),
-        EntityServiceTestConfig.getClientConfig().getPort()).usePlaintext().build());
+    IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
+    Channel channel =
+        ClientInterceptors.intercept(
+            ManagedChannelBuilder.forAddress(
+                    EntityServiceTestConfig.getClientConfig().getHost(),
+                    EntityServiceTestConfig.getClientConfig().getPort())
+                .usePlaintext()
+                .build());
     client = new EntityTypeServiceClient(channel);
   }
 
@@ -43,26 +45,30 @@ public class EntityTypeServiceTest {
 
   @Test()
   public void testInvalidEntityTypeUpsert() {
-    Assertions.assertThrows(RuntimeException.class, () -> {
-      EntityType entityType1 = EntityType.newBuilder().setName("API").build();
-      client.upsertEntityType(TENANT_ID, entityType1);
-    });
+    Assertions.assertThrows(
+        RuntimeException.class,
+        () -> {
+          EntityType entityType1 = EntityType.newBuilder().setName("API").build();
+          client.upsertEntityType(TENANT_ID, entityType1);
+        });
   }
 
   @Test
   public void testAllEntityTypeMethods() {
-    EntityType entityType1 = EntityType.newBuilder()
-        .setName("API")
-        .setAttributeScope("API")
-        .setIdAttributeKey("id")
-        .setNameAttributeKey("name")
-        .build();
-    EntityType entityType2 = EntityType.newBuilder()
-        .setName("SERVICE")
-        .setAttributeScope("SERVICE")
-        .setIdAttributeKey("id")
-        .setNameAttributeKey("name")
-        .build();
+    EntityType entityType1 =
+        EntityType.newBuilder()
+            .setName("API")
+            .setAttributeScope("API")
+            .setIdAttributeKey("id")
+            .setNameAttributeKey("name")
+            .build();
+    EntityType entityType2 =
+        EntityType.newBuilder()
+            .setName("SERVICE")
+            .setAttributeScope("SERVICE")
+            .setIdAttributeKey("id")
+            .setNameAttributeKey("name")
+            .build();
     client.upsertEntityType(TENANT_ID, entityType1);
     client.upsertEntityType(TENANT_ID, entityType2);
 
@@ -87,4 +93,3 @@ public class EntityTypeServiceTest {
     Assertions.assertTrue(entityTypes.contains(entityType2));
   }
 }
-

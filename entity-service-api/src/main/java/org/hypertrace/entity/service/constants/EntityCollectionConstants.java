@@ -1,8 +1,6 @@
 package org.hypertrace.entity.service.constants;
 
-/**
- * Constants used for entity collections in the document store.
- */
+/** Constants used for entity collections in the document store. */
 public class EntityCollectionConstants {
 
   public static final String ENTITY_TYPES_COLLECTION = "entity_types";

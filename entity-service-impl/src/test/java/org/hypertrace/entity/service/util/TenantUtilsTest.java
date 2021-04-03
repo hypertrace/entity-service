@@ -9,7 +9,8 @@ public class TenantUtilsTest {
   @Test
   public void testGetTenantHierarchy() {
     Assertions.assertEquals("__root", TenantUtils.ROOT_TENANT_ID);
-    Assertions.assertEquals(List.of(TenantUtils.ROOT_TENANT_ID, "test-tenant-id"),
+    Assertions.assertEquals(
+        List.of(TenantUtils.ROOT_TENANT_ID, "test-tenant-id"),
         TenantUtils.getTenantHierarchy("test-tenant-id"));
   }
 }

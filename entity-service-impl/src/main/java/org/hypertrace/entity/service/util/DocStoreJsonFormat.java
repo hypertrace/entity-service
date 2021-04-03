@@ -1,6 +1,5 @@
 package org.hypertrace.entity.service.util;
 
-
 import com.google.common.base.Preconditions;
 import com.google.common.io.BaseEncoding;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -74,12 +73,9 @@ public class DocStoreJsonFormat {
 
   private static final Logger logger = Logger.getLogger(DocStoreJsonFormat.class.getName());
 
-  private DocStoreJsonFormat() {
-  }
+  private DocStoreJsonFormat() {}
 
-  /**
-   * Creates a {@link Printer} with default configurations.
-   */
+  /** Creates a {@link Printer} with default configurations. */
   public static Printer printer() {
     return new Printer(
         com.google.protobuf.TypeRegistry.getEmptyTypeRegistry(),
@@ -92,9 +88,7 @@ public class DocStoreJsonFormat {
         /* sortingMapKeys */ false);
   }
 
-  /**
-   * A Printer converts protobuf message to JSON format.
-   */
+  /** A Printer converts protobuf message to JSON format. */
   public static class Printer {
 
     private final com.google.protobuf.TypeRegistry registry;
@@ -266,7 +260,6 @@ public class DocStoreJsonFormat {
           sortingMapKeys);
     }
 
-
     /**
      * Create a new {@link Printer} that will omit all insignificant whitespace in the JSON output.
      * This new Printer clones all other configurations from the current Printer. Insignificant
@@ -280,8 +273,8 @@ public class DocStoreJsonFormat {
      * %x0A /              ; Line feed or New line
      * %x0D )              ; Carriage return
      * </pre>
-     * <p>
-     * See <a href="https://tools.ietf.org/html/rfc7159">https://tools.ietf.org/html/rfc7159</a>
+     *
+     * <p>See <a href="https://tools.ietf.org/html/rfc7159">https://tools.ietf.org/html/rfc7159</a>
      * current {@link Printer}.
      */
     public Printer omittingInsignificantWhitespace() {
@@ -298,14 +291,14 @@ public class DocStoreJsonFormat {
 
     /**
      * Create a new {@link Printer} that will sort the map keys in the JSON output.
-     * <p>
-     * Use of this modifier is discouraged, the generated JSON messages are equivalent with and
+     *
+     * <p>Use of this modifier is discouraged, the generated JSON messages are equivalent with and
      * without this option set, but there are some corner caseuse cases that demand a stable output,
      * while order of map keys is otherwise arbitrary.
-     * <p>
-     * The generated order is not well-defined and should not be depended on, but it's stable.
-     * <p>
-     * This new Printer clones all other configurations from the current {@link Printer}.
+     *
+     * <p>The generated order is not well-defined and should not be depended on, but it's stable.
+     *
+     * <p>This new Printer clones all other configurations from the current {@link Printer}.
      */
     public Printer sortingMapKeys() {
       return new Printer(
@@ -323,22 +316,22 @@ public class DocStoreJsonFormat {
      * Converts a protobuf message to JSON format.
      *
      * @throws InvalidProtocolBufferException if the message contains Any types that can't be
-     *                                        resolved.
-     * @throws IOException                    if writing to the output fails.
+     *     resolved.
+     * @throws IOException if writing to the output fails.
      */
     public void appendTo(MessageOrBuilder message, Appendable output) throws IOException {
       // TODO(xiaofeng): Investigate the allocation overhead and optimize for
       // mobile.
       new PrinterImpl(
-          registry,
-          oldRegistry,
-          alwaysOutputDefaultValueFields,
-          includingDefaultValueFields,
-          preservingProtoFieldNames,
-          output,
-          omittingInsignificantWhitespace,
-          printingEnumsAsInts,
-          sortingMapKeys)
+              registry,
+              oldRegistry,
+              alwaysOutputDefaultValueFields,
+              includingDefaultValueFields,
+              preservingProtoFieldNames,
+              output,
+              omittingInsignificantWhitespace,
+              printingEnumsAsInts,
+              sortingMapKeys)
           .print(message);
     }
 
@@ -360,9 +353,7 @@ public class DocStoreJsonFormat {
     }
   }
 
-  /**
-   * Creates a {@link Parser} with default configuration.
-   */
+  /** Creates a {@link Parser} with default configuration. */
   public static Parser parser() {
     return new Parser(
         com.google.protobuf.TypeRegistry.getEmptyTypeRegistry(),
@@ -371,9 +362,7 @@ public class DocStoreJsonFormat {
         Parser.DEFAULT_RECURSION_LIMIT);
   }
 
-  /**
-   * A Parser parses JSON to protobuf message.
-   */
+  /** A Parser parses JSON to protobuf message. */
   public static class Parser {
 
     private final com.google.protobuf.TypeRegistry registry;
@@ -439,7 +428,7 @@ public class DocStoreJsonFormat {
      * Parses from JSON into a protobuf message.
      *
      * @throws InvalidProtocolBufferException if the input is not valid JSON format or there are
-     *                                        unknown fields in the input.
+     *     unknown fields in the input.
      */
     public void merge(String json, Message.Builder builder) throws InvalidProtocolBufferException {
       // TODO(xiaofeng): Investigate the allocation overhead and optimize for
@@ -452,8 +441,8 @@ public class DocStoreJsonFormat {
      * Parses from JSON into a protobuf message.
      *
      * @throws InvalidProtocolBufferException if the input is not valid JSON format or there are
-     *                                        unknown fields in the input.
-     * @throws IOException                    if reading from the input throws.
+     *     unknown fields in the input.
+     * @throws IOException if reading from the input throws.
      */
     public void merge(Reader json, Message.Builder builder) throws IOException {
       // TODO(xiaofeng): Investigate the allocation overhead and optimize for
@@ -509,14 +498,10 @@ public class DocStoreJsonFormat {
       this.types = types;
     }
 
-
-    /**
-     * A Builder is used to build {@link TypeRegistry}.
-     */
+    /** A Builder is used to build {@link TypeRegistry}. */
     public static class Builder {
 
-      private Builder() {
-      }
+      private Builder() {}
 
       /**
        * Adds a message type and all types defined in the same .proto file as well as all
@@ -546,9 +531,7 @@ public class DocStoreJsonFormat {
         return this;
       }
 
-      /**
-       * Builds a {@link TypeRegistry}. This method can only be called once for one Builder.
-       */
+      /** Builds a {@link TypeRegistry}. This method can only be called once for one Builder. */
       public TypeRegistry build() {
         TypeRegistry result = new TypeRegistry(types);
         // Make sure the built {@link TypeRegistry} is immutable.
@@ -600,9 +583,7 @@ public class DocStoreJsonFormat {
     void print(final CharSequence text) throws IOException;
   }
 
-  /**
-   * Format the json without indentation
-   */
+  /** Format the json without indentation */
   private static final class CompactTextGenerator implements TextGenerator {
 
     private final Appendable output;
@@ -611,32 +592,22 @@ public class DocStoreJsonFormat {
       this.output = output;
     }
 
-    /**
-     * ignored by compact printer
-     */
+    /** ignored by compact printer */
     @Override
-    public void indent() {
-    }
+    public void indent() {}
 
-    /**
-     * ignored by compact printer
-     */
+    /** ignored by compact printer */
     @Override
-    public void outdent() {
-    }
+    public void outdent() {}
 
-    /**
-     * Print text to the output stream.
-     */
+    /** Print text to the output stream. */
     @Override
     public void print(final CharSequence text) throws IOException {
       output.append(text);
     }
   }
 
-  /**
-   * A TextGenerator adds indentation when writing formatted text.
-   */
+  /** A TextGenerator adds indentation when writing formatted text. */
   private static final class PrettyTextGenerator implements TextGenerator {
 
     private final Appendable output;
@@ -657,9 +628,7 @@ public class DocStoreJsonFormat {
       indent.append("  ");
     }
 
-    /**
-     * Reduces the current indent level by two spaces, or crashes if the indent level is zero.
-     */
+    /** Reduces the current indent level by two spaces, or crashes if the indent level is zero. */
     @Override
     public void outdent() {
       final int length = indent.length();
@@ -669,9 +638,7 @@ public class DocStoreJsonFormat {
       indent.delete(length - 2, length);
     }
 
-    /**
-     * Print text to the output stream.
-     */
+    /** Print text to the output stream. */
     @Override
     public void print(final CharSequence text) throws IOException {
       final int size = text.length();
@@ -699,9 +666,7 @@ public class DocStoreJsonFormat {
     }
   }
 
-  /**
-   * A Printer converts protobuf messages to JSON format.
-   */
+  /** A Printer converts protobuf messages to JSON format. */
   private static final class PrinterImpl {
 
     private final com.google.protobuf.TypeRegistry registry;
@@ -855,9 +820,7 @@ public class DocStoreJsonFormat {
       return printers;
     }
 
-    /**
-     * Prints google.protobuf.Any
-     */
+    /** Prints google.protobuf.Any */
     private void printAny(MessageOrBuilder message) throws IOException {
       if (Any.getDefaultInstance().equals(message)) {
         generator.print("{}");
@@ -903,9 +866,7 @@ public class DocStoreJsonFormat {
       }
     }
 
-    /**
-     * Prints wrapper types (e.g., google.protobuf.Int32Value)
-     */
+    /** Prints wrapper types (e.g., google.protobuf.Int32Value) */
     private void printWrapper(MessageOrBuilder message) throws IOException {
       Descriptor descriptor = message.getDescriptorForType();
       FieldDescriptor valueField = descriptor.findFieldByName("value");
@@ -925,33 +886,25 @@ public class DocStoreJsonFormat {
       }
     }
 
-    /**
-     * Prints google.protobuf.Timestamp
-     */
+    /** Prints google.protobuf.Timestamp */
     private void printTimestamp(MessageOrBuilder message) throws IOException {
       Timestamp value = Timestamp.parseFrom(toByteString(message));
       generator.print("\"" + Timestamps.toString(value) + "\"");
     }
 
-    /**
-     * Prints google.protobuf.Duration
-     */
+    /** Prints google.protobuf.Duration */
     private void printDuration(MessageOrBuilder message) throws IOException {
       Duration value = Duration.parseFrom(toByteString(message));
       generator.print("\"" + Durations.toString(value) + "\"");
     }
 
-    /**
-     * Prints google.protobuf.FieldMask
-     */
+    /** Prints google.protobuf.FieldMask */
     private void printFieldMask(MessageOrBuilder message) throws IOException {
       FieldMask value = FieldMask.parseFrom(toByteString(message));
       generator.print("\"" + FieldMaskUtil.toJsonString(value) + "\"");
     }
 
-    /**
-     * Prints google.protobuf.Struct
-     */
+    /** Prints google.protobuf.Struct */
     private void printStruct(MessageOrBuilder message) throws IOException {
       Descriptor descriptor = message.getDescriptorForType();
       FieldDescriptor field = descriptor.findFieldByName("fields");
@@ -962,9 +915,7 @@ public class DocStoreJsonFormat {
       printMapFieldValue(field, message.getField(field));
     }
 
-    /**
-     * Prints google.protobuf.Value
-     */
+    /** Prints google.protobuf.Value */
     private void printValue(MessageOrBuilder message) throws IOException {
       // For a Value message, only the value of the field is formatted.
       Map<FieldDescriptor, Object> fields = message.getAllFields();
@@ -983,9 +934,7 @@ public class DocStoreJsonFormat {
       }
     }
 
-    /**
-     * Prints google.protobuf.ListValue
-     */
+    /** Prints google.protobuf.ListValue */
     private void printListValue(MessageOrBuilder message) throws IOException {
       Descriptor descriptor = message.getDescriptorForType();
       FieldDescriptor field = descriptor.findFieldByName("values");
@@ -995,9 +944,7 @@ public class DocStoreJsonFormat {
       printRepeatedFieldValue(field, message.getField(field));
     }
 
-    /**
-     * Prints a regular message with an optional type URL.
-     */
+    /** Prints a regular message with an optional type URL. */
     private void print(MessageOrBuilder message, String typeUrl) throws IOException {
       generator.print("{" + blankOrNewLine);
       generator.indent();
@@ -1092,18 +1039,19 @@ public class DocStoreJsonFormat {
       generator.indent();
 
       @SuppressWarnings("unchecked") // Object guaranteed to be a List for a map field.
-          Collection<Object> elements = (List<Object>) value;
+      Collection<Object> elements = (List<Object>) value;
       if (sortingMapKeys && !elements.isEmpty()) {
         Comparator<Object> cmp = null;
         if (keyField.getType() == FieldDescriptor.Type.STRING) {
-          cmp = new Comparator<Object>() {
-            @Override
-            public int compare(final Object o1, final Object o2) {
-              ByteString s1 = ByteString.copyFromUtf8((String) o1);
-              ByteString s2 = ByteString.copyFromUtf8((String) o2);
-              return ByteString.unsignedLexicographicalComparator().compare(s1, s2);
-            }
-          };
+          cmp =
+              new Comparator<Object>() {
+                @Override
+                public int compare(final Object o1, final Object o2) {
+                  ByteString s1 = ByteString.copyFromUtf8((String) o1);
+                  ByteString s2 = ByteString.copyFromUtf8((String) o2);
+                  return ByteString.unsignedLexicographicalComparator().compare(s1, s2);
+                }
+              };
         }
         TreeMap<Object, Object> tm = new TreeMap<Object, Object>(cmp);
         for (Object element : elements) {
@@ -1284,9 +1232,7 @@ public class DocStoreJsonFormat {
     }
   }
 
-  /**
-   * Convert an unsigned 32-bit integer to a string.
-   */
+  /** Convert an unsigned 32-bit integer to a string. */
   private static String unsignedToString(final int value) {
     if (value >= 0) {
       return Integer.toString(value);
@@ -1295,9 +1241,7 @@ public class DocStoreJsonFormat {
     }
   }
 
-  /**
-   * Convert an unsigned 64-bit integer to a string.
-   */
+  /** Convert an unsigned 64-bit integer to a string. */
   private static String unsignedToString(final long value) {
     if (value >= 0) {
       return Long.toString(value);
@@ -2032,4 +1976,3 @@ public class DocStoreJsonFormat {
     }
   }
 }
-

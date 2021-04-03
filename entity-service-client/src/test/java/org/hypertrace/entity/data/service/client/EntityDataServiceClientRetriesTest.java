@@ -46,24 +46,33 @@ public class EntityDataServiceClientRetriesTest {
             .addService(this.mockDataService)
             .build()
             .start();
-    Map<String, Object> serviceConfig = Map.of(
-        "methodConfig", Collections.<Object>singletonList(Map.of(
-            "name", Collections.<Object>singletonList(Map.of("service", EntityDataServiceGrpc.getServiceDescriptor().getName())),
-            "retryPolicy", Map.of(
-                "maxAttempts", 3D,
-                "initialBackoff", "0.1s",
-                "maxBackoff", "5s",
-                "backoffMultiplier", 2D,
-                "retryableStatusCodes", Arrays.<Object>asList("UNAVAILABLE", "INTERNAL")
-            )
-            )
-        )
-    );
-    this.grpcChannel = InProcessChannelBuilder.forName(uniqueName)
-        .directExecutor()
-        .enableRetry()
-        .defaultServiceConfig(serviceConfig)
-        .build();
+    Map<String, Object> serviceConfig =
+        Map.of(
+            "methodConfig",
+            Collections.<Object>singletonList(
+                Map.of(
+                    "name",
+                        Collections.<Object>singletonList(
+                            Map.of(
+                                "service", EntityDataServiceGrpc.getServiceDescriptor().getName())),
+                    "retryPolicy",
+                        Map.of(
+                            "maxAttempts",
+                            3D,
+                            "initialBackoff",
+                            "0.1s",
+                            "maxBackoff",
+                            "5s",
+                            "backoffMultiplier",
+                            2D,
+                            "retryableStatusCodes",
+                            Arrays.<Object>asList("UNAVAILABLE", "INTERNAL")))));
+    this.grpcChannel =
+        InProcessChannelBuilder.forName(uniqueName)
+            .directExecutor()
+            .enableRetry()
+            .defaultServiceConfig(serviceConfig)
+            .build();
 
     edsClient = new EntityDataServiceClient(this.grpcChannel);
   }

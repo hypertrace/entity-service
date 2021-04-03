@@ -18,19 +18,21 @@ public class EntityQueryServiceClient {
   private final EntityQueryServiceBlockingStub blockingStub;
 
   public EntityQueryServiceClient(Channel channel) {
-    blockingStub = EntityQueryServiceGrpc.newBlockingStub(channel).withCallCredentials(
-        RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
+    blockingStub =
+        EntityQueryServiceGrpc.newBlockingStub(channel)
+            .withCallCredentials(
+                RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
   }
 
   public Iterator<ResultSetChunk> execute(EntityQueryRequest request, Map<String, String> headers) {
-    return GrpcClientRequestContextUtil
-        .executeWithHeadersContext(headers, () -> blockingStub.execute(request));
+    return GrpcClientRequestContextUtil.executeWithHeadersContext(
+        headers, () -> blockingStub.execute(request));
   }
 
-  public Iterator<ResultSetChunk> update(EntityUpdateRequest updateRequest,
-      Map<String, String> headers) {
-    return GrpcClientRequestContextUtil
-        .executeWithHeadersContext(headers, () -> blockingStub.update(updateRequest));
+  public Iterator<ResultSetChunk> update(
+      EntityUpdateRequest updateRequest, Map<String, String> headers) {
+    return GrpcClientRequestContextUtil.executeWithHeadersContext(
+        headers, () -> blockingStub.update(updateRequest));
   }
 
   public TotalEntitiesResponse total(TotalEntitiesRequest request, Map<String, String> headers) {

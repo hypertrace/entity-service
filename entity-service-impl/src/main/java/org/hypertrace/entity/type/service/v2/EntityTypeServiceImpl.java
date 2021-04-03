@@ -35,8 +35,10 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
   }
 
   @Override
-  public void upsertEntityType(org.hypertrace.entity.type.service.v2.UpsertEntityTypeRequest request,
-      io.grpc.stub.StreamObserver<org.hypertrace.entity.type.service.v2.UpsertEntityTypeResponse> responseObserver) {
+  public void upsertEntityType(
+      org.hypertrace.entity.type.service.v2.UpsertEntityTypeRequest request,
+      io.grpc.stub.StreamObserver<org.hypertrace.entity.type.service.v2.UpsertEntityTypeResponse>
+          responseObserver) {
     Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
@@ -51,17 +53,22 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
 
     try {
       // Set tenant id.
-      EntityTypeDocument document = EntityTypeDocument.fromProto(tenantId.get(), request.getEntityType());
-      entityTypeCollection.upsert(new SingleValueKey(tenantId.get(), request.getEntityType().getName()), document);
+      EntityTypeDocument document =
+          EntityTypeDocument.fromProto(tenantId.get(), request.getEntityType());
+      entityTypeCollection.upsert(
+          new SingleValueKey(tenantId.get(), request.getEntityType().getName()), document);
 
       // Query the entity type again and return that.
       Iterator<Document> entityTypes =
-          entityTypeCollection.search(transform(tenantId.get(), List.of(request.getEntityType().getName())));
+          entityTypeCollection.search(
+              transform(tenantId.get(), List.of(request.getEntityType().getName())));
 
       if (entityTypes.hasNext()) {
         String json = entityTypes.next().toJson();
-          responseObserver.onNext(UpsertEntityTypeResponse.newBuilder()
-              .setEntityType(EntityTypeDocument.fromJson(json).toProto()).build());
+        responseObserver.onNext(
+            UpsertEntityTypeResponse.newBuilder()
+                .setEntityType(EntityTypeDocument.fromJson(json).toProto())
+                .build());
         responseObserver.onCompleted();
       } else {
         // This could happen if the upsert has failed to make the doc store.
@@ -74,15 +81,17 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
   }
 
   private boolean isValidUpsert(EntityType entityType) {
-    return !Strings.isNullOrEmpty(entityType.getName()) &&
-        !Strings.isNullOrEmpty(entityType.getAttributeScope()) &&
-        !Strings.isNullOrEmpty(entityType.getIdAttributeKey()) &&
-        !Strings.isNullOrEmpty(entityType.getNameAttributeKey());
+    return !Strings.isNullOrEmpty(entityType.getName())
+        && !Strings.isNullOrEmpty(entityType.getAttributeScope())
+        && !Strings.isNullOrEmpty(entityType.getIdAttributeKey())
+        && !Strings.isNullOrEmpty(entityType.getNameAttributeKey());
   }
 
   @Override
-  public void deleteEntityTypes(org.hypertrace.entity.type.service.v2.DeleteEntityTypesRequest request,
-      io.grpc.stub.StreamObserver<org.hypertrace.entity.type.service.v2.DeleteEntityTypesResponse> responseObserver) {
+  public void deleteEntityTypes(
+      org.hypertrace.entity.type.service.v2.DeleteEntityTypesRequest request,
+      io.grpc.stub.StreamObserver<org.hypertrace.entity.type.service.v2.DeleteEntityTypesResponse>
+          responseObserver) {
     Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
@@ -94,15 +103,18 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
       return;
     }
 
-    request.getNameList()
+    request
+        .getNameList()
         .forEach(e -> entityTypeCollection.delete(new SingleValueKey(tenantId.get(), e)));
     responseObserver.onNext(DeleteEntityTypesResponse.newBuilder().build());
     responseObserver.onCompleted();
   }
 
   @Override
-  public void queryEntityTypes(org.hypertrace.entity.type.service.v2.QueryEntityTypesRequest request,
-      io.grpc.stub.StreamObserver<org.hypertrace.entity.type.service.v2.QueryEntityTypesResponse> responseObserver) {
+  public void queryEntityTypes(
+      org.hypertrace.entity.type.service.v2.QueryEntityTypesRequest request,
+      io.grpc.stub.StreamObserver<org.hypertrace.entity.type.service.v2.QueryEntityTypesResponse>
+          responseObserver) {
     Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
@@ -131,8 +143,9 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
   private static Query transform(String tenantId, List<String> entityTypeNames) {
     Query docStoreQuery = new Query();
     List<Filter> filters = new ArrayList<>();
-    filters.add(new Filter(Op.IN, EntityServiceConstants.TENANT_ID,
-        TenantUtils.getTenantHierarchy(tenantId)));
+    filters.add(
+        new Filter(
+            Op.IN, EntityServiceConstants.TENANT_ID, TenantUtils.getTenantHierarchy(tenantId)));
 
     if (!entityTypeNames.isEmpty()) {
       filters.add(new Filter(Op.IN, EntityServiceConstants.NAME, entityTypeNames));
@@ -143,7 +156,7 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
     } else {
       Filter f = new Filter();
       f.setOp(Filter.Op.AND);
-      f.setChildFilters(filters.toArray(new Filter[]{}));
+      f.setChildFilters(filters.toArray(new Filter[] {}));
       docStoreQuery.setFilter(f);
     }
     return docStoreQuery;

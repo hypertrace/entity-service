@@ -13,8 +13,8 @@ import org.hypertrace.entity.type.service.v2.EntityType;
 public class EntityTypeDocument implements Document {
   // Since there could be additional metadata fields written by the doc store,
   // ignore them while reading the object from JSON.
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().configure(
-      DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  private static final ObjectMapper OBJECT_MAPPER =
+      new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
   @JsonProperty(value = EntityServiceConstants.TENANT_ID)
   private String tenantId;
@@ -22,18 +22,20 @@ public class EntityTypeDocument implements Document {
   @JsonProperty(value = EntityServiceConstants.NAME)
   private String name;
 
-  @JsonProperty
-  private String attributeScope;
+  @JsonProperty private String attributeScope;
 
-  @JsonProperty
-  private String idAttributeKey;
+  @JsonProperty private String idAttributeKey;
 
-  @JsonProperty
-  private String nameAttributeKey;
+  @JsonProperty private String nameAttributeKey;
 
   public EntityTypeDocument() {}
 
-  public EntityTypeDocument(String tenantId, String name, String attributeScope, String idAttributeKey, String nameAttributeKey) {
+  public EntityTypeDocument(
+      String tenantId,
+      String name,
+      String attributeScope,
+      String idAttributeKey,
+      String nameAttributeKey) {
     this.tenantId = tenantId;
     this.name = name;
     this.attributeScope = attributeScope;
@@ -42,13 +44,21 @@ public class EntityTypeDocument implements Document {
   }
 
   public static EntityTypeDocument fromProto(@Nonnull String tenantId, EntityType entityType) {
-    return new EntityTypeDocument(tenantId, entityType.getName(), entityType.getAttributeScope(),
-        entityType.getIdAttributeKey(), entityType.getNameAttributeKey());
+    return new EntityTypeDocument(
+        tenantId,
+        entityType.getName(),
+        entityType.getAttributeScope(),
+        entityType.getIdAttributeKey(),
+        entityType.getNameAttributeKey());
   }
 
   public EntityType toProto() {
-    return EntityType.newBuilder().setName(getName()).setAttributeScope(getAttributeScope())
-        .setIdAttributeKey(getIdAttributeKey()).setNameAttributeKey(getNameAttributeKey()).build();
+    return EntityType.newBuilder()
+        .setName(getName())
+        .setAttributeScope(getAttributeScope())
+        .setIdAttributeKey(getIdAttributeKey())
+        .setNameAttributeKey(getNameAttributeKey())
+        .build();
   }
 
   public static EntityTypeDocument fromJson(String json) throws JsonProcessingException {
@@ -104,11 +114,11 @@ public class EntityTypeDocument implements Document {
       return false;
     }
     EntityTypeDocument document = (EntityTypeDocument) o;
-    return Objects.equals(tenantId, document.tenantId) &&
-        Objects.equals(name, document.name) &&
-        Objects.equals(attributeScope, document.attributeScope) &&
-        Objects.equals(idAttributeKey, document.idAttributeKey) &&
-        Objects.equals(nameAttributeKey, document.nameAttributeKey);
+    return Objects.equals(tenantId, document.tenantId)
+        && Objects.equals(name, document.name)
+        && Objects.equals(attributeScope, document.attributeScope)
+        && Objects.equals(idAttributeKey, document.idAttributeKey)
+        && Objects.equals(nameAttributeKey, document.nameAttributeKey);
   }
 
   @Override

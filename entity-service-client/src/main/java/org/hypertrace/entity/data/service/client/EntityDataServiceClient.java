@@ -32,17 +32,17 @@ import org.hypertrace.entity.data.service.v1.RelationshipsQuery.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Client for all CRUD and Query operations on Entities stored in the Document Store
- */
+/** Client for all CRUD and Query operations on Entities stored in the Document Store */
 public class EntityDataServiceClient implements EdsClient {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EntityDataServiceClient.class);
   private final EntityDataServiceBlockingStub blockingStub;
 
   public EntityDataServiceClient(Channel channel) {
-    blockingStub = EntityDataServiceGrpc.newBlockingStub(channel).withCallCredentials(
-        RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
+    blockingStub =
+        EntityDataServiceGrpc.newBlockingStub(channel)
+            .withCallCredentials(
+                RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
   }
 
   private <V> V execute(String tenantId, Callable<V> c) {
@@ -61,25 +61,33 @@ public class EntityDataServiceClient implements EdsClient {
 
   @Override
   public Iterator<Entity> getAndBulkUpsert(String tenantId, Collection<Entity> entities) {
-    return execute(tenantId, () -> blockingStub.getAndUpsertEntities(Entities.newBuilder().addAllEntity(entities).build()));
+    return execute(
+        tenantId,
+        () ->
+            blockingStub.getAndUpsertEntities(
+                Entities.newBuilder().addAllEntity(entities).build()));
   }
 
   public void bulkUpsert(String tenantId, java.util.Collection<Entity> entities) {
-    execute(tenantId,
+    execute(
+        tenantId,
         () -> blockingStub.upsertEntities(Entities.newBuilder().addAllEntity(entities).build()));
   }
 
   public void delete(String tenantId, String entityId) {
-    execute(tenantId,
+    execute(
+        tenantId,
         () -> blockingStub.delete(ByIdRequest.newBuilder().setEntityId(entityId).build()));
   }
 
   @Nullable
   @Override
-  public Entity getByTypeAndIdentifyingAttributes(String tenantId,
-      ByTypeAndIdentifyingAttributes byIdentifyingAttributes) {
-    Entity entity = execute(tenantId,
-        () -> blockingStub.getByTypeAndIdentifyingProperties(byIdentifyingAttributes));
+  public Entity getByTypeAndIdentifyingAttributes(
+      String tenantId, ByTypeAndIdentifyingAttributes byIdentifyingAttributes) {
+    Entity entity =
+        execute(
+            tenantId,
+            () -> blockingStub.getByTypeAndIdentifyingProperties(byIdentifyingAttributes));
     // Handle this here, so that callers can just do a null check
     return entity.equals(Entity.getDefaultInstance()) ? null : entity;
   }
@@ -98,8 +106,10 @@ public class EntityDataServiceClient implements EdsClient {
 
   @Nullable
   public Entity getById(String tenantId, String entityId) {
-    Entity entity = execute(tenantId,
-        () -> blockingStub.getById(ByIdRequest.newBuilder().setEntityId(entityId).build()));
+    Entity entity =
+        execute(
+            tenantId,
+            () -> blockingStub.getById(ByIdRequest.newBuilder().setEntityId(entityId).build()));
 
     // Handle this here, so that callers can just do a null check
     return entity.equals(Entity.getDefaultInstance()) ? null : entity;
@@ -112,14 +122,16 @@ public class EntityDataServiceClient implements EdsClient {
 
   public List<Entity> getEntitiesWithGivenAttribute(
       String tenantId, String entityType, String attributeKey, AttributeValue attributeValue) {
-    Query query = Query.newBuilder()
-        .setEntityType(entityType)
-        .setFilter(AttributeFilter.newBuilder()
-            .setName(attributeMapPathFor(attributeKey))
-            .setOperator(Operator.EQ)
-            .setAttributeValue(attributeValue)
-            .build())
-        .build();
+    Query query =
+        Query.newBuilder()
+            .setEntityType(entityType)
+            .setFilter(
+                AttributeFilter.newBuilder()
+                    .setName(attributeMapPathFor(attributeKey))
+                    .setOperator(Operator.EQ)
+                    .setAttributeValue(attributeValue)
+                    .build())
+            .build();
 
     return query(tenantId, query);
   }
@@ -134,8 +146,10 @@ public class EntityDataServiceClient implements EdsClient {
 
   @Override
   public Iterator<EntityRelationship> getRelationships(
-      String tenantId, @Nullable Set<String> entityRelationshipTypes,
-      @Nullable Set<String> fromEntityIds, @Nullable Set<String> toEntityIds) {
+      String tenantId,
+      @Nullable Set<String> entityRelationshipTypes,
+      @Nullable Set<String> fromEntityIds,
+      @Nullable Set<String> toEntityIds) {
     Builder builder = RelationshipsQuery.newBuilder();
 
     if (entityRelationshipTypes != null && !entityRelationshipTypes.isEmpty()) {
@@ -166,7 +180,7 @@ public class EntityDataServiceClient implements EdsClient {
    * made to the service. Client should decide whether to retry or not in those cases.
    *
    * @param tenantId Tenant id for the enriched entities. All of them should belong to the same
-   *                 tenant.
+   *     tenant.
    * @param entities Enriched entities to be upserted.
    */
   @Override
@@ -181,8 +195,8 @@ public class EntityDataServiceClient implements EdsClient {
   @Override
   public EnrichedEntity getEnrichedEntityById(String tenantId, String entityId) {
     ByIdRequest byIdRequest = ByIdRequest.newBuilder().setEntityId(entityId).build();
-    EnrichedEntity entity = execute(tenantId,
-        () -> blockingStub.getEnrichedEntityById(byIdRequest));
+    EnrichedEntity entity =
+        execute(tenantId, () -> blockingStub.getEnrichedEntityById(byIdRequest));
 
     // Handle this here, so that callers can just do a null check
     return entity.equals(EnrichedEntity.getDefaultInstance()) ? null : entity;

@@ -14,16 +14,19 @@ public class DefaultEdsClientProvider implements EntityDataServiceClientProvider
   @Override
   public EdsClient createClient(Config config) {
     EntityServiceClientConfig entityServiceClientConfig = EntityServiceClientConfig.from(config);
-    return new EdsCacheClient(new EntityDataServiceClient(ManagedChannelBuilder
-        .forAddress(entityServiceClientConfig.getHost(), entityServiceClientConfig.getPort())
-        .usePlaintext().build()),
+    return new EdsCacheClient(
+        new EntityDataServiceClient(
+            ManagedChannelBuilder.forAddress(
+                    entityServiceClientConfig.getHost(), entityServiceClientConfig.getPort())
+                .usePlaintext()
+                .build()),
         entityServiceClientConfig.getCacheConfig());
   }
 
   @Override
   public EdsClient createClient(Channel channel, Config config) {
     EntityServiceClientConfig entityServiceClientConfig = EntityServiceClientConfig.from(config);
-    return new EdsCacheClient(new EntityDataServiceClient(channel),
-        entityServiceClientConfig.getCacheConfig());
+    return new EdsCacheClient(
+        new EntityDataServiceClient(channel), entityServiceClientConfig.getCacheConfig());
   }
 }

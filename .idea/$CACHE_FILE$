@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleLocalSettings">
+    <option name="projectSyncType">
+      <map>
+        <entry key="$USER_HOME$/dev/gradle-example" value="PREVIEW" />
+        <entry key="$USER_HOME$/dev/gradle-traceable-docker-publish-plugin" value="PREVIEW" />
+        <entry key="$USER_HOME$/dev/graphql-server" value="PREVIEW" />
+        <entry key="$USER_HOME$/dev/javaagent" value="PREVIEW" />
+        <entry key="$USER_HOME$/dev/platform-gateway" value="PREVIEW" />
+        <entry key="$USER_HOME$/dev/traceable-ui" value="PREVIEW" />
+      </map>
+    </option>
+  </component>
+</project>

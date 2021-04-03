@@ -4,9 +4,7 @@ import com.google.common.base.Splitter;
 import java.util.Iterator;
 import java.util.Objects;
 
-/**
- * Key used to identify an EntityRelationship in the Document store
- */
+/** Key used to identify an EntityRelationship in the Document store */
 public class EntityRelationshipDocKey implements org.hypertrace.core.documentstore.Key {
 
   private static final String SEPARATOR = ":";
@@ -17,8 +15,8 @@ public class EntityRelationshipDocKey implements org.hypertrace.core.documentsto
   private final String fromEntityId;
   private final String toEntityId;
 
-  public EntityRelationshipDocKey(String tenantId, String type, String fromEntityId,
-      String toEntityId) {
+  public EntityRelationshipDocKey(
+      String tenantId, String type, String fromEntityId, String toEntityId) {
     this.tenantId = tenantId;
     this.relationshipType = type;
     this.fromEntityId = fromEntityId;
@@ -55,7 +53,12 @@ public class EntityRelationshipDocKey implements org.hypertrace.core.documentsto
 
   @Override
   public String toString() {
-    return tenantId + SEPARATOR + relationshipType + SEPARATOR + fromEntityId + SEPARATOR
+    return tenantId
+        + SEPARATOR
+        + relationshipType
+        + SEPARATOR
+        + fromEntityId
+        + SEPARATOR
         + toEntityId;
   }
 
@@ -68,10 +71,10 @@ public class EntityRelationshipDocKey implements org.hypertrace.core.documentsto
       return false;
     }
     EntityRelationshipDocKey that = (EntityRelationshipDocKey) o;
-    return Objects.equals(tenantId, that.tenantId) &&
-        Objects.equals(relationshipType, that.relationshipType) &&
-        Objects.equals(fromEntityId, that.fromEntityId) &&
-        Objects.equals(toEntityId, that.toEntityId);
+    return Objects.equals(tenantId, that.tenantId)
+        && Objects.equals(relationshipType, that.relationshipType)
+        && Objects.equals(fromEntityId, that.fromEntityId)
+        && Objects.equals(toEntityId, that.toEntityId);
   }
 
   @Override
@@ -79,4 +82,3 @@ public class EntityRelationshipDocKey implements org.hypertrace.core.documentsto
     return Objects.hash(tenantId, relationshipType, fromEntityId, toEntityId);
   }
 }
-

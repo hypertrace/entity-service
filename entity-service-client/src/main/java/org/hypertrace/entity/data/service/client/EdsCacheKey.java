@@ -27,7 +27,6 @@ public class EdsCacheKey {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     EdsCacheKey that = (EdsCacheKey) o;
-    return Objects.equals(tenantId, that.tenantId)
-        && Objects.equals(entityId, that.entityId);
+    return Objects.equals(tenantId, that.tenantId) && Objects.equals(entityId, that.entityId);
   }
 }
