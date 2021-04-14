@@ -15,6 +15,7 @@ public class EntityTypeDocumentTest {
             .setAttributeScope("API")
             .setIdAttributeKey("id")
             .setNameAttributeKey("name")
+            .setTimestampAttributeKey("timestamp")
             .build();
     Assertions.assertEquals(
         entityType, EntityTypeDocument.fromProto("testTenant", entityType).toProto());
@@ -22,7 +23,8 @@ public class EntityTypeDocumentTest {
 
   @Test
   public void testJsonConversion() throws JsonProcessingException {
-    EntityTypeDocument document = new EntityTypeDocument("testTenant", "API", "API", "id", "name");
+    EntityTypeDocument document =
+        new EntityTypeDocument("testTenant", "API", "API", "id", "name", "timestamp");
     Assertions.assertEquals(document, EntityTypeDocument.fromJson(document.toJson()));
   }
 }

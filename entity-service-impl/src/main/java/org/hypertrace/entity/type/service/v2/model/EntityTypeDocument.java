@@ -28,6 +28,8 @@ public class EntityTypeDocument implements Document {
 
   @JsonProperty private String nameAttributeKey;
 
+  @JsonProperty private String timestampAttributeKey;
+
   public EntityTypeDocument() {}
 
   public EntityTypeDocument(
@@ -35,12 +37,14 @@ public class EntityTypeDocument implements Document {
       String name,
       String attributeScope,
       String idAttributeKey,
-      String nameAttributeKey) {
+      String nameAttributeKey,
+      String timestampAttributeKey) {
     this.tenantId = tenantId;
     this.name = name;
     this.attributeScope = attributeScope;
     this.idAttributeKey = idAttributeKey;
     this.nameAttributeKey = nameAttributeKey;
+    this.timestampAttributeKey = timestampAttributeKey;
   }
 
   public static EntityTypeDocument fromProto(@Nonnull String tenantId, EntityType entityType) {
@@ -49,7 +53,8 @@ public class EntityTypeDocument implements Document {
         entityType.getName(),
         entityType.getAttributeScope(),
         entityType.getIdAttributeKey(),
-        entityType.getNameAttributeKey());
+        entityType.getNameAttributeKey(),
+        entityType.getTimestampAttributeKey());
   }
 
   public EntityType toProto() {
@@ -58,6 +63,7 @@ public class EntityTypeDocument implements Document {
         .setAttributeScope(getAttributeScope())
         .setIdAttributeKey(getIdAttributeKey())
         .setNameAttributeKey(getNameAttributeKey())
+        .setTimestampAttributeKey(getTimestampAttributeKey())
         .build();
   }
 
@@ -85,24 +91,16 @@ public class EntityTypeDocument implements Document {
     return attributeScope;
   }
 
-  public void setAttributeScope(String attributeScope) {
-    this.attributeScope = attributeScope;
-  }
-
   public String getIdAttributeKey() {
     return idAttributeKey;
-  }
-
-  public void setIdAttributeKey(String idAttributeKey) {
-    this.idAttributeKey = idAttributeKey;
   }
 
   public String getNameAttributeKey() {
     return nameAttributeKey;
   }
 
-  public void setNameAttributeKey(String nameAttributeKey) {
-    this.nameAttributeKey = nameAttributeKey;
+  public String getTimestampAttributeKey() {
+    return timestampAttributeKey;
   }
 
   @Override
@@ -118,12 +116,14 @@ public class EntityTypeDocument implements Document {
         && Objects.equals(name, document.name)
         && Objects.equals(attributeScope, document.attributeScope)
         && Objects.equals(idAttributeKey, document.idAttributeKey)
-        && Objects.equals(nameAttributeKey, document.nameAttributeKey);
+        && Objects.equals(nameAttributeKey, document.nameAttributeKey)
+        && Objects.equals(timestampAttributeKey, document.timestampAttributeKey);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tenantId, name, attributeScope, idAttributeKey, nameAttributeKey);
+    return Objects.hash(
+        tenantId, name, attributeScope, idAttributeKey, nameAttributeKey, timestampAttributeKey);
   }
 
   @Override
