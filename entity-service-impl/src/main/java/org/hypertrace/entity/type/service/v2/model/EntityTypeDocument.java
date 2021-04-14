@@ -1,10 +1,12 @@
 package org.hypertrace.entity.type.service.v2.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Objects;
+import java.util.Optional;
 import javax.annotation.Nonnull;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -58,13 +60,16 @@ public class EntityTypeDocument implements Document {
   }
 
   public EntityType toProto() {
-    return EntityType.newBuilder()
-        .setName(getName())
-        .setAttributeScope(getAttributeScope())
-        .setIdAttributeKey(getIdAttributeKey())
-        .setNameAttributeKey(getNameAttributeKey())
-        .setTimestampAttributeKey(getTimestampAttributeKey())
-        .build();
+    EntityType.Builder builder =
+        EntityType.newBuilder()
+            .setName(getName())
+            .setAttributeScope(getAttributeScope())
+            .setIdAttributeKey(getIdAttributeKey());
+
+    getNameAttributeKey().ifPresent(builder::setNameAttributeKey);
+    getTimestampAttributeKey().ifPresent(builder::setTimestampAttributeKey);
+
+    return builder.build();
   }
 
   public static EntityTypeDocument fromJson(String json) throws JsonProcessingException {
@@ -95,12 +100,14 @@ public class EntityTypeDocument implements Document {
     return idAttributeKey;
   }
 
-  public String getNameAttributeKey() {
-    return nameAttributeKey;
+  @JsonIgnore
+  public Optional<String> getNameAttributeKey() {
+    return Optional.of(nameAttributeKey);
   }
 
-  public String getTimestampAttributeKey() {
-    return timestampAttributeKey;
+  @JsonIgnore
+  public Optional<String> getTimestampAttributeKey() {
+    return Optional.ofNullable(timestampAttributeKey);
   }
 
   @Override

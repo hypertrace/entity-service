@@ -1,6 +1,8 @@
 package org.hypertrace.entity.type.service.v2.model;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
 import org.hypertrace.entity.type.service.v2.EntityType;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -26,5 +28,33 @@ public class EntityTypeDocumentTest {
     EntityTypeDocument document =
         new EntityTypeDocument("testTenant", "API", "API", "id", "name", "timestamp");
     Assertions.assertEquals(document, EntityTypeDocument.fromJson(document.toJson()));
+  }
+
+  @Test
+  public void testFromJsonMissingField()
+      throws InvalidProtocolBufferException, JsonProcessingException {
+    EntityType entityType =
+        EntityType.newBuilder()
+            .setName("API")
+            .setAttributeScope("API")
+            .setIdAttributeKey("id")
+            .setNameAttributeKey("name")
+            .build();
+    String entityTypeJson = JsonFormat.printer().print(entityType);
+    Assertions.assertEquals(entityType, EntityTypeDocument.fromJson(entityTypeJson).toProto());
+  }
+
+  @Test
+  public void testToProtoMissingField() {
+    EntityTypeDocument document =
+        new EntityTypeDocument("testTenant", "API", "API", "id", "name", null);
+    Assertions.assertEquals(
+        EntityType.newBuilder()
+            .setName("API")
+            .setAttributeScope("API")
+            .setIdAttributeKey("id")
+            .setNameAttributeKey("name")
+            .build(),
+        document.toProto());
   }
 }
