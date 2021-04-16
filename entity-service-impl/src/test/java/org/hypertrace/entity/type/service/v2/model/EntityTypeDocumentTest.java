@@ -5,6 +5,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import java.util.List;
 import org.hypertrace.entity.type.service.v2.EntityType;
+import org.hypertrace.entity.type.service.v2.EntityType.EntityFormationCondition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -19,7 +20,7 @@ public class EntityTypeDocumentTest {
             .setIdAttributeKey("id")
             .setNameAttributeKey("name")
             .setTimestampAttributeKey("timestamp")
-            .addRequiredKeys("other")
+            .addRequiredConditions(EntityFormationCondition.newBuilder().setRequiredKey("other"))
             .build();
     Assertions.assertEquals(
         entityType, EntityTypeDocument.fromProto("testTenant", entityType).toProto());
@@ -29,7 +30,13 @@ public class EntityTypeDocumentTest {
   public void testJsonConversion() throws JsonProcessingException {
     EntityTypeDocument document =
         new EntityTypeDocument(
-            "testTenant", "API", "API", "id", "name", "timestamp", List.of("other"));
+            "testTenant",
+            "API",
+            "API",
+            "id",
+            "name",
+            "timestamp",
+            List.of(EntityFormationCondition.newBuilder().setRequiredKey("other").build()));
     Assertions.assertEquals(document, EntityTypeDocument.fromJson(document.toJson()));
   }
 

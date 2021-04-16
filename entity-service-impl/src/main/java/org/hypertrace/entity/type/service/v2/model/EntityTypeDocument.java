@@ -2,9 +2,20 @@ package org.hypertrace.entity.type.service.v2.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.google.protobuf.Message;
+import com.google.protobuf.util.JsonFormat;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -13,6 +24,7 @@ import javax.annotation.Nonnull;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.type.service.v2.EntityType;
+import org.hypertrace.entity.type.service.v2.EntityType.EntityFormationCondition;
 
 public class EntityTypeDocument implements Document {
   // Since there could be additional metadata fields written by the doc store,
@@ -34,7 +46,10 @@ public class EntityTypeDocument implements Document {
 
   @JsonProperty private String timestampAttributeKey;
 
-  @JsonProperty private List<String> requiredKeys;
+  @JsonSerialize(contentUsing = ProtobufMessageSerializer.class)
+  @JsonDeserialize(contentUsing = EntityFormationConditionDeserializer.class)
+  @JsonProperty
+  private List<EntityFormationCondition> requiredConditions;
 
   public EntityTypeDocument() {}
 
@@ -45,14 +60,14 @@ public class EntityTypeDocument implements Document {
       String idAttributeKey,
       String nameAttributeKey,
       String timestampAttributeKey,
-      List<String> requiredKeys) {
+      List<EntityFormationCondition> requiredConditions) {
     this.tenantId = tenantId;
     this.name = name;
     this.attributeScope = attributeScope;
     this.idAttributeKey = idAttributeKey;
     this.nameAttributeKey = nameAttributeKey;
     this.timestampAttributeKey = timestampAttributeKey;
-    this.requiredKeys = requiredKeys;
+    this.requiredConditions = requiredConditions;
   }
 
   public static EntityTypeDocument fromProto(@Nonnull String tenantId, EntityType entityType) {
@@ -63,7 +78,7 @@ public class EntityTypeDocument implements Document {
         entityType.getIdAttributeKey(),
         entityType.getNameAttributeKey(),
         entityType.getTimestampAttributeKey(),
-        entityType.getRequiredKeysList());
+        entityType.getRequiredConditionsList());
   }
 
   public EntityType toProto() {
@@ -72,7 +87,7 @@ public class EntityTypeDocument implements Document {
             .setName(getName())
             .setAttributeScope(getAttributeScope())
             .setIdAttributeKey(getIdAttributeKey())
-            .addAllRequiredKeys(getRequiredKeys());
+            .addAllRequiredConditions(getRequiredConditions());
 
     getNameAttributeKey().ifPresent(builder::setNameAttributeKey);
     getTimestampAttributeKey().ifPresent(builder::setTimestampAttributeKey);
@@ -117,8 +132,8 @@ public class EntityTypeDocument implements Document {
     return Optional.ofNullable(timestampAttributeKey);
   }
 
-  public List<String> getRequiredKeys() {
-    return Optional.ofNullable(requiredKeys).orElse(Collections.emptyList());
+  public List<EntityFormationCondition> getRequiredConditions() {
+    return Optional.ofNullable(requiredConditions).orElse(Collections.emptyList());
   }
 
   @Override
@@ -132,7 +147,7 @@ public class EntityTypeDocument implements Document {
         && Objects.equals(getIdAttributeKey(), that.getIdAttributeKey())
         && Objects.equals(getNameAttributeKey(), that.getNameAttributeKey())
         && Objects.equals(getTimestampAttributeKey(), that.getTimestampAttributeKey())
-        && Objects.equals(getRequiredKeys(), that.getRequiredKeys());
+        && Objects.equals(getRequiredConditions(), that.getRequiredConditions());
   }
 
   @Override
@@ -144,7 +159,7 @@ public class EntityTypeDocument implements Document {
         getIdAttributeKey(),
         getNameAttributeKey(),
         getTimestampAttributeKey(),
-        getRequiredKeys());
+        getRequiredConditions());
   }
 
   @Override
@@ -153,6 +168,29 @@ public class EntityTypeDocument implements Document {
       return OBJECT_MAPPER.writeValueAsString(this);
     } catch (JsonProcessingException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  private static class ProtobufMessageSerializer extends JsonSerializer<Message> {
+    private static final JsonFormat.Printer PRINTER =
+        JsonFormat.printer().omittingInsignificantWhitespace();
+
+    @Override
+    public void serialize(Message message, JsonGenerator generator, SerializerProvider serializers)
+        throws IOException {
+      generator.writeRawValue(PRINTER.print(message));
+    }
+  }
+
+  private static class EntityFormationConditionDeserializer extends JsonDeserializer<Message> {
+    private static final JsonFormat.Parser PARSER = JsonFormat.parser();
+
+    @Override
+    public Message deserialize(JsonParser parser, DeserializationContext context)
+        throws IOException {
+      EntityFormationCondition.Builder builder = EntityFormationCondition.newBuilder();
+      PARSER.merge(parser.readValueAsTree().toString(), builder);
+      return builder.build();
     }
   }
 }
