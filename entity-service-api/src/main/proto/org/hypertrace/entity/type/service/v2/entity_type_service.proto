@@ -9,6 +9,7 @@ message EntityType {
   string id_attribute_key = 3;
   string name_attribute_key = 4;
   string timestamp_attribute_key = 5;
+  repeated string required_keys = 6;
 }
 
 message UpsertEntityTypeRequest {

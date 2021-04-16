@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import javax.annotation.Nonnull;
@@ -32,21 +34,25 @@ public class EntityTypeDocument implements Document {
 
   @JsonProperty private String timestampAttributeKey;
 
+  @JsonProperty private List<String> requiredKeys;
+
   public EntityTypeDocument() {}
 
-  public EntityTypeDocument(
+  EntityTypeDocument(
       String tenantId,
       String name,
       String attributeScope,
       String idAttributeKey,
       String nameAttributeKey,
-      String timestampAttributeKey) {
+      String timestampAttributeKey,
+      List<String> requiredKeys) {
     this.tenantId = tenantId;
     this.name = name;
     this.attributeScope = attributeScope;
     this.idAttributeKey = idAttributeKey;
     this.nameAttributeKey = nameAttributeKey;
     this.timestampAttributeKey = timestampAttributeKey;
+    this.requiredKeys = requiredKeys;
   }
 
   public static EntityTypeDocument fromProto(@Nonnull String tenantId, EntityType entityType) {
@@ -56,7 +62,8 @@ public class EntityTypeDocument implements Document {
         entityType.getAttributeScope(),
         entityType.getIdAttributeKey(),
         entityType.getNameAttributeKey(),
-        entityType.getTimestampAttributeKey());
+        entityType.getTimestampAttributeKey(),
+        entityType.getRequiredKeysList());
   }
 
   public EntityType toProto() {
@@ -64,11 +71,11 @@ public class EntityTypeDocument implements Document {
         EntityType.newBuilder()
             .setName(getName())
             .setAttributeScope(getAttributeScope())
-            .setIdAttributeKey(getIdAttributeKey());
+            .setIdAttributeKey(getIdAttributeKey())
+            .addAllRequiredKeys(getRequiredKeys());
 
     getNameAttributeKey().ifPresent(builder::setNameAttributeKey);
     getTimestampAttributeKey().ifPresent(builder::setTimestampAttributeKey);
-
     return builder.build();
   }
 
@@ -110,27 +117,34 @@ public class EntityTypeDocument implements Document {
     return Optional.ofNullable(timestampAttributeKey);
   }
 
+  public List<String> getRequiredKeys() {
+    return Optional.ofNullable(requiredKeys).orElse(Collections.emptyList());
+  }
+
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    EntityTypeDocument document = (EntityTypeDocument) o;
-    return Objects.equals(tenantId, document.tenantId)
-        && Objects.equals(name, document.name)
-        && Objects.equals(attributeScope, document.attributeScope)
-        && Objects.equals(idAttributeKey, document.idAttributeKey)
-        && Objects.equals(nameAttributeKey, document.nameAttributeKey)
-        && Objects.equals(timestampAttributeKey, document.timestampAttributeKey);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    EntityTypeDocument that = (EntityTypeDocument) o;
+    return Objects.equals(getTenantId(), that.getTenantId())
+        && Objects.equals(getName(), that.getName())
+        && Objects.equals(getAttributeScope(), that.getAttributeScope())
+        && Objects.equals(getIdAttributeKey(), that.getIdAttributeKey())
+        && Objects.equals(getNameAttributeKey(), that.getNameAttributeKey())
+        && Objects.equals(getTimestampAttributeKey(), that.getTimestampAttributeKey())
+        && Objects.equals(getRequiredKeys(), that.getRequiredKeys());
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        tenantId, name, attributeScope, idAttributeKey, nameAttributeKey, timestampAttributeKey);
+        getTenantId(),
+        getName(),
+        getAttributeScope(),
+        getIdAttributeKey(),
+        getNameAttributeKey(),
+        getTimestampAttributeKey(),
+        getRequiredKeys());
   }
 
   @Override
