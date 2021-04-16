@@ -9,6 +9,13 @@ message EntityType {
   string id_attribute_key = 3;
   string name_attribute_key = 4;
   string timestamp_attribute_key = 5;
+  repeated EntityFormationCondition required_conditions = 6;
+
+  message EntityFormationCondition {
+    oneof condition {
+      string required_key = 1;
+    }
+  }
 }
 
 message UpsertEntityTypeRequest {
@@ -23,7 +30,8 @@ message DeleteEntityTypesRequest {
   repeated string name = 1;
 }
 
-message DeleteEntityTypesResponse {}
+message DeleteEntityTypesResponse {
+}
 
 message QueryEntityTypesRequest {
   repeated string name = 1;
@@ -34,7 +42,10 @@ message QueryEntityTypesResponse {
 }
 
 service EntityTypeService {
-  rpc UpsertEntityType (UpsertEntityTypeRequest) returns (UpsertEntityTypeResponse) {}
-  rpc DeleteEntityTypes (DeleteEntityTypesRequest) returns (DeleteEntityTypesResponse) {}
-  rpc QueryEntityTypes (QueryEntityTypesRequest) returns (QueryEntityTypesResponse) {}
+  rpc UpsertEntityType (UpsertEntityTypeRequest) returns (UpsertEntityTypeResponse) {
+  }
+  rpc DeleteEntityTypes (DeleteEntityTypesRequest) returns (DeleteEntityTypesResponse) {
+  }
+  rpc QueryEntityTypes (QueryEntityTypesRequest) returns (QueryEntityTypesResponse) {
+  }
 }
