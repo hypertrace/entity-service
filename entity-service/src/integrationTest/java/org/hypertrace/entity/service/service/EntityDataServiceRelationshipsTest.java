@@ -47,19 +47,18 @@ public class EntityDataServiceRelationshipsTest {
   public static void setUp() throws Exception {
     network = Network.newNetwork();
 
-    mongo = new GenericContainer<>(DockerImageName.parse("hypertrace/mongodb:main"))
-        .withNetwork(network)
-        .withNetworkAliases("mongo")
-        .withExposedPorts(27017)
-        .withStartupAttempts(CONTAINER_STARTUP_ATTEMPTS)
-        .waitingFor(Wait.forLogMessage(".*waiting for connections on port 27017.*", 1));
+    mongo =
+        new GenericContainer<>(DockerImageName.parse("hypertrace/mongodb:main"))
+            .withNetwork(network)
+            .withNetworkAliases("mongo")
+            .withExposedPorts(27017)
+            .withStartupAttempts(CONTAINER_STARTUP_ATTEMPTS)
+            .waitingFor(Wait.forLogMessage(".*waiting for connections on port 27017.*", 1));
     mongo.start();
 
-    withEnvironmentVariable(
-        "MONGO_HOST", mongo.getHost())
-        .and("MONGO_PORT",  mongo.getMappedPort(27017).toString())
-        .execute(() ->
-            IntegrationTestServerUtil.startServices(new String[] {"entity-service"}));
+    withEnvironmentVariable("MONGO_HOST", mongo.getHost())
+        .and("MONGO_PORT", mongo.getMappedPort(27017).toString())
+        .execute(() -> IntegrationTestServerUtil.startServices(new String[] {"entity-service"}));
 
     EntityServiceClientConfig esConfig = EntityServiceTestConfig.getClientConfig();
     Channel channel =
@@ -69,8 +68,6 @@ public class EntityDataServiceRelationshipsTest {
                 .build());
     entityDataServiceClient = new EntityDataServiceClient(channel);
     setupEntityTypes();
-
-
   }
 
   @AfterAll
@@ -111,7 +108,6 @@ public class EntityDataServiceRelationshipsTest {
                     .build())
             .build());
   }
-
 
   @Test
   public void testCreateAndGetEntityRelationship() {
