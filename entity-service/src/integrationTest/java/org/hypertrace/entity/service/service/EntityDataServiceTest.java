@@ -1,5 +1,6 @@
 package org.hypertrace.entity.service.service;
 
+import static com.github.stefanbirkner.systemlambda.SystemLambda.withEnvironmentVariable;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -60,19 +61,38 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.DockerImageName;
 
 /** Test case for {@link EntityDataServiceClient} */
 public class EntityDataServiceTest {
-
   private static final String TENANT_ID =
       "__testTenant__" + EntityDataServiceTest.class.getSimpleName();
   private static final String TEST_ENTITY_TYPE_V2 = "TEST_ENTITY";
   private static EntityDataServiceClient entityDataServiceClient;
   private static ManagedChannel channel;
+  private static final int CONTAINER_STARTUP_ATTEMPTS = 5;
+  private static Network network;
+  private static GenericContainer<?> mongo;
 
   @BeforeAll
-  public static void setUp() {
-    IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
+  public static void setUp() throws Exception {
+    network = Network.newNetwork();
+    mongo = new GenericContainer<>(DockerImageName.parse("hypertrace/mongodb:main"))
+        .withNetwork(network)
+        .withNetworkAliases("mongo")
+        .withExposedPorts(27017)
+        .withStartupAttempts(CONTAINER_STARTUP_ATTEMPTS)
+        .waitingFor(Wait.forLogMessage(".*waiting for connections on port 27017.*", 1));
+    mongo.start();
+
+    withEnvironmentVariable(
+        "MONGO_HOST", mongo.getHost())
+        .and("MONGO_PORT",  mongo.getMappedPort(27017).toString())
+        .execute(() ->
+            IntegrationTestServerUtil.startServices(new String[] {"entity-service"}));
     EntityServiceClientConfig esConfig = EntityServiceTestConfig.getClientConfig();
     channel =
         ManagedChannelBuilder.forAddress(esConfig.getHost(), esConfig.getPort())
@@ -86,6 +106,7 @@ public class EntityDataServiceTest {
   public static void teardown() {
     channel.shutdown();
     IntegrationTestServerUtil.shutdownServices();
+    mongo.stop();
   }
 
   private static void setupEntityTypes(Channel channel, String tenant) {

@@ -1,5 +1,7 @@
 package org.hypertrace.entity.service.service;
 
+import static com.github.stefanbirkner.systemlambda.SystemLambda.withEnvironmentVariable;
+
 import io.grpc.Channel;
 import io.grpc.ClientInterceptors;
 import io.grpc.ManagedChannelBuilder;
@@ -19,18 +21,38 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.DockerImageName;
 
 /** Integration test for testing {@link EntityTypeServiceClient} */
 public class EntityTypeServiceTest {
-
   private static final String TENANT_ID =
       "__testTenant__" + EntityTypeServiceTest.class.getSimpleName();
 
   private static EntityTypeServiceClient client;
 
+  private static final int CONTAINER_STARTUP_ATTEMPTS = 5;
+  private static Network network;
+  private static GenericContainer<?> mongo;
+
   @BeforeAll
-  public static void setUp() {
-    IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
+  public static void setUp() throws Exception {
+    network = Network.newNetwork();
+    mongo = new GenericContainer<>(DockerImageName.parse("hypertrace/mongodb:main"))
+        .withNetwork(network)
+        .withNetworkAliases("mongo")
+        .withExposedPorts(27017)
+        .withStartupAttempts(CONTAINER_STARTUP_ATTEMPTS)
+        .waitingFor(Wait.forLogMessage(".*waiting for connections on port 27017.*", 1));
+    mongo.start();
+
+    withEnvironmentVariable(
+        "MONGO_HOST", mongo.getHost())
+        .and("MONGO_PORT",  mongo.getMappedPort(27017).toString())
+        .execute(() ->
+            IntegrationTestServerUtil.startServices(new String[] {"entity-service"}));
     Channel channel =
         ClientInterceptors.intercept(
             ManagedChannelBuilder.forAddress(
@@ -44,6 +66,7 @@ public class EntityTypeServiceTest {
   @AfterAll
   public static void teardown() {
     IntegrationTestServerUtil.shutdownServices();
+    mongo.stop();
   }
 
   @BeforeEach

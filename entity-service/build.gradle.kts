@@ -1,7 +1,3 @@
-import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
-import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
-import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
-import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
 import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
 import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
 
@@ -23,34 +19,8 @@ tasks.register<DockerRemoveNetwork>("removeIntegrationTestNetwork") {
   networkId.set("entity-svc-int-test")
 }
 
-tasks.register<DockerPullImage>("pullMongoImage") {
-  image.set("mongo:4.4.0")
-}
-
-tasks.register<DockerCreateContainer>("createMongoContainer") {
-  dependsOn("createIntegrationTestNetwork")
-  dependsOn("pullMongoImage")
-  targetImageId(tasks.getByName<DockerPullImage>("pullMongoImage").image)
-  containerName.set("mongo-local")
-  hostConfig.network.set(tasks.getByName<DockerCreateNetwork>("createIntegrationTestNetwork").networkId)
-  hostConfig.portBindings.set(listOf("27017:27017"))
-  hostConfig.autoRemove.set(true)
-}
-
-tasks.register<DockerStartContainer>("startMongoContainer") {
-  dependsOn("createMongoContainer")
-  targetContainerId(tasks.getByName<DockerCreateContainer>("createMongoContainer").containerId)
-}
-
-tasks.register<DockerStopContainer>("stopMongoContainer") {
-  targetContainerId(tasks.getByName<DockerCreateContainer>("createMongoContainer").containerId)
-  finalizedBy("removeIntegrationTestNetwork")
-}
-
 tasks.integrationTest {
   useJUnitPlatform()
-  dependsOn("startMongoContainer")
-  finalizedBy("stopMongoContainer")
 }
 
 dependencies {
@@ -82,6 +52,16 @@ dependencies {
   integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.4.0")
   integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.23")
+  integrationTestImplementation("org.junit.jupiter:junit-jupiter-api:5.6.2")
+  integrationTestImplementation("org.junit.jupiter:junit-jupiter-params:5.6.2")
+  integrationTestImplementation("org.junit.jupiter:junit-jupiter-engine:5.6.2")
+  integrationTestImplementation("org.testcontainers:testcontainers:1.15.2")
+  integrationTestImplementation("org.testcontainers:junit-jupiter:1.15.2")
+  integrationTestImplementation("org.testcontainers:testcontainers:1.15.2")
+  integrationTestImplementation("org.testcontainers:junit-jupiter:1.15.2")
+  integrationTestImplementation("org.apache.avro:avro:1.10.1")
+  integrationTestImplementation("org.hypertrace.core.datamodel:data-model:0.1.12")
+  integrationTestImplementation("com.github.stefanbirkner:system-lambda:1.2.0")
 }
 
 application {
