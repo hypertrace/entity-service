@@ -3,8 +3,10 @@ package org.hypertrace.entity.query.service;
 import static java.util.stream.Collectors.toUnmodifiableMap;
 
 import com.typesafe.config.Config;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.hypertrace.core.attribute.service.cachingclient.CachingAttributeClient;
 import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
 import org.hypertrace.core.attribute.service.v1.AttributeSource;
@@ -16,9 +18,13 @@ class EntityAttributeMapping {
   private static final String ATTRIBUTE_SERVICE_HOST = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT = "attribute.service.config.port";
   static final String ENTITY_ATTRIBUTE_DOC_PREFIX = "attributes.";
+  public static final String TYPE_STRING_ARRAY = "TYPE_STRING_ARRAY";
+  public static final String VALUE_KIND = "valueKind";
+  public static final String SUB_DOC_PATH = "subDocPath";
 
   private final CachingAttributeClient attributeClient;
   private final Map<String, String> explicitDocStoreMappingsByAttributeId;
+  private final List<String> multiValueAttributes;
 
   EntityAttributeMapping(Config config, GrpcChannelRegistry channelRegistry) {
     this(
@@ -30,14 +36,23 @@ class EntityAttributeMapping {
         config.getConfigList(ATTRIBUTE_MAP_CONFIG_PATH).stream()
             .collect(
                 toUnmodifiableMap(
-                    conf -> conf.getString("name"), conf -> conf.getString("subDocPath"))));
+                    conf -> conf.getString("name"), conf -> conf.getString(SUB_DOC_PATH))),
+        config.getConfigList(ATTRIBUTE_MAP_CONFIG_PATH).stream()
+            .filter(
+                conf ->
+                    conf.hasPath(VALUE_KIND)
+                        && TYPE_STRING_ARRAY.equals(conf.getString(VALUE_KIND)))
+            .map(conf -> conf.getString(SUB_DOC_PATH))
+            .collect(Collectors.toUnmodifiableList()));
   }
 
   EntityAttributeMapping(
       CachingAttributeClient attributeClient,
-      Map<String, String> explicitDocStoreMappingsByAttributeId) {
+      Map<String, String> explicitDocStoreMappingsByAttributeId,
+      List<String> multiValueAttributes) {
     this.attributeClient = attributeClient;
     this.explicitDocStoreMappingsByAttributeId = explicitDocStoreMappingsByAttributeId;
+    this.multiValueAttributes = multiValueAttributes;
   }
 
   /**
@@ -50,6 +65,10 @@ class EntityAttributeMapping {
       RequestContext requestContext, String attributeId) {
     return Optional.ofNullable(this.explicitDocStoreMappingsByAttributeId.get(attributeId))
         .or(() -> this.calculateDocStorePathFromAttributeId(requestContext, attributeId));
+  }
+
+  public List<String> getMultiValuedAttributes() {
+    return multiValueAttributes;
   }
 
   private Optional<String> calculateDocStorePathFromAttributeId(

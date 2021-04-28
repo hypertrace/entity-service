@@ -55,7 +55,10 @@ public class DocStoreConverter {
   }
 
   public static org.hypertrace.core.documentstore.Query transform(
-      @Nonnull String tenantId, @Nonnull Query query, List<String> selections) {
+      @Nonnull String tenantId,
+      @Nonnull Query query,
+      List<String> selections,
+      List<String> multiValuedAttributes) {
     org.hypertrace.core.documentstore.Query docStoreQuery =
         new org.hypertrace.core.documentstore.Query();
 
@@ -75,7 +78,7 @@ public class DocStoreConverter {
           new Filter(Filter.Op.EQ, EntityServiceConstants.ENTITY_NAME, query.getEntityName()));
     }
     if (query.hasFilter()) {
-      filters.add(transform(query.getFilter()));
+      filters.add(transform(query.getFilter(), multiValuedAttributes));
     }
     if (!filters.isEmpty()) {
       if (filters.size() == 1) {
@@ -126,18 +129,17 @@ public class DocStoreConverter {
     return new Filter(Filter.Op.EQ, EntityServiceConstants.TENANT_ID, tenantId);
   }
 
-  private static Filter transform(AttributeFilter filter) {
+  private static Filter transform(AttributeFilter filter, List<String> multiValuedAttributes) {
     if (filter.hasAttributeValue()) {
-      if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName())
-          && filter.getOperator() == Operator.EQ) {
+      if (isMultiValuedAttribute(filter, multiValuedAttributes) && filter.getOperator() == Operator.EQ) {
         return transformToEqFilterWithValueListRhs(filter);
-      } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName())
+      } else if (isMultiValuedAttribute(filter, multiValuedAttributes)
           && filter.getOperator() == Operator.NEQ) {
         return transformToNeqFilterWithValueListRhs(filter);
-      } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName())
+      } else if (isMultiValuedAttribute(filter, multiValuedAttributes)
           && filter.getOperator() == Operator.IN) {
         return transformToOrFilterChainForStrArray(filter);
-      } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName())
+      } else if (isMultiValuedAttribute(filter, multiValuedAttributes)
           && filter.getOperator() == Operator.NOT_IN) {
         return transformToAndFilterChainForStrArray(filter);
       } else {
@@ -150,11 +152,16 @@ public class DocStoreConverter {
 
       f.setChildFilters(
           filter.getChildFilterList().stream()
-              .map(DocStoreConverter::transform)
+              .map(entity -> transform(entity, multiValuedAttributes))
               .collect(Collectors.toList())
               .toArray(new Filter[] {}));
       return f;
     }
+  }
+
+  private static boolean isMultiValuedAttribute(AttributeFilter filter, List<String> multiValuedAttributes) {
+    // TODO remove attribute labels hard coding once configs are in place.
+    return multiValuedAttributes.contains(filter.getName()) || ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName());
   }
 
   private static Filter transformNonListRhsFilterTypes(AttributeFilter filter) {

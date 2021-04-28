@@ -279,7 +279,9 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    this.doQuery(DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList()))
+    this.doQuery(
+            DocStoreConverter.transform(
+                tenantId.get(), request, Collections.emptyList(), Collections.emptyList()))
         .forEach(responseObserver::onNext);
 
     responseObserver.onCompleted();
