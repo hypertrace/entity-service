@@ -131,7 +131,8 @@ public class DocStoreConverter {
 
   private static Filter transform(AttributeFilter filter, List<String> multiValuedAttributes) {
     if (filter.hasAttributeValue()) {
-      if (isMultiValuedAttribute(filter, multiValuedAttributes) && filter.getOperator() == Operator.EQ) {
+      if (isMultiValuedAttribute(filter, multiValuedAttributes)
+          && filter.getOperator() == Operator.EQ) {
         return transformToEqFilterWithValueListRhs(filter);
       } else if (isMultiValuedAttribute(filter, multiValuedAttributes)
           && filter.getOperator() == Operator.NEQ) {
@@ -159,9 +160,11 @@ public class DocStoreConverter {
     }
   }
 
-  private static boolean isMultiValuedAttribute(AttributeFilter filter, List<String> multiValuedAttributes) {
+  private static boolean isMultiValuedAttribute(
+      AttributeFilter filter, List<String> multiValuedAttributes) {
     // TODO remove attribute labels hard coding once configs are in place.
-    return multiValuedAttributes.contains(filter.getName()) || ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName());
+    return multiValuedAttributes.contains(filter.getName())
+        || ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName());
   }
 
   private static Filter transformNonListRhsFilterTypes(AttributeFilter filter) {
