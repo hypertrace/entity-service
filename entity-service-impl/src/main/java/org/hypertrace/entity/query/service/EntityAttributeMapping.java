@@ -93,7 +93,7 @@ class EntityAttributeMapping {
                 .get(attributeId)
                 .filter(metadata -> metadata.getSourcesList().contains(AttributeSource.EDS))
                 .map(AttributeMetadata::getValueKind)
-                .map(key -> TYPE_STRING_ARRAY.equals(key.name()))
+                .map(valueKind -> TYPE_STRING_ARRAY.equals(valueKind.name()))
                 .onErrorComplete()
                 .defaultIfEmpty(false)
                 .blockingGet());
