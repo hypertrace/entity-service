@@ -146,7 +146,7 @@ public class DocStoreConverter {
 
       f.setChildFilters(
           filter.getChildFilterList().stream()
-              .map(entity -> transform(entity))
+              .map(DocStoreConverter::transform)
               .collect(Collectors.toList())
               .toArray(new Filter[] {}));
       return f;
