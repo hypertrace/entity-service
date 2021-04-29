@@ -59,6 +59,7 @@ message AttributeFilter {
   Operator operator = 2;
   AttributeValue attributeValue = 3;
   repeated AttributeFilter childFilter = 4;
+  bool is_multi_valued = 5;
 }
 
 message OrderByExpression {

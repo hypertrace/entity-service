@@ -30,7 +30,7 @@ class EntityAttributeMappingTest {
         new EntityAttributeMapping(
             this.mockAttributeClient,
             Map.of("some-id", "attributes.some-key"),
-            Collections.emptyList());
+            Collections.emptyMap());
 
     assertEquals(
         Optional.of("attributes.some-key"),
@@ -45,7 +45,7 @@ class EntityAttributeMappingTest {
     when(mockRequestContext.call(any())).thenCallRealMethod();
     EntityAttributeMapping attributeMapping =
         new EntityAttributeMapping(
-            this.mockAttributeClient, Collections.emptyMap(), Collections.emptyList());
+            this.mockAttributeClient, Collections.emptyMap(), Collections.emptyMap());
     AttributeMetadata sourcelessMetadata =
         AttributeMetadata.newBuilder().setKey("some-key").build();
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(sourcelessMetadata));
@@ -69,7 +69,7 @@ class EntityAttributeMappingTest {
     when(mockRequestContext.call(any())).thenCallRealMethod();
     EntityAttributeMapping attributeMapping =
         new EntityAttributeMapping(
-            this.mockAttributeClient, Collections.emptyMap(), Collections.emptyList());
+            this.mockAttributeClient, Collections.emptyMap(), Collections.emptyMap());
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.error(new RuntimeException()));
 
     // Empty result, since attribute client threw error

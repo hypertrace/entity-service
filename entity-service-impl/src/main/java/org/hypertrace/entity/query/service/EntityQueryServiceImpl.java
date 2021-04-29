@@ -98,11 +98,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             requestContext, request.getSelectionList());
     Iterator<Document> documentIterator =
         entitiesCollection.search(
-            DocStoreConverter.transform(
-                tenantId.get(),
-                query,
-                docStoreSelections,
-                entityAttributeMapping.getMultiValuedAttributes()));
+            DocStoreConverter.transform(tenantId.get(), query, docStoreSelections));
 
     ResultSetMetadata resultSetMetadata =
         ResultSetMetadata.newBuilder()
@@ -266,11 +262,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
               requestContext, request.getSelectionList());
       Iterator<Document> documentIterator =
           entitiesCollection.search(
-              DocStoreConverter.transform(
-                  tenantId.get(),
-                  entitiesQuery,
-                  docStoreSelections,
-                  entityAttributeMapping.getMultiValuedAttributes()));
+              DocStoreConverter.transform(tenantId.get(), entitiesQuery, docStoreSelections));
       List<Entity> entities = convertDocsToEntities(documentIterator);
       responseObserver.onNext(
           convertEntitiesToResultSetChunk(requestContext, entities, request.getSelectionList()));
@@ -334,11 +326,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     Query query = entityQueryConverter.convertToEDSQuery(requestContext, entityQueryRequest);
     long total =
         entitiesCollection.total(
-            DocStoreConverter.transform(
-                tenantId.get(),
-                query,
-                Collections.emptyList(),
-                entityAttributeMapping.getMultiValuedAttributes()));
+            DocStoreConverter.transform(tenantId.get(), query, Collections.emptyList()));
     responseObserver.onNext(TotalEntitiesResponse.newBuilder().setTotal(total).build());
     responseObserver.onCompleted();
   }
