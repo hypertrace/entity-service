@@ -996,6 +996,7 @@ public class EntityDataServiceTest {
     AttributeFilter attributeFilter =
         AttributeFilter.newBuilder()
             .setName("attributes.labels")
+            .setIsMultiValued(true)
             .setOperator(Operator.NOT_IN)
             .setAttributeValue(
                 AttributeValue.newBuilder()
