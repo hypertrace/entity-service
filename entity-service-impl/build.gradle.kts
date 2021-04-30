@@ -7,6 +7,10 @@ plugins {
 dependencies {
   api(project(":entity-service-api"))
   api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.23")
+
+  annotationProcessor("org.projectlombok:lombok:1.18.18")
+  compileOnly("org.projectlombok:lombok:1.18.18")
+
   implementation("org.hypertrace.core.documentstore:document-store:0.5.4")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.4.0")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.4.0")
@@ -17,7 +21,6 @@ dependencies {
   implementation("com.github.f4b6a3:uuid-creator:3.5.0")
   implementation("io.reactivex.rxjava3:rxjava:3.0.11")
   implementation("com.google.guava:guava:30.1.1-jre")
-  implementation("org.apache.commons:commons-lang3:3.11")
 
   implementation("org.slf4j:slf4j-api:1.7.30")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.12.2")
