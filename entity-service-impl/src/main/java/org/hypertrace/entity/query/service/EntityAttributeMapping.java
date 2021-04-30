@@ -55,7 +55,16 @@ class EntityAttributeMapping {
   }
 
   public boolean isMultiValued(RequestContext requestContext, String attributeId) {
-    return getValueKindFromAttributeId(requestContext, attributeId);
+    return requestContext.call(
+        () ->
+            this.attributeClient
+                .get(attributeId)
+                .filter(metadata -> metadata.getSourcesList().contains(AttributeSource.EDS))
+                .map(AttributeMetadata::getValueKind)
+                .map(valueKind -> (AttributeKind.TYPE_STRING_ARRAY == valueKind))
+                .onErrorComplete()
+                .defaultIfEmpty(false)
+                .blockingGet());
   }
 
   private Optional<String> calculateDocStorePathFromAttributeId(
@@ -70,19 +79,6 @@ class EntityAttributeMapping {
                 .map(Optional::of)
                 .onErrorComplete()
                 .defaultIfEmpty(Optional.empty())
-                .blockingGet());
-  }
-
-  private boolean getValueKindFromAttributeId(RequestContext requestContext, String attributeId) {
-    return requestContext.call(
-        () ->
-            this.attributeClient
-                .get(attributeId)
-                .filter(metadata -> metadata.getSourcesList().contains(AttributeSource.EDS))
-                .map(AttributeMetadata::getValueKind)
-                .map(valueKind -> (AttributeKind.TYPE_STRING_ARRAY == valueKind))
-                .onErrorComplete()
-                .defaultIfEmpty(false)
                 .blockingGet());
   }
 }
