@@ -1022,6 +1022,7 @@ public class EntityDataServiceTest {
     attributeFilter =
         AttributeFilter.newBuilder()
             .setName("attributes.labels")
+            .setIsMultiValued(true)
             .setOperator(Operator.IN)
             .setAttributeValue(
                 AttributeValue.newBuilder()
@@ -1051,12 +1052,14 @@ public class EntityDataServiceTest {
             .addChildFilter(
                 AttributeFilter.newBuilder()
                     .setName("attributes.labels")
+                    .setIsMultiValued(true)
                     .setOperator(Operator.NEQ)
                     .setAttributeValue(
                         AttributeValue.newBuilder().setValue(Value.newBuilder().setString("v2"))))
             .addChildFilter(
                 AttributeFilter.newBuilder()
                     .setName("attributes.labels")
+                    .setIsMultiValued(true)
                     .setOperator(Operator.NEQ)
                     .setAttributeValue(
                         AttributeValue.newBuilder().setValue(Value.newBuilder().setString("b1"))))
@@ -1075,6 +1078,7 @@ public class EntityDataServiceTest {
     attributeFilter =
         AttributeFilter.newBuilder()
             .setName("attributes.labels")
+            .setIsMultiValued(true)
             .setOperator(Operator.EQ)
             .setAttributeValue(
                 AttributeValue.newBuilder().setValue(Value.newBuilder().setString("v2")))
