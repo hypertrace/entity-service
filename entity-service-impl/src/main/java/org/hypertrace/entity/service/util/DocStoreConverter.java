@@ -154,8 +154,7 @@ public class DocStoreConverter {
   }
 
   private static boolean isMultiValuedAttribute(AttributeFilter filter) {
-    // TODO remove attribute labels hard coding once configs are in place.
-    return filter.getIsMultiValued() || ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName());
+    return filter.getIsMultiValued();
   }
 
   private static Filter transformNonListRhsFilterTypes(AttributeFilter filter) {

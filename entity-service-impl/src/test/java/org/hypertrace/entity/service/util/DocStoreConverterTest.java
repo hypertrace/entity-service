@@ -428,6 +428,7 @@ public class DocStoreConverterTest {
             .setFilter(
                 AttributeFilter.newBuilder()
                     .setName(ATTRIBUTES_LABELS_FIELD_NAME)
+                    .setIsMultiValued(true)
                     .setOperator(Operator.EQ)
                     .setAttributeValue(
                         AttributeValue.newBuilder().setValue(Value.newBuilder().setString("l1"))))
@@ -464,6 +465,7 @@ public class DocStoreConverterTest {
                     .addChildFilter(
                         AttributeFilter.newBuilder()
                             .setName(ATTRIBUTES_LABELS_FIELD_NAME)
+                            .setIsMultiValued(true)
                             .setOperator(Operator.EQ)
                             .setAttributeValue(
                                 AttributeValue.newBuilder()
@@ -471,6 +473,7 @@ public class DocStoreConverterTest {
                     .addChildFilter(
                         AttributeFilter.newBuilder()
                             .setName(ATTRIBUTES_LABELS_FIELD_NAME)
+                            .setIsMultiValued(true)
                             .setOperator(Operator.EQ)
                             .setAttributeValue(
                                 AttributeValue.newBuilder()
@@ -522,6 +525,7 @@ public class DocStoreConverterTest {
                     .addChildFilter(
                         AttributeFilter.newBuilder()
                             .setName(ATTRIBUTES_LABELS_FIELD_NAME)
+                            .setIsMultiValued(true)
                             .setOperator(Operator.NEQ)
                             .setAttributeValue(
                                 AttributeValue.newBuilder()
@@ -529,6 +533,7 @@ public class DocStoreConverterTest {
                     .addChildFilter(
                         AttributeFilter.newBuilder()
                             .setName(ATTRIBUTES_LABELS_FIELD_NAME)
+                            .setIsMultiValued(true)
                             .setOperator(Operator.NEQ)
                             .setAttributeValue(
                                 AttributeValue.newBuilder()
@@ -587,6 +592,7 @@ public class DocStoreConverterTest {
                     .addChildFilter(
                         AttributeFilter.newBuilder()
                             .setName(ATTRIBUTES_LABELS_FIELD_NAME)
+                            .setIsMultiValued(true)
                             .setOperator(Operator.IN)
                             .setAttributeValue(
                                 AttributeValue.newBuilder()
@@ -686,6 +692,7 @@ public class DocStoreConverterTest {
                     .addChildFilter(
                         AttributeFilter.newBuilder()
                             .setName(ATTRIBUTES_LABELS_FIELD_NAME)
+                            .setIsMultiValued(true)
                             .setOperator(Operator.NOT_IN)
                             .setAttributeValue(
                                 AttributeValue.newBuilder()
