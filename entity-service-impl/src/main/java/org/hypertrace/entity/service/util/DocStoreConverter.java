@@ -36,7 +36,6 @@ public class DocStoreConverter {
 
   private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static DocStoreJsonFormat.Printer JSONFORMAT_PRINTER = DocStoreJsonFormat.printer();
-  private static final String ATTRIBUTES_LABELS_FIELD_NAME = "attributes.labels";
   private static final String VALUE_LIST_VALUES_CONST = ".valueList.values";
 
   /**
