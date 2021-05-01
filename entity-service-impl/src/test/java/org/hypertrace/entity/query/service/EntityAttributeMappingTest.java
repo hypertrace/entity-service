@@ -90,7 +90,6 @@ class EntityAttributeMappingTest {
             .build();
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(singleValueAttributeData));
 
-    // Empty result, since the mock metadata doesn't have an entity source
     assertFalse(attributeMapping.isMultiValued(mockRequestContext, "some-id"));
 
     AttributeMetadata multiValueAttributeData =
