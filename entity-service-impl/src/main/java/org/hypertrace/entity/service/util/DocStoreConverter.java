@@ -36,7 +36,6 @@ public class DocStoreConverter {
 
   private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static DocStoreJsonFormat.Printer JSONFORMAT_PRINTER = DocStoreJsonFormat.printer();
-  private static final String ATTRIBUTES_LABELS_FIELD_NAME = "attributes.labels";
   private static final String VALUE_LIST_VALUES_CONST = ".valueList.values";
 
   /**
@@ -128,17 +127,13 @@ public class DocStoreConverter {
 
   private static Filter transform(AttributeFilter filter) {
     if (filter.hasAttributeValue()) {
-      if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName())
-          && filter.getOperator() == Operator.EQ) {
+      if (isMultiValuedAttribute(filter) && filter.getOperator() == Operator.EQ) {
         return transformToEqFilterWithValueListRhs(filter);
-      } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName())
-          && filter.getOperator() == Operator.NEQ) {
+      } else if (isMultiValuedAttribute(filter) && filter.getOperator() == Operator.NEQ) {
         return transformToNeqFilterWithValueListRhs(filter);
-      } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName())
-          && filter.getOperator() == Operator.IN) {
+      } else if (isMultiValuedAttribute(filter) && filter.getOperator() == Operator.IN) {
         return transformToOrFilterChainForStrArray(filter);
-      } else if (ATTRIBUTES_LABELS_FIELD_NAME.equals(filter.getName())
-          && filter.getOperator() == Operator.NOT_IN) {
+      } else if (isMultiValuedAttribute(filter) && filter.getOperator() == Operator.NOT_IN) {
         return transformToAndFilterChainForStrArray(filter);
       } else {
         return transformNonListRhsFilterTypes(filter);
@@ -155,6 +150,10 @@ public class DocStoreConverter {
               .toArray(new Filter[] {}));
       return f;
     }
+  }
+
+  private static boolean isMultiValuedAttribute(AttributeFilter filter) {
+    return filter.getIsMultiValued();
   }
 
   private static Filter transformNonListRhsFilterTypes(AttributeFilter filter) {
