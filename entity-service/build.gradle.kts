@@ -37,15 +37,12 @@ dependencies {
   // Config
   implementation("com.typesafe:config:1.4.1")
 
+  // integration test
   integrationTestImplementation(project(":entity-service-client"))
-  integrationTestImplementation("org" +
-          ".hypertrace.core.grpcutils:grpc-context-utils:0.4.0")
+  integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.4.0")
   integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.23")
-  //integrationTestImplementation("org.junit.jupiter:junit-jupiter-api:5.6.2")
-  //integrationTestImplementation("org.junit.jupiter:junit-jupiter-params:5.6.2")
   integrationTestImplementation("org.testcontainers:testcontainers:1.15.2")
-  //integrationTestImplementation("org.testcontainers:junit-jupiter:1.15.2")
   integrationTestImplementation("com.github.stefanbirkner:system-lambda:1.2.0")
 }
 
