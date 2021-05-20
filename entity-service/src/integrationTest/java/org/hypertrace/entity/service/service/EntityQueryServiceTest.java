@@ -51,8 +51,8 @@ import org.hypertrace.entity.type.service.v1.AttributeKind;
 import org.hypertrace.entity.type.service.v1.AttributeType;
 import org.hypertrace.entity.v1.entitytype.EntityType;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -121,7 +121,7 @@ public class EntityQueryServiceTest {
     apiAttributesMap = attributesMap.get(EntityType.API.name());
   }
 
-  @AfterEach
+  @BeforeEach
   public void clearCollections() {
     clearCollection(ENTITY_TYPES_COLLECTION);
     clearCollection(RAW_ENTITIES_COLLECTION);
