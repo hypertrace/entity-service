@@ -1,6 +1,3 @@
-import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
-import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
-
 plugins {
   java
   application
@@ -9,14 +6,6 @@ plugins {
   id("org.hypertrace.docker-publish-plugin")
   id("org.hypertrace.integration-test-plugin")
   id("org.hypertrace.jacoco-report-plugin")
-}
-
-tasks.register<DockerCreateNetwork>("createIntegrationTestNetwork") {
-  networkName.set("entity-svc-int-test")
-}
-
-tasks.register<DockerRemoveNetwork>("removeIntegrationTestNetwork") {
-  networkId.set("entity-svc-int-test")
 }
 
 tasks.integrationTest {
@@ -49,18 +38,14 @@ dependencies {
   implementation("com.typesafe:config:1.4.1")
 
   integrationTestImplementation(project(":entity-service-client"))
-  integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.4.0")
+  integrationTestImplementation("org" +
+          ".hypertrace.core.grpcutils:grpc-context-utils:0.4.0")
   integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.23")
-  integrationTestImplementation("org.junit.jupiter:junit-jupiter-api:5.6.2")
-  integrationTestImplementation("org.junit.jupiter:junit-jupiter-params:5.6.2")
-  integrationTestImplementation("org.junit.jupiter:junit-jupiter-engine:5.6.2")
+  //integrationTestImplementation("org.junit.jupiter:junit-jupiter-api:5.6.2")
+  //integrationTestImplementation("org.junit.jupiter:junit-jupiter-params:5.6.2")
   integrationTestImplementation("org.testcontainers:testcontainers:1.15.2")
-  integrationTestImplementation("org.testcontainers:junit-jupiter:1.15.2")
-  integrationTestImplementation("org.testcontainers:testcontainers:1.15.2")
-  integrationTestImplementation("org.testcontainers:junit-jupiter:1.15.2")
-  integrationTestImplementation("org.apache.avro:avro:1.10.1")
-  integrationTestImplementation("org.hypertrace.core.datamodel:data-model:0.1.12")
+  //integrationTestImplementation("org.testcontainers:junit-jupiter:1.15.2")
   integrationTestImplementation("com.github.stefanbirkner:system-lambda:1.2.0")
 }
 
