@@ -2,8 +2,8 @@ package org.hypertrace.entity.service.service;
 
 import static com.github.stefanbirkner.systemlambda.SystemLambda.withEnvironmentVariable;
 
-import io.grpc.Channel;
-import io.grpc.ClientInterceptors;
+import com.typesafe.config.ConfigFactory;
+import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,64 +26,65 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.Network;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /** Test case for testing relationships CRUD with {@link EntityDataServiceClient} */
-@Testcontainers
 public class EntityDataServiceRelationshipsTest {
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(EntityDataServiceRelationshipsTest.class);
+  private static final Slf4jLogConsumer logConsumer = new Slf4jLogConsumer(LOG);
+
   private static EntityDataServiceClient entityDataServiceClient;
   private static final String TENANT_ID =
       "__testTenant__" + EntityDataServiceTest.class.getSimpleName();
   private static final int CONTAINER_STARTUP_ATTEMPTS = 5;
 
-  private static Network network;
   private static GenericContainer<?> mongo;
+  private static ManagedChannel channel;
 
   @BeforeAll
   public static void setUp() throws Exception {
-    network = Network.newNetwork();
 
     mongo =
         new GenericContainer<>(DockerImageName.parse("hypertrace/mongodb:main"))
-            .withNetwork(network)
-            .withNetworkAliases("mongo")
             .withExposedPorts(27017)
             .withStartupAttempts(CONTAINER_STARTUP_ATTEMPTS)
-            .waitingFor(Wait.forLogMessage(".*waiting for connections on port 27017.*", 1));
+            .waitingFor(Wait.forListeningPort())
+            .withLogConsumer(logConsumer);
     mongo.start();
 
     withEnvironmentVariable("MONGO_HOST", mongo.getHost())
         .and("MONGO_PORT", mongo.getMappedPort(27017).toString())
-        .execute(() -> IntegrationTestServerUtil.startServices(new String[] {"entity-service"}));
+        .execute(
+            () -> {
+              ConfigFactory.invalidateCaches();
+              IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
+            });
+    EntityServiceClientConfig entityServiceTestConfig = EntityServiceTestConfig.getClientConfig();
+    channel =
+        ManagedChannelBuilder.forAddress(
+                entityServiceTestConfig.getHost(), entityServiceTestConfig.getPort())
+            .usePlaintext()
+            .build();
 
-    EntityServiceClientConfig esConfig = EntityServiceTestConfig.getClientConfig();
-    Channel channel =
-        ClientInterceptors.intercept(
-            ManagedChannelBuilder.forAddress(esConfig.getHost(), esConfig.getPort())
-                .usePlaintext()
-                .build());
     entityDataServiceClient = new EntityDataServiceClient(channel);
     setupEntityTypes();
   }
 
   @AfterAll
   public static void teardown() {
+    channel.shutdown();
+    IntegrationTestServerUtil.shutdownServices();
     mongo.stop();
   }
 
   private static void setupEntityTypes() {
-    Channel channel =
-        ClientInterceptors.intercept(
-            ManagedChannelBuilder.forAddress(
-                    EntityServiceTestConfig.getClientConfig().getHost(),
-                    EntityServiceTestConfig.getClientConfig().getPort())
-                .usePlaintext()
-                .build());
-
     EntityTypeServiceClient entityTypeServiceClient = new EntityTypeServiceClient(channel);
     entityTypeServiceClient.upsertEntityType(
         TENANT_ID,

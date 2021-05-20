@@ -12,7 +12,7 @@ import com.google.common.collect.Lists;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.grpc.Channel;
-import io.grpc.ClientInterceptors;
+import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -51,22 +51,28 @@ import org.hypertrace.entity.type.service.v1.AttributeKind;
 import org.hypertrace.entity.type.service.v1.AttributeType;
 import org.hypertrace.entity.v1.entitytype.EntityType;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.Network;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 /** Test for {@link org.hypertrace.entity.query.service.client.EntityQueryServiceClient} */
 public class EntityQueryServiceTest {
+
+  private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceTest.class);
+  private static final Slf4jLogConsumer logConsumer = new Slf4jLogConsumer(LOG);
+
   private static EntityQueryServiceClient entityQueryServiceClient;
   // needed to create entities
   private static EntityDataServiceClient entityDataServiceClient;
 
-  private static Channel channel;
+  private static ManagedChannel channel;
   private static Datastore datastore;
 
   private static final String TENANT_ID =
@@ -80,30 +86,32 @@ public class EntityQueryServiceTest {
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
   private static final int CONTAINER_STARTUP_ATTEMPTS = 5;
-  private static Network network;
   private static GenericContainer<?> mongo;
 
   @BeforeAll
   public static void setUp() throws Exception {
-    network = Network.newNetwork();
     mongo =
         new GenericContainer<>(DockerImageName.parse("hypertrace/mongodb:main"))
-            .withNetwork(network)
-            .withNetworkAliases("mongo")
             .withExposedPorts(27017)
             .withStartupAttempts(CONTAINER_STARTUP_ATTEMPTS)
-            .waitingFor(Wait.forLogMessage(".*waiting for connections on port 27017.*", 1));
+            .waitingFor(Wait.forListeningPort())
+            .withLogConsumer(logConsumer);
     mongo.start();
 
     withEnvironmentVariable("MONGO_HOST", mongo.getHost())
         .and("MONGO_PORT", mongo.getMappedPort(27017).toString())
-        .execute(() -> IntegrationTestServerUtil.startServices(new String[] {"entity-service"}));
-    EntityServiceClientConfig esConfig = EntityServiceTestConfig.getClientConfig();
+        .execute(
+            () -> {
+              ConfigFactory.invalidateCaches();
+              IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
+            });
+
+    EntityServiceClientConfig entityServiceTestConfig = EntityServiceTestConfig.getClientConfig();
     channel =
-        ClientInterceptors.intercept(
-            ManagedChannelBuilder.forAddress(esConfig.getHost(), esConfig.getPort())
-                .usePlaintext()
-                .build());
+        ManagedChannelBuilder.forAddress(
+                entityServiceTestConfig.getHost(), entityServiceTestConfig.getPort())
+            .usePlaintext()
+            .build();
     entityQueryServiceClient = new EntityQueryServiceClient(channel);
     entityDataServiceClient = new EntityDataServiceClient(channel);
 
@@ -113,7 +121,7 @@ public class EntityQueryServiceTest {
     apiAttributesMap = attributesMap.get(EntityType.API.name());
   }
 
-  @BeforeEach
+  @AfterEach
   public void clearCollections() {
     clearCollection(ENTITY_TYPES_COLLECTION);
     clearCollection(RAW_ENTITIES_COLLECTION);
@@ -127,6 +135,7 @@ public class EntityQueryServiceTest {
 
   @AfterAll
   public static void teardown() {
+    channel.shutdown();
     IntegrationTestServerUtil.shutdownServices();
     mongo.stop();
   }
@@ -454,6 +463,7 @@ public class EntityQueryServiceTest {
 
   @Nested
   class TotalEntities {
+
     @Test
     public void testTotal() {
       // creating an api entity with attributes
