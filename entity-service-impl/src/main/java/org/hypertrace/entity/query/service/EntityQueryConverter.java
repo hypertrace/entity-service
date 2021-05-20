@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
+import lombok.Value;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.AttributeFilter;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
@@ -93,7 +94,8 @@ class EntityQueryConverter {
     List<String> result = new ArrayList<>();
     for (Expression expression : expressions) {
       if (expression.hasColumnIdentifier()) {
-        String docStoreColumnName = convertToAttributeKey(requestContext, expression);
+        String docStoreColumnName =
+            getAttributeColumnInfo(requestContext, expression).getColumnName();
         result.add(docStoreColumnName);
       } else {
         // entity data service and doc store only support field selection. There's no
@@ -163,7 +165,9 @@ class EntityQueryConverter {
     AttributeFilter.Builder builder = null;
     if (filter.getChildFilterCount() == 0) {
       // Copy the lhs and rhs from the filter.
-      String edsColumnName = convertToAttributeKey(requestContext, filter.getLhs());
+      AttributeColumnInformation attributeData =
+          getAttributeColumnInfo(requestContext, filter.getLhs());
+      String edsColumnName = attributeData.getColumnName();
       org.hypertrace.entity.query.service.v1.Value rhsValue =
           filter.getRhs().getLiteral().getValue();
       if (edsColumnName.equals(EntityServiceConstants.ENTITY_ID)) {
@@ -178,6 +182,7 @@ class EntityQueryConverter {
         builder = AttributeFilter.newBuilder();
         builder.setOperator(convertOperator(filter.getOperator()));
         builder.setName(edsColumnName);
+        builder.setIsMultiValued(attributeData.isMultiValued());
         builder.setAttributeValue(convertToAttributeValue(filter.getRhs()));
       }
     } else {
@@ -336,20 +341,24 @@ class EntityQueryConverter {
     return builder;
   }
 
-  private String convertToAttributeKey(RequestContext requestContext, Expression expression) {
+  private AttributeColumnInformation getAttributeColumnInfo(
+      RequestContext requestContext, Expression expression) {
     switch (expression.getValueCase()) {
       case LITERAL:
         throw new IllegalArgumentException("LHS should be a Attribute key");
       case COLUMNIDENTIFIER:
         String attributeId = expression.getColumnIdentifier().getColumnName();
-        return this.attributeMapping
-            .getDocStorePathByAttributeId(requestContext, attributeId)
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        String.format(
-                            "Unrecognized attribute: %s does not match any known entity attribute",
-                            attributeId)));
+        String attributeName =
+            this.attributeMapping
+                .getDocStorePathByAttributeId(requestContext, attributeId)
+                .orElseThrow(
+                    () ->
+                        new IllegalArgumentException(
+                            String.format(
+                                "Unrecognized attribute: %s does not match any known entity attribute",
+                                attributeId)));
+        boolean isMultiValued = this.attributeMapping.isMultiValued(requestContext, attributeId);
+        return new AttributeColumnInformation(attributeName, isMultiValued);
       case FUNCTION:
         throw new UnsupportedOperationException(
             "Filtering on functional expressions not supported in EDS");
@@ -411,7 +420,8 @@ class EntityQueryConverter {
       if (orderByExpression.hasExpression()) {
         if (orderByExpression.getExpression().hasColumnIdentifier()) {
           String edsColumnName =
-              convertToAttributeKey(requestContext, orderByExpression.getExpression());
+              getAttributeColumnInfo(requestContext, orderByExpression.getExpression())
+                  .getColumnName();
           org.hypertrace.entity.data.service.v1.OrderByExpression convertedExpression =
               org.hypertrace.entity.data.service.v1.OrderByExpression.newBuilder()
                   .setName(edsColumnName)
@@ -433,5 +443,11 @@ class EntityQueryConverter {
     return SortOrder.DESC == sortOrder
         ? org.hypertrace.entity.data.service.v1.SortOrder.DESC
         : org.hypertrace.entity.data.service.v1.SortOrder.ASC;
+  }
+
+  @Value
+  private static class AttributeColumnInformation {
+    String columnName;
+    boolean multiValued;
   }
 }

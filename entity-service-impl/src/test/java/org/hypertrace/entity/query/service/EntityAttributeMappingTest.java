@@ -1,6 +1,8 @@
 package org.hypertrace.entity.query.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -10,6 +12,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import org.hypertrace.core.attribute.service.cachingclient.CachingAttributeClient;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
 import org.hypertrace.core.attribute.service.v1.AttributeSource;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -72,5 +75,41 @@ class EntityAttributeMappingTest {
     assertEquals(
         Optional.empty(),
         attributeMapping.getDocStorePathByAttributeId(mockRequestContext, "some-id"));
+  }
+
+  @Test
+  void testIsMultiValueAttribute() {
+    when(mockRequestContext.call(any())).thenCallRealMethod();
+    EntityAttributeMapping attributeMapping =
+        new EntityAttributeMapping(this.mockAttributeClient, Collections.emptyMap());
+    AttributeMetadata singleValueAttributeData =
+        AttributeMetadata.newBuilder()
+            .setKey("some-key")
+            .setValueKind(AttributeKind.TYPE_STRING)
+            .addSources(AttributeSource.EDS)
+            .build();
+    when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(singleValueAttributeData));
+
+    assertFalse(attributeMapping.isMultiValued(mockRequestContext, "some-id"));
+
+    AttributeMetadata multiValueAttributeData =
+        AttributeMetadata.newBuilder()
+            .setKey("some-key")
+            .setValueKind(AttributeKind.TYPE_STRING_ARRAY)
+            .addSources(AttributeSource.EDS)
+            .build();
+    when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(multiValueAttributeData));
+
+    assertTrue(attributeMapping.isMultiValued(mockRequestContext, "some-id"));
+
+    AttributeMetadata invalidSourceAttributeData =
+        AttributeMetadata.newBuilder()
+            .setKey("some-key")
+            .setValueKind(AttributeKind.TYPE_STRING_ARRAY)
+            .addSources(AttributeSource.QS)
+            .build();
+    when(this.mockAttributeClient.get("some-id"))
+        .thenReturn(Single.just(invalidSourceAttributeData));
+    assertFalse(attributeMapping.isMultiValued(mockRequestContext, "some-id"));
   }
 }
