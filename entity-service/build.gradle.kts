@@ -1,10 +1,3 @@
-import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
-import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
-import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
-import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
-import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
-import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
-
 plugins {
   java
   application
@@ -15,42 +8,8 @@ plugins {
   id("org.hypertrace.jacoco-report-plugin")
 }
 
-tasks.register<DockerCreateNetwork>("createIntegrationTestNetwork") {
-  networkName.set("entity-svc-int-test")
-}
-
-tasks.register<DockerRemoveNetwork>("removeIntegrationTestNetwork") {
-  networkId.set("entity-svc-int-test")
-}
-
-tasks.register<DockerPullImage>("pullMongoImage") {
-  image.set("mongo:4.4.0")
-}
-
-tasks.register<DockerCreateContainer>("createMongoContainer") {
-  dependsOn("createIntegrationTestNetwork")
-  dependsOn("pullMongoImage")
-  targetImageId(tasks.getByName<DockerPullImage>("pullMongoImage").image)
-  containerName.set("mongo-local")
-  hostConfig.network.set(tasks.getByName<DockerCreateNetwork>("createIntegrationTestNetwork").networkId)
-  hostConfig.portBindings.set(listOf("27017:27017"))
-  hostConfig.autoRemove.set(true)
-}
-
-tasks.register<DockerStartContainer>("startMongoContainer") {
-  dependsOn("createMongoContainer")
-  targetContainerId(tasks.getByName<DockerCreateContainer>("createMongoContainer").containerId)
-}
-
-tasks.register<DockerStopContainer>("stopMongoContainer") {
-  targetContainerId(tasks.getByName<DockerCreateContainer>("createMongoContainer").containerId)
-  finalizedBy("removeIntegrationTestNetwork")
-}
-
 tasks.integrationTest {
   useJUnitPlatform()
-  dependsOn("startMongoContainer")
-  finalizedBy("stopMongoContainer")
 }
 
 dependencies {
@@ -78,10 +37,13 @@ dependencies {
   // Config
   implementation("com.typesafe:config:1.4.1")
 
+  // integration test
   integrationTestImplementation(project(":entity-service-client"))
   integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.4.0")
   integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.23")
+  integrationTestImplementation("org.testcontainers:testcontainers:1.15.2")
+  integrationTestImplementation("com.github.stefanbirkner:system-lambda:1.2.0")
 }
 
 application {
