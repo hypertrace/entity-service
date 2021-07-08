@@ -4,12 +4,14 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
+import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
 import org.hypertrace.entity.data.service.client.exception.NotFoundException;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
 import org.hypertrace.entity.data.service.v1.EnrichedEntities;
@@ -42,6 +44,7 @@ public class EdsCacheClient implements EdsClient {
         CacheBuilder.newBuilder()
             .expireAfterWrite(cacheConfig.getEnrichedEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEnrichedEntityMaxCacheSize())
+            .recordStats()
             .build(
                 new CacheLoader<>() {
                   public EnrichedEntity load(@Nonnull EdsCacheKey key) throws Exception {
@@ -58,6 +61,7 @@ public class EdsCacheClient implements EdsClient {
         CacheBuilder.newBuilder()
             .expireAfterWrite(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEntityMaxCacheSize())
+            .recordStats()
             .build(
                 new CacheLoader<>() {
                   public Entity load(@Nonnull EdsCacheKey key) throws Exception {
@@ -73,6 +77,7 @@ public class EdsCacheClient implements EdsClient {
         CacheBuilder.newBuilder()
             .expireAfterWrite(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEntityIdsMaxCacheSize())
+            .recordStats()
             .build(
                 new CacheLoader<>() {
                   public String load(@Nonnull EdsTypeAndIdAttributesCacheKey key) throws Exception {
@@ -87,6 +92,13 @@ public class EdsCacheClient implements EdsClient {
                     return entity.getEntityId();
                   }
                 });
+    PlatformMetricsRegistry.registerCache(
+        "enrichedEntityCache", enrichedEntityCache, Collections.emptyMap());
+    PlatformMetricsRegistry.registerCache(
+        "entityCache", entityCache, Collections.emptyMap());
+    PlatformMetricsRegistry.registerCache(
+        "entityIdsCache", entityIdsCache, Collections.emptyMap());
+
   }
 
   @Override
