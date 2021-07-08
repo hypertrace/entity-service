@@ -94,11 +94,8 @@ public class EdsCacheClient implements EdsClient {
                 });
     PlatformMetricsRegistry.registerCache(
         "enrichedEntityCache", enrichedEntityCache, Collections.emptyMap());
-    PlatformMetricsRegistry.registerCache(
-        "entityCache", entityCache, Collections.emptyMap());
-    PlatformMetricsRegistry.registerCache(
-        "entityIdsCache", entityIdsCache, Collections.emptyMap());
-
+    PlatformMetricsRegistry.registerCache("entityCache", entityCache, Collections.emptyMap());
+    PlatformMetricsRegistry.registerCache("entityIdsCache", entityIdsCache, Collections.emptyMap());
   }
 
   @Override
