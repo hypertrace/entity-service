@@ -15,6 +15,7 @@ dependencies {
 
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.4.0")
   implementation("org.slf4j:slf4j-api:1.7.30")
+  implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.28")
 
   testImplementation("io.grpc:grpc-core:1.36.1")
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
