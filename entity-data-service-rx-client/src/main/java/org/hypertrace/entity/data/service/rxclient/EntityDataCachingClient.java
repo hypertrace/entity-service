@@ -6,6 +6,7 @@ import static java.util.Objects.nonNull;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.Striped;
 import io.grpc.CallCredentials;
 import io.grpc.Channel;
 import io.reactivex.rxjava3.core.Completable;
@@ -21,6 +22,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import javax.annotation.Nonnull;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc;
@@ -30,10 +33,13 @@ import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest.UpsertC
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityResponse;
 
 class EntityDataCachingClient implements EntityDataClient {
+  private static final int PENDING_UPDATE_MAX_LOCK_COUNT = 1000;
   private final EntityDataServiceStub entityDataClient;
   private final LoadingCache<EntityKey, Single<Entity>> cache;
   private final ConcurrentMap<EntityKey, PendingEntityUpdate> pendingEntityUpdates =
       new ConcurrentHashMap<>();
+  private final Striped<ReadWriteLock> pendingUpdateStripedLock =
+      Striped.lazyWeakReadWriteLock(PENDING_UPDATE_MAX_LOCK_COUNT);
   private final Clock clock;
 
   EntityDataCachingClient(
@@ -62,14 +68,14 @@ class EntityDataCachingClient implements EntityDataClient {
       Entity entity, UpsertCondition condition, Duration maximumUpsertDelay) {
     SingleSubject<Entity> singleSubject = SingleSubject.create();
     EntityKey entityKey = EntityKey.entityInCurrentContext(entity);
-    if (this.pendingEntityUpdates.containsKey(entityKey)) {
-      // Update the key - not strictly necessary (because the pending update holds the write data),
-      // but good hygiene
-      this.pendingEntityUpdates.put(entityKey, this.pendingEntityUpdates.get(entityKey));
-    }
+
+    // Acquire lock allowing multiple concurrent update adds, but only if no update executions
+    Lock lock = this.pendingUpdateStripedLock.get(entityKey).readLock();
+    lock.lock();
     this.pendingEntityUpdates
         .computeIfAbsent(entityKey, unused -> new PendingEntityUpdate())
         .addNewUpdate(entityKey, singleSubject, condition, maximumUpsertDelay);
+    lock.unlock();
     return singleSubject;
   }
 
@@ -112,8 +118,11 @@ class EntityDataCachingClient implements EntityDataClient {
     private UpsertCondition condition;
 
     private void executeUpdate() {
-
+      // Acquire write lock to ensure no more modification of this update
+      Lock lock = pendingUpdateStripedLock.get(entityKey).writeLock();
+      lock.lock();
       EntityDataCachingClient.this.pendingEntityUpdates.remove(entityKey);
+      lock.unlock();
 
       Single<Entity> updateResult =
           EntityDataCachingClient.this.createOrUpdateEntity(entityKey, condition).cache();
