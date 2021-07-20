@@ -71,11 +71,14 @@ class EntityDataCachingClient implements EntityDataClient {
 
     // Acquire lock allowing multiple concurrent update adds, but only if no update executions
     Lock lock = this.pendingUpdateStripedLock.get(entityKey).readLock();
-    lock.lock();
-    this.pendingEntityUpdates
-        .computeIfAbsent(entityKey, unused -> new PendingEntityUpdate())
-        .addNewUpdate(entityKey, singleSubject, condition, maximumUpsertDelay);
-    lock.unlock();
+    try {
+      lock.lock();
+      this.pendingEntityUpdates
+          .computeIfAbsent(entityKey, unused -> new PendingEntityUpdate())
+          .addNewUpdate(entityKey, singleSubject, condition, maximumUpsertDelay);
+    } finally {
+      lock.unlock();
+    }
     return singleSubject;
   }
 
@@ -120,10 +123,12 @@ class EntityDataCachingClient implements EntityDataClient {
     private void executeUpdate() {
       // Acquire write lock to ensure no more modification of this update
       Lock lock = pendingUpdateStripedLock.get(entityKey).writeLock();
-      lock.lock();
-      EntityDataCachingClient.this.pendingEntityUpdates.remove(entityKey);
-      lock.unlock();
-
+      try {
+        lock.lock();
+        EntityDataCachingClient.this.pendingEntityUpdates.remove(entityKey);
+      } finally {
+        lock.unlock();
+      }
       Single<Entity> updateResult =
           EntityDataCachingClient.this.createOrUpdateEntity(entityKey, condition).cache();
       EntityDataCachingClient.this.cache.put(entityKey, updateResult);
