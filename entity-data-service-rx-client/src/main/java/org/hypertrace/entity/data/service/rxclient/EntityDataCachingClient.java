@@ -136,7 +136,7 @@ class EntityDataCachingClient implements EntityDataClient {
         SingleObserver<Entity> observer,
         UpsertCondition condition,
         Duration maximumDelay) {
-      if (updateExecutionTimer.isDisposed()) {
+      if (nonNull(updateExecutionTimer) && updateExecutionTimer.isDisposed()) {
         throw new IllegalStateException("Attempting to add new update after execution");
       }
 
