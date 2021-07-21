@@ -23,7 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
 import javax.annotation.Nonnull;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc;
@@ -38,8 +37,8 @@ class EntityDataCachingClient implements EntityDataClient {
   private final LoadingCache<EntityKey, Single<Entity>> cache;
   private final ConcurrentMap<EntityKey, PendingEntityUpdate> pendingEntityUpdates =
       new ConcurrentHashMap<>();
-  private final Striped<ReadWriteLock> pendingUpdateStripedLock =
-      Striped.lazyWeakReadWriteLock(PENDING_UPDATE_MAX_LOCK_COUNT);
+  private final Striped<Lock> pendingUpdateStripedLock =
+      Striped.lazyWeakLock(PENDING_UPDATE_MAX_LOCK_COUNT);
   private final Clock clock;
 
   EntityDataCachingClient(
@@ -69,8 +68,8 @@ class EntityDataCachingClient implements EntityDataClient {
     SingleSubject<Entity> singleSubject = SingleSubject.create();
     EntityKey entityKey = EntityKey.entityInCurrentContext(entity);
 
-    // Acquire lock allowing multiple concurrent update adds, but only if no update executions
-    Lock lock = this.pendingUpdateStripedLock.get(entityKey).readLock();
+    // Don't allow other update processing until finished
+    Lock lock = this.pendingUpdateStripedLock.get(entityKey);
     try {
       lock.lock();
       this.pendingEntityUpdates
@@ -121,8 +120,8 @@ class EntityDataCachingClient implements EntityDataClient {
     private UpsertCondition condition;
 
     private void executeUpdate() {
-      // Acquire write lock to ensure no more modification of this update
-      Lock lock = pendingUpdateStripedLock.get(entityKey).writeLock();
+      // Make sure no current additions
+      Lock lock = pendingUpdateStripedLock.get(entityKey);
       try {
         lock.lock();
         EntityDataCachingClient.this.pendingEntityUpdates.remove(entityKey);
