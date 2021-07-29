@@ -25,6 +25,19 @@ message EntityUpdateRequest {
   repeated Expression selection = 4;
 }
 
+message BulkUpdateRequest {
+  string entityType = 1;
+  map<string, EntityUpdateInfo> bulkUpdateMap = 2;
+  message EntityUpdateInfo {
+    repeated UpdateInfo updateInfo = 1;
+  }
+}
+
+message UpdateInfo {
+  UpdateOperation updateOperation = 1;
+  repeated Expression selection = 2;
+}
+
 message TotalEntitiesRequest {
   string entityType = 1;
   Filter filter = 2;
