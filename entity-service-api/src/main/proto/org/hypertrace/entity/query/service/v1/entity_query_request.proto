@@ -25,17 +25,14 @@ message EntityUpdateRequest {
   repeated Expression selection = 4;
 }
 
-message BulkUpdateRequest {
+message BulkEntityUpdateRequest {
   string entityType = 1;
+  // Map of EntityId, update operations corresponding to this EntityId
   map<string, EntityUpdateInfo> bulkUpdateMap = 2;
+  repeated Expression selection = 3;
   message EntityUpdateInfo {
-    repeated UpdateInfo updateInfo = 1;
+    repeated UpdateOperation updateOperation = 1;
   }
-}
-
-message UpdateInfo {
-  UpdateOperation updateOperation = 1;
-  repeated Expression selection = 2;
 }
 
 message TotalEntitiesRequest {
