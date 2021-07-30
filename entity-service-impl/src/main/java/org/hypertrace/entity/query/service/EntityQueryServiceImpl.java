@@ -318,7 +318,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       }
     }
   }
-  
+
   @Override
   public void bulkUpdate(
       BulkEntityUpdateRequest request, StreamObserver<ResultSetChunk> responseObserver) {
