@@ -294,7 +294,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         SingleValueKey key =
             new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId);
         // TODO better error reporting once doc store exposes the,
-
         if (!entitiesCollection.updateSubDoc(key, subDocPath, new JSONDocument(jsonValue))) {
           LOG.warn(
               "Failed to update entity {}, subDocPath {}, with new doc {}.",
