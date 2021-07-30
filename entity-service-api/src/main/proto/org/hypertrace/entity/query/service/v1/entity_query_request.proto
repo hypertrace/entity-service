@@ -28,7 +28,7 @@ message EntityUpdateRequest {
 message BulkEntityUpdateRequest {
   string entityType = 1;
   // map of entity id, update operations corresponding to this entity id
-  map<string, EntityUpdateInfo> bulkUpdateMap = 2;
+  map<string, EntityUpdateInfo> entities = 2;
   repeated Expression selection = 3;
   message EntityUpdateInfo {
     repeated UpdateOperation updateOperation = 1;
