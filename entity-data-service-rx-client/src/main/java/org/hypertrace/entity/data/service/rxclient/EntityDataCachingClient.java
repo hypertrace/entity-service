@@ -6,6 +6,7 @@ import static java.util.Objects.nonNull;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.Striped;
 import io.grpc.CallCredentials;
 import io.grpc.Channel;
 import io.reactivex.rxjava3.core.Completable;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import javax.annotation.Nonnull;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc;
@@ -30,10 +32,13 @@ import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest.UpsertC
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityResponse;
 
 class EntityDataCachingClient implements EntityDataClient {
+  private static final int PENDING_UPDATE_MAX_LOCK_COUNT = 1000;
   private final EntityDataServiceStub entityDataClient;
   private final LoadingCache<EntityKey, Single<Entity>> cache;
   private final ConcurrentMap<EntityKey, PendingEntityUpdate> pendingEntityUpdates =
       new ConcurrentHashMap<>();
+  private final Striped<Lock> pendingUpdateStripedLock =
+      Striped.lazyWeakLock(PENDING_UPDATE_MAX_LOCK_COUNT);
   private final Clock clock;
 
   EntityDataCachingClient(
@@ -62,14 +67,17 @@ class EntityDataCachingClient implements EntityDataClient {
       Entity entity, UpsertCondition condition, Duration maximumUpsertDelay) {
     SingleSubject<Entity> singleSubject = SingleSubject.create();
     EntityKey entityKey = EntityKey.entityInCurrentContext(entity);
-    if (this.pendingEntityUpdates.containsKey(entityKey)) {
-      // Update the key - not strictly necessary (because the pending update holds the write data),
-      // but good hygiene
-      this.pendingEntityUpdates.put(entityKey, this.pendingEntityUpdates.get(entityKey));
+
+    // Don't allow other update processing until finished
+    Lock lock = this.pendingUpdateStripedLock.get(entityKey);
+    try {
+      lock.lock();
+      this.pendingEntityUpdates
+          .computeIfAbsent(entityKey, unused -> new PendingEntityUpdate())
+          .addNewUpdate(entityKey, singleSubject, condition, maximumUpsertDelay);
+    } finally {
+      lock.unlock();
     }
-    this.pendingEntityUpdates
-        .computeIfAbsent(entityKey, unused -> new PendingEntityUpdate())
-        .addNewUpdate(entityKey, singleSubject, condition, maximumUpsertDelay);
     return singleSubject;
   }
 
@@ -112,12 +120,16 @@ class EntityDataCachingClient implements EntityDataClient {
     private UpsertCondition condition;
 
     private void executeUpdate() {
-
-      EntityDataCachingClient.this.pendingEntityUpdates.remove(entityKey);
-
+      // Make sure no current additions
+      Lock lock = pendingUpdateStripedLock.get(entityKey);
+      try {
+        lock.lock();
+        EntityDataCachingClient.this.pendingEntityUpdates.remove(entityKey);
+      } finally {
+        lock.unlock();
+      }
       Single<Entity> updateResult =
           EntityDataCachingClient.this.createOrUpdateEntity(entityKey, condition).cache();
-      EntityDataCachingClient.this.cache.put(entityKey, updateResult);
 
       responseObservers.forEach(updateResult::subscribe);
     }
@@ -127,6 +139,10 @@ class EntityDataCachingClient implements EntityDataClient {
         SingleObserver<Entity> observer,
         UpsertCondition condition,
         Duration maximumDelay) {
+      if (nonNull(updateExecutionTimer) && updateExecutionTimer.isDisposed()) {
+        throw new IllegalStateException("Attempting to add new update after execution");
+      }
+
       this.entityKey = entityKey;
       this.condition = condition;
       this.responseObservers.add(observer);
