@@ -6,7 +6,7 @@ plugins {
 
 dependencies {
   api(project(":entity-service-api"))
-  api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.23")
+  api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.28")
 
   annotationProcessor("org.projectlombok:lombok:1.18.18")
   compileOnly("org.projectlombok:lombok:1.18.18")
@@ -14,7 +14,7 @@ dependencies {
   implementation("org.hypertrace.core.documentstore:document-store:0.5.8")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.4.0")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.4.0")
-  implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.10.4")
+  implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.12.3")
   implementation(project(":entity-type-service-rx-client"))
 
   implementation("com.google.protobuf:protobuf-java-util:3.15.6")
