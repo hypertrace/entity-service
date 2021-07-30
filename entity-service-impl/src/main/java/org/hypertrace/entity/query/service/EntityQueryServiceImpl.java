@@ -10,13 +10,17 @@ import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import org.hypertrace.core.documentstore.BulkUpdateResult;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
+import org.hypertrace.core.documentstore.Key;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -24,6 +28,7 @@ import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
@@ -37,6 +42,7 @@ import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.SetAttribute;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
+import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -290,19 +296,116 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
       String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
 
+      Map<Key, Map<String, Document>> toUpdate = new HashMap<>();
+
       for (String entityId : request.getEntityIdsList()) {
         SingleValueKey key =
             new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId);
         // TODO better error reporting once doc store exposes the,
-        if (!entitiesCollection.updateSubDoc(key, subDocPath, new JSONDocument(jsonValue))) {
-          LOG.warn(
-              "Failed to update entity {}, subDocPath {}, with new doc {}.",
-              key,
-              subDocPath,
-              jsonValue);
+        if (toUpdate.containsValue(key)) {
+          toUpdate.get(key).put(subDocPath, new JSONDocument(jsonValue));
+        } else {
+          Map<String, Document> subDocument = new HashMap<>();
+          subDocument.put(subDocPath, new JSONDocument(jsonValue));
+          toUpdate.put(key, subDocument);
         }
       }
+      try {
+        entitiesCollection.bulkUpdateSubDocs(toUpdate);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to update entities, subDocPath {}, with new doc {}.", subDocPath, jsonValue);
+      }
     }
+  }
+  
+  @Override
+  public void bulkUpdate(
+      BulkEntityUpdateRequest request, StreamObserver<ResultSetChunk> responseObserver) {
+    // Validations
+    RequestContext requestContext = RequestContext.CURRENT.get();
+    Optional<String> tenantId = requestContext.getTenantId();
+    if (tenantId.isEmpty()) {
+      responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
+      return;
+    }
+    if (StringUtils.isEmpty(request.getEntityType())) {
+      responseObserver.onError(new ServiceException("Entity type is missing in the request."));
+      return;
+    }
+    if (request.getEntitiesCount() == 0) {
+      responseObserver.onError(new ServiceException("Entity IDs are missing in the request."));
+    }
+    // todo hasOperation() check in every entityUpdateInfo
+    try {
+      bulkDoUpdate(requestContext, request);
+      // Finally return the selections
+      List<String> entityIdsList = new ArrayList<>();
+      for (String entityId : request.getEntities().keySet()) {
+        entityIdsList.add(entityId);
+      }
+      Query entitiesQuery = Query.newBuilder().addAllEntityId(entityIdsList).build();
+      List<String> docStoreSelections =
+          entityQueryConverter.convertSelectionsToDocStoreSelections(
+              requestContext, request.getSelectionList());
+      Iterator<Document> documentIterator =
+          entitiesCollection.search(
+              DocStoreConverter.transform(tenantId.get(), entitiesQuery, docStoreSelections));
+      List<Entity> entities = convertDocsToEntities(documentIterator);
+      responseObserver.onNext(
+          convertEntitiesToResultSetChunk(requestContext, entities, request.getSelectionList()));
+      responseObserver.onCompleted();
+    } catch (Exception e) {
+      responseObserver.onError(
+          new ServiceException("Error occurred while executing " + request, e));
+    }
+  }
+
+  private void bulkDoUpdate(RequestContext requestContext, BulkEntityUpdateRequest request) {
+    Map<Key, Map<String, Document>> toUpdate = new HashMap<>();
+    Map<String, Document> documentMap = new HashMap<>();
+    for (String entityId : request.getEntities().keySet()) {
+      documentMap.clear();
+      try {
+        documentMap =
+            documentMapMaker(
+                request.getEntities().get(entityId).getUpdateOperationList(), requestContext);
+      } catch (Exception e) {
+        LOG.warn("Failed to update entity id {}", entityId);
+        continue;
+      }
+      if (!documentMap.isEmpty()) {
+        toUpdate.put(
+            new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId), documentMap);
+      }
+    }
+
+    try {
+      BulkUpdateResult bulkUpdateResult = entitiesCollection.bulkUpdateSubDocs(toUpdate);
+    } catch (Exception e) {
+      LOG.warn("Failed to update entities", e);
+    }
+  }
+
+  private Map<String, Document> documentMapMaker(
+      List<UpdateOperation> updateOperationList, RequestContext requestContext) throws IOException {
+    Map<String, Document> documentMap = new HashMap<>();
+    for (UpdateOperation updateOperation : updateOperationList) {
+      if (updateOperation.hasSetAttribute()) {
+        SetAttribute setAttribute = updateOperation.getSetAttribute();
+        String attributeId = setAttribute.getAttribute().getColumnName();
+        String subDocPath =
+            entityAttributeMapping
+                .getDocStorePathByAttributeId(requestContext, attributeId)
+                .orElseThrow(
+                    () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
+        AttributeValue attributeValue =
+            EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
+        String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
+        documentMap.put(subDocPath, new JSONDocument(jsonValue));
+      }
+    }
+    return documentMap;
   }
 
   @Override
