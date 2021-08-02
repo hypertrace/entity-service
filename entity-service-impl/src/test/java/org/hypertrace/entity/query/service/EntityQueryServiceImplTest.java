@@ -14,10 +14,8 @@ import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.hypertrace.core.documentstore.BulkUpdateResult;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.Filter;
@@ -198,13 +196,10 @@ public class EntityQueryServiceImplTest {
             });
 
     verify(mockEntitiesCollection, times(1))
-        .bulkUpdateSubDocs(
-            eq(
-                Map.of(
-                    new SingleValueKey("tenant1", "entity-id-1"),
-                    Map.of(
-                        "attributes.status",
-                        new JSONDocument(DocStoreJsonFormat.printer().print(newStatus))))));
+        .updateSubDoc(
+            eq(new SingleValueKey("tenant1", "entity-id-1")),
+            eq("attributes.status"),
+            eq(new JSONDocument(DocStoreJsonFormat.printer().print(newStatus))));
   }
 
   @Test
@@ -490,15 +485,9 @@ public class EntityQueryServiceImplTest {
     }
   }
 
-  private Collection mockEntitiesCollection() throws Exception {
+  private Collection mockEntitiesCollection() {
     // mock successful update
-    try {
-      return when(entitiesCollection.bulkUpdateSubDocs(any()))
-          .thenReturn(new BulkUpdateResult(0))
-          .getMock();
-    } catch (Exception e) {
-      throw e;
-    }
+    return when(entitiesCollection.updateSubDoc(any(), any(), any())).thenReturn(true).getMock();
   }
 
   private RequestContext mockRequestContextWithTenantId() {
