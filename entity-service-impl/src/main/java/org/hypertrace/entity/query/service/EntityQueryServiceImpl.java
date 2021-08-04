@@ -15,7 +15,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.hypertrace.core.documentstore.BulkUpdateResult;
+import java.util.Set;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
@@ -262,17 +262,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       doUpdate(requestContext, request);
 
       // Finally return the selections
-      Query entitiesQuery = Query.newBuilder().addAllEntityId(request.getEntityIdsList()).build();
-      List<String> docStoreSelections =
-          entityQueryConverter.convertSelectionsToDocStoreSelections(
-              requestContext, request.getSelectionList());
-      Iterator<Document> documentIterator =
-          entitiesCollection.search(
-              DocStoreConverter.transform(tenantId.get(), entitiesQuery, docStoreSelections));
-      List<Entity> entities = convertDocsToEntities(documentIterator);
-      responseObserver.onNext(
-          convertEntitiesToResultSetChunk(requestContext, entities, request.getSelectionList()));
-      responseObserver.onCompleted();
+      returnSelections(
+          request.getEntityIdsList(),
+          request.getSelectionList(),
+          requestContext,
+          tenantId,
+          responseObserver);
     } catch (Exception e) {
       responseObserver.onError(
           new ServiceException("Error occurred while executing " + request, e));
@@ -296,22 +291,22 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
       String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
 
-      Map<Key, Map<String, Document>> toUpdate = new HashMap<>();
+      Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
 
       for (String entityId : request.getEntityIdsList()) {
         SingleValueKey key =
             new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId);
         // TODO better error reporting once doc store exposes the,
-        if (toUpdate.containsValue(key)) {
-          toUpdate.get(key).put(subDocPath, new JSONDocument(jsonValue));
+        if (entitiesUpdateMap.containsKey(key)) {
+          entitiesUpdateMap.get(key).put(subDocPath, new JSONDocument(jsonValue));
         } else {
           Map<String, Document> subDocument = new HashMap<>();
           subDocument.put(subDocPath, new JSONDocument(jsonValue));
-          toUpdate.put(key, subDocument);
+          entitiesUpdateMap.put(key, subDocument);
         }
       }
       try {
-        entitiesCollection.bulkUpdateSubDocs(toUpdate);
+        entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
       } catch (Exception e) {
         LOG.warn(
             "Failed to update entities, subDocPath {}, with new doc {}.", subDocPath, jsonValue);
@@ -336,32 +331,40 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     if (request.getEntitiesCount() == 0) {
       responseObserver.onError(new ServiceException("Entity IDs are missing in the request."));
     }
+
     try {
-      bulkDoUpdate(requestContext, request);
+      doBulkUpdate(requestContext, request);
       // Finally return the selections
-      List<String> entityIdsList = new ArrayList<>();
-      for (String entityId : request.getEntities().keySet()) {
-        entityIdsList.add(entityId);
-      }
-      Query entitiesQuery = Query.newBuilder().addAllEntityId(entityIdsList).build();
-      List<String> docStoreSelections =
-          entityQueryConverter.convertSelectionsToDocStoreSelections(
-              requestContext, request.getSelectionList());
-      Iterator<Document> documentIterator =
-          entitiesCollection.search(
-              DocStoreConverter.transform(tenantId.get(), entitiesQuery, docStoreSelections));
-      List<Entity> entities = convertDocsToEntities(documentIterator);
-      responseObserver.onNext(
-          convertEntitiesToResultSetChunk(requestContext, entities, request.getSelectionList()));
-      responseObserver.onCompleted();
+      Set<String> entityIdsList = request.getEntitiesMap().keySet();
+      returnSelections(
+          entityIdsList, request.getSelectionList(), requestContext, tenantId, responseObserver);
     } catch (Exception e) {
       responseObserver.onError(
           new ServiceException("Error occurred while executing " + request, e));
     }
   }
 
-  private void bulkDoUpdate(RequestContext requestContext, BulkEntityUpdateRequest request) {
-    Map<Key, Map<String, Document>> toUpdate = new HashMap<>();
+  private void returnSelections(
+      Iterable<String> entityIdsList,
+      List<Expression> selectionList,
+      RequestContext requestContext,
+      Optional<String> tenantId,
+      StreamObserver<ResultSetChunk> responseObserver)
+      throws Exception {
+    Query entitiesQuery = Query.newBuilder().addAllEntityId(entityIdsList).build();
+    List<String> docStoreSelections =
+        entityQueryConverter.convertSelectionsToDocStoreSelections(requestContext, selectionList);
+    Iterator<Document> documentIterator =
+        entitiesCollection.search(
+            DocStoreConverter.transform(tenantId.get(), entitiesQuery, docStoreSelections));
+    List<Entity> entities = convertDocsToEntities(documentIterator);
+    responseObserver.onNext(
+        convertEntitiesToResultSetChunk(requestContext, entities, selectionList));
+    responseObserver.onCompleted();
+  }
+
+  private void doBulkUpdate(RequestContext requestContext, BulkEntityUpdateRequest request) {
+    Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
     Map<String, Document> documentMap = new HashMap<>();
     for (String entityId : request.getEntities().keySet()) {
       documentMap.clear();
@@ -374,13 +377,17 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         continue;
       }
       if (!documentMap.isEmpty()) {
-        toUpdate.put(
+        entitiesUpdateMap.put(
             new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId), documentMap);
       }
     }
 
+    if (entitiesUpdateMap.isEmpty()) {
+      return;
+    }
+
     try {
-      BulkUpdateResult bulkUpdateResult = entitiesCollection.bulkUpdateSubDocs(toUpdate);
+      entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
     } catch (Exception e) {
       LOG.warn("Failed to update entities", e);
     }
@@ -390,21 +397,22 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       List<UpdateOperation> updateOperationList, RequestContext requestContext) throws IOException {
     Map<String, Document> documentMap = new HashMap<>();
     for (UpdateOperation updateOperation : updateOperationList) {
-      if (updateOperation.hasSetAttribute()) {
-        SetAttribute setAttribute = updateOperation.getSetAttribute();
-        String attributeId = setAttribute.getAttribute().getColumnName();
-        String subDocPath =
-            entityAttributeMapping
-                .getDocStorePathByAttributeId(requestContext, attributeId)
-                .orElseThrow(
-                    () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
-        AttributeValue attributeValue =
-            EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
-        String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
-        documentMap.put(subDocPath, new JSONDocument(jsonValue));
+      if (!updateOperation.hasSetAttribute()) {
+        continue;
       }
+      SetAttribute setAttribute = updateOperation.getSetAttribute();
+      String attributeId = setAttribute.getAttribute().getColumnName();
+      String subDocPath =
+          entityAttributeMapping
+              .getDocStorePathByAttributeId(requestContext, attributeId)
+              .orElseThrow(
+                  () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
+      AttributeValue attributeValue =
+          EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
+      String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
+      documentMap.put(subDocPath, new JSONDocument(jsonValue));
     }
-    return documentMap;
+    return Collections.unmodifiableMap(documentMap);
   }
 
   @Override
