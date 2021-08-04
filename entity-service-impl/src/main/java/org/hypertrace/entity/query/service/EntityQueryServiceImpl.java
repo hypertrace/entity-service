@@ -7,6 +7,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.stub.StreamObserver;
+import io.reactivex.rxjava3.annotations.NonNull;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -262,12 +263,15 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       doUpdate(requestContext, request);
 
       // Finally return the selections
-      returnSelections(
-          request.getEntityIdsList(),
-          request.getSelectionList(),
-          requestContext,
-          tenantId,
-          responseObserver);
+      List<Entity> entities =
+          getProjectedEntities(
+              request.getEntityIdsList(),
+              request.getSelectionList(),
+              requestContext,
+              tenantId.get());
+      responseObserver.onNext(
+          convertEntitiesToResultSetChunk(requestContext, entities, request.getSelectionList()));
+      responseObserver.onCompleted();
     } catch (Exception e) {
       responseObserver.onError(
           new ServiceException("Error occurred while executing " + request, e));
@@ -336,31 +340,31 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       doBulkUpdate(requestContext, request);
       // Finally return the selections
       Set<String> entityIdsList = request.getEntitiesMap().keySet();
-      returnSelections(
-          entityIdsList, request.getSelectionList(), requestContext, tenantId, responseObserver);
+      List<Entity> entities =
+          getProjectedEntities(
+              entityIdsList, request.getSelectionList(), requestContext, tenantId.get());
+      responseObserver.onNext(
+          convertEntitiesToResultSetChunk(requestContext, entities, request.getSelectionList()));
+      responseObserver.onCompleted();
     } catch (Exception e) {
       responseObserver.onError(
           new ServiceException("Error occurred while executing " + request, e));
     }
   }
 
-  private void returnSelections(
+  private List<Entity> getProjectedEntities(
       Iterable<String> entityIdsList,
       List<Expression> selectionList,
       RequestContext requestContext,
-      Optional<String> tenantId,
-      StreamObserver<ResultSetChunk> responseObserver)
+      @NonNull String tenantId)
       throws Exception {
     Query entitiesQuery = Query.newBuilder().addAllEntityId(entityIdsList).build();
     List<String> docStoreSelections =
         entityQueryConverter.convertSelectionsToDocStoreSelections(requestContext, selectionList);
     Iterator<Document> documentIterator =
         entitiesCollection.search(
-            DocStoreConverter.transform(tenantId.get(), entitiesQuery, docStoreSelections));
-    List<Entity> entities = convertDocsToEntities(documentIterator);
-    responseObserver.onNext(
-        convertEntitiesToResultSetChunk(requestContext, entities, selectionList));
-    responseObserver.onCompleted();
+            DocStoreConverter.transform(tenantId, entitiesQuery, docStoreSelections));
+    return convertDocsToEntities(documentIterator);
   }
 
   private void doBulkUpdate(RequestContext requestContext, BulkEntityUpdateRequest request) {
