@@ -304,9 +304,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           subDocument.put(subDocPath, new JSONDocument(jsonValue));
           entitiesUpdateMap.put(key, subDocument);
         }
-        //        entitiesUpdateMap.computeIfAbsent(
-        //            key, key1 -> entitiesUpdateMap.put(key1, new HashMap<>()));
-        //        entitiesUpdateMap.get(key).put(subDocPath, jsonDocument);
       }
       try {
         entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
@@ -340,14 +337,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     try {
       doBulkUpdate(requestContext, entitiesMap);
-      // Finally return the selections
-      //      Set<String> entityIdsList = entitiesMap.keySet();
-      //      List<Entity> entities =
-      //          getProjectedEntities(
-      //              entityIdsList, request.getSelectionList(), requestContext, tenantId);
-      //      responseObserver.onNext(
-      //          convertEntitiesToResultSetChunk(requestContext, entities,
-      // request.getSelectionList()));
       responseObserver.onCompleted();
     } catch (Exception e) {
       responseObserver.onError(
