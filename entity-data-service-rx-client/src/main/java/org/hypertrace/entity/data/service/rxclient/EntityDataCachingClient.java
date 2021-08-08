@@ -147,7 +147,11 @@ class EntityDataCachingClient implements EntityDataClient {
       Single<Entity> updateResult =
           EntityDataCachingClient.this.createOrUpdateEntity(entityKey, condition).cache();
 
-      responseObservers.forEach(updateResult::subscribe);
+      if (responseObservers.isEmpty()) {
+        updateResult.blockingSubscribe();
+      } else {
+        responseObservers.forEach(updateResult::subscribe);
+      }
     }
 
     private void addNewUpdate(
