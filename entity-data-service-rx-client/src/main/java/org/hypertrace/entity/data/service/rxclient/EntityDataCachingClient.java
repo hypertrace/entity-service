@@ -81,6 +81,22 @@ class EntityDataCachingClient implements EntityDataClient {
     return singleSubject;
   }
 
+  public void updateEntityEventuallyIgnoreResult(
+      Entity entity, UpsertCondition condition, Duration maximumUpsertDelay) {
+    EntityKey entityKey = EntityKey.entityInCurrentContext(entity);
+
+    // Don't allow other update processing until finished
+    Lock lock = this.pendingUpdateStripedLock.get(entityKey);
+    try {
+      lock.lock();
+      this.pendingEntityUpdates
+          .computeIfAbsent(entityKey, unused -> new PendingEntityUpdate())
+          .addNewUpdate(entityKey, null, condition, maximumUpsertDelay);
+    } finally {
+      lock.unlock();
+    }
+  }
+
   @Override
   public Single<Entity> createOrUpdateEntity(Entity entity, UpsertCondition upsertCondition) {
     return this.createOrUpdateEntity(EntityKey.entityInCurrentContext(entity), upsertCondition);
@@ -145,7 +161,9 @@ class EntityDataCachingClient implements EntityDataClient {
 
       this.entityKey = entityKey;
       this.condition = condition;
-      this.responseObservers.add(observer);
+      if (observer != null) {
+        this.responseObservers.add(observer);
+      }
       Instant newDeadline = EntityDataCachingClient.this.clock.instant().plus(maximumDelay);
       if (isNull(currentDeadline) || this.currentDeadline.isAfter(newDeadline)) {
         this.currentDeadline = newDeadline;
