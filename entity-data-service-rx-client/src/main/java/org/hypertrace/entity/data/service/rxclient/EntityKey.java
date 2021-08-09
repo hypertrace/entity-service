@@ -17,10 +17,6 @@ class EntityKey {
 
   private static final String DEFAULT_TENANT_ID = "default";
 
-  static EntityKey entityInCurrentContext(Entity inputEntity) {
-    return new EntityKey(requireNonNull(RequestContext.CURRENT.get()), requireNonNull(inputEntity));
-  }
-
   private final Entity inputEntity;
   private final String tenantId;
   private final GrpcRxExecutionContext executionContext;
@@ -32,7 +28,7 @@ class EntityKey {
                       ? entity.getIdentifyingAttributesMap()
                       : entity.getEntityId());
 
-  protected EntityKey(@Nonnull RequestContext requestContext, @Nonnull Entity inputEntity) {
+  EntityKey(@Nonnull RequestContext requestContext, @Nonnull Entity inputEntity) {
     requireNonNull(inputEntity.getEntityId());
     requireNonNull(inputEntity.getEntityType());
     this.executionContext = GrpcRxExecutionContext.forContext(requestContext);

@@ -9,6 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import javax.annotation.Nonnull;
 import org.hypertrace.core.grpcutils.client.RequestContextClientCallCredsProviderFactory;
+import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest.UpsertCondition;
 
@@ -19,22 +20,11 @@ import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest.UpsertC
 public interface EntityDataClient {
 
   /**
-   * Gets the entity from the cache if available, otherwise upserts it and returns the result. The
-   * behavior of this may or may not be cached depending on the configuration.
-   *
-   * @param entity
-   * @return
-   */
-  @Deprecated
-  Single<Entity> getOrCreateEntity(Entity entity);
-
-  /**
    * Performs a throttled update of the provided entity, starting after no longer than the provided
    * maximumUpsertDelay. If newer candidates for the same entity are received before this update
    * occurs, the value of the newest value (and its condition, if any) will be used instead. This
    * allows a high number of potentially repetitive entity upserts to be processed without creating
-   * excessive overhead. Each returned single will propagate the result of the server call that
-   * eventually satisfies its deadline.
+   * excessive overhead.
    *
    * <p>Example:
    *
@@ -46,28 +36,32 @@ public interface EntityDataClient {
    * </ol>
    *
    * At t=400ms (the deadline for the second invocation) entity-1 is upserted, using the most recent
-   * values (the fourth invocation - entity-1.v3). When this returns, the result will be given to
-   * the first, second and fourth invocations (the ones for that entity). At t=500ms, the deadline
-   * for the third invocation entity-2 is upserted and returned to the third invocation.
+   * values (the fourth invocation - entity-1.v3). At t=500ms, the deadline for the third invocation
+   * entity-2 is upserted.
    *
+   * @param requestContext
    * @param entity
    * @param upsertCondition
    * @param maximumUpsertDelay
-   * @return
    */
-  Single<Entity> createOrUpdateEntityEventually(
-      Entity entity, UpsertCondition upsertCondition, Duration maximumUpsertDelay);
+  void createOrUpdateEntityEventually(
+      RequestContext requestContext,
+      Entity entity,
+      UpsertCondition upsertCondition,
+      Duration maximumUpsertDelay);
 
   /**
    * Immediately creates or updates, merging with any existing data, the provided entity if the
    * provided condition is met. The new value is returned if the condition is met, else if the
    * condition is not met, the existing value is instead returned.
    *
+   * @param requestContext
    * @param entity
    * @param upsertCondition
    * @return The resulting entity
    */
-  Single<Entity> createOrUpdateEntity(Entity entity, UpsertCondition upsertCondition);
+  Single<Entity> createOrUpdateEntity(
+      RequestContext requestContext, Entity entity, UpsertCondition upsertCondition);
 
   static Builder builder(@Nonnull Channel channel) {
     return new Builder(Objects.requireNonNull(channel));
