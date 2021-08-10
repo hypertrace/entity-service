@@ -406,7 +406,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
         documentMap.put(subDocPath, new JSONDocument(jsonValue));
       } catch (Exception e) {
-        LOG.warn("Failed to put update corresponding to {} in the documentMap", subDocPath, e);
+        LOG.error("Failed to put update corresponding to {} in the documentMap", subDocPath, e);
       }
     }
     return Collections.unmodifiableMap(documentMap);

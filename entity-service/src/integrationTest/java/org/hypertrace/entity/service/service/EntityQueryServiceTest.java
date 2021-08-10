@@ -76,7 +76,7 @@ public class EntityQueryServiceTest {
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceTest.class);
   private static final Slf4jLogConsumer logConsumer = new Slf4jLogConsumer(LOG);
 
-  private static EntityQueryServiceBlockingStub blockingStub;
+  private static EntityQueryServiceBlockingStub entityQueryServiceClient;
   // needed to create entities
   private static EntityDataServiceClient entityDataServiceClient;
 
@@ -90,7 +90,7 @@ public class EntityQueryServiceTest {
   private static final String SERVICE_ID = generateRandomUUID();
 
   private static Map<String, String> apiAttributesMap;
-  private static Map<String, String> headers = Map.of("x-tenant-id", TENANT_ID);
+  private static Map<String, String> HEADERS = Map.of("x-tenant-id", TENANT_ID);
   // attributes defined in application.conf in attribute map
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
@@ -121,7 +121,7 @@ public class EntityQueryServiceTest {
                 entityServiceTestConfig.getHost(), entityServiceTestConfig.getPort())
             .usePlaintext()
             .build();
-    blockingStub =
+    entityQueryServiceClient =
         EntityQueryServiceGrpc.newBlockingStub(channel)
             .withCallCredentials(
                 RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
@@ -310,7 +310,7 @@ public class EntityQueryServiceTest {
 
     Iterator<ResultSetChunk> resultSetChunkIterator =
         GrpcClientRequestContextUtil.executeWithHeadersContext(
-            headers, () -> blockingStub.execute(queryRequest));
+            HEADERS, () -> entityQueryServiceClient.execute(queryRequest));
     List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
     assertEquals(3, list.size());
     assertEquals(2, list.get(0).getRowCount());
@@ -381,7 +381,7 @@ public class EntityQueryServiceTest {
 
     Iterator<ResultSetChunk> resultSetChunkIterator =
         GrpcClientRequestContextUtil.executeWithHeadersContext(
-            headers, () -> blockingStub.execute(queryRequestNoResult));
+            HEADERS, () -> entityQueryServiceClient.execute(queryRequestNoResult));
     List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
 
     assertEquals(1, list.size());
@@ -413,7 +413,7 @@ public class EntityQueryServiceTest {
             .build();
     Iterator<ResultSetChunk> resultSetChunkIterator =
         GrpcClientRequestContextUtil.executeWithHeadersContext(
-            headers, () -> blockingStub.execute(entityQueryRequest));
+            HEADERS, () -> entityQueryServiceClient.execute(entityQueryRequest));
 
     List<String> values = new ArrayList<>();
 
@@ -457,7 +457,7 @@ public class EntityQueryServiceTest {
             .build();
     Iterator<ResultSetChunk> resultSetChunkIterator =
         GrpcClientRequestContextUtil.executeWithHeadersContext(
-            headers, () -> blockingStub.execute(entityQueryRequest));
+            HEADERS, () -> entityQueryServiceClient.execute(entityQueryRequest));
 
     List<String> values = new ArrayList<>();
 
@@ -492,7 +492,6 @@ public class EntityQueryServiceTest {
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
                 createAttribute(API_TYPE));
-    ;
     apiEntityBuilder1
         .putAttributes(
             apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
@@ -512,7 +511,6 @@ public class EntityQueryServiceTest {
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
                 createAttribute(API_TYPE));
-    ;
     apiEntityBuilder2
         .putAttributes(
             apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
@@ -557,10 +555,9 @@ public class EntityQueryServiceTest {
             .putEntities(entity2.getEntityId(), updateInfo2)
             .build();
 
-    Map<String, String> headers = Map.of("x-tenant-id", TENANT_ID);
     Iterator<ResultSetChunk> resultChunkIterator =
         GrpcClientRequestContextUtil.executeWithHeadersContext(
-            headers, () -> blockingStub.bulkUpdate(bulkUpdateRequest));
+            HEADERS, () -> entityQueryServiceClient.bulkUpdate(bulkUpdateRequest));
 
     EntityQueryRequest entityQueryRequest =
         EntityQueryRequest.newBuilder()
@@ -571,7 +568,7 @@ public class EntityQueryServiceTest {
 
     Iterator<ResultSetChunk> resultSetChunkIterator =
         GrpcClientRequestContextUtil.executeWithHeadersContext(
-            headers, () -> blockingStub.execute(entityQueryRequest));
+            HEADERS, () -> entityQueryServiceClient.execute(entityQueryRequest));
 
     List<String> values = new ArrayList<>();
 
@@ -617,7 +614,7 @@ public class EntityQueryServiceTest {
           TotalEntitiesRequest.newBuilder().setEntityType(EntityType.API.name()).build();
       TotalEntitiesResponse response =
           GrpcClientRequestContextUtil.executeWithHeadersContext(
-              headers, () -> blockingStub.total(totalEntitiesRequest));
+              HEADERS, () -> entityQueryServiceClient.total(totalEntitiesRequest));
 
       assertEquals(2, response.getTotal());
     }
@@ -667,7 +664,7 @@ public class EntityQueryServiceTest {
               .build();
       TotalEntitiesResponse response =
           GrpcClientRequestContextUtil.executeWithHeadersContext(
-              headers, () -> blockingStub.total(totalEntitiesRequest));
+              HEADERS, () -> entityQueryServiceClient.total(totalEntitiesRequest));
 
       assertEquals(1, response.getTotal());
     }
