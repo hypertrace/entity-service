@@ -90,7 +90,7 @@ public class EntityQueryServiceTest {
   private static final String SERVICE_ID = generateRandomUUID();
 
   private static Map<String, String> apiAttributesMap;
-  private static Map<String, String> HEADERS = Map.of("x-tenant-id", TENANT_ID);
+  private static final Map<String, String> HEADERS = Map.of("x-tenant-id", TENANT_ID);
   // attributes defined in application.conf in attribute map
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
