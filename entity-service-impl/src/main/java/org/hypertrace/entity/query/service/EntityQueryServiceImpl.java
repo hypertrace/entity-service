@@ -387,7 +387,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   }
 
   private Map<String, Document> transformUpdateOperations(
-      List<UpdateOperation> updateOperationList, RequestContext requestContext) {
+      List<UpdateOperation> updateOperationList, RequestContext requestContext) throws Exception {
     Map<String, Document> documentMap = new HashMap<>();
     for (UpdateOperation updateOperation : updateOperationList) {
       if (!updateOperation.hasSetAttribute()) {
@@ -407,6 +407,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         documentMap.put(subDocPath, new JSONDocument(jsonValue));
       } catch (Exception e) {
         LOG.error("Failed to put update corresponding to {} in the documentMap", subDocPath, e);
+        throw e;
       }
     }
     return Collections.unmodifiableMap(documentMap);

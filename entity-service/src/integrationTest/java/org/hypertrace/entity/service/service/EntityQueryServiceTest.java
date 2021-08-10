@@ -555,9 +555,8 @@ public class EntityQueryServiceTest {
             .putEntities(entity2.getEntityId(), updateInfo2)
             .build();
 
-    Iterator<ResultSetChunk> resultChunkIterator =
-        GrpcClientRequestContextUtil.executeWithHeadersContext(
-            HEADERS, () -> entityQueryServiceClient.bulkUpdate(bulkUpdateRequest));
+    GrpcClientRequestContextUtil.executeWithHeadersContext(
+        HEADERS, () -> entityQueryServiceClient.bulkUpdate(bulkUpdateRequest));
 
     EntityQueryRequest entityQueryRequest =
         EntityQueryRequest.newBuilder()
