@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.DatastoreProvider;
+import org.hypertrace.core.grpcutils.client.GrpcClientRequestContextUtil;
+import org.hypertrace.core.grpcutils.client.RequestContextClientCallCredsProviderFactory;
 import org.hypertrace.core.serviceframework.IntegrationTestServerUtil;
 import org.hypertrace.entity.constants.v1.ApiAttribute;
 import org.hypertrace.entity.constants.v1.CommonAttribute;
@@ -32,16 +34,22 @@ import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
+import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
+import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
+import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc;
+import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceBlockingStub;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Filter;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.Row;
+import org.hypertrace.entity.query.service.v1.SetAttribute;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
+import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.EntityServiceConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
@@ -68,7 +76,7 @@ public class EntityQueryServiceTest {
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceTest.class);
   private static final Slf4jLogConsumer logConsumer = new Slf4jLogConsumer(LOG);
 
-  private static EntityQueryServiceClient entityQueryServiceClient;
+  private static EntityQueryServiceBlockingStub blockingStub;
   // needed to create entities
   private static EntityDataServiceClient entityDataServiceClient;
 
@@ -82,6 +90,7 @@ public class EntityQueryServiceTest {
   private static final String SERVICE_ID = generateRandomUUID();
 
   private static Map<String, String> apiAttributesMap;
+  private static Map<String, String> headers = Map.of("x-tenant-id", TENANT_ID);
   // attributes defined in application.conf in attribute map
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
@@ -91,7 +100,7 @@ public class EntityQueryServiceTest {
   @BeforeAll
   public static void setUp() throws Exception {
     mongo =
-        new GenericContainer<>(DockerImageName.parse("hypertrace/mongodb:main"))
+        new GenericContainer<>(DockerImageName.parse("mongo:4.4.0"))
             .withExposedPorts(27017)
             .withStartupAttempts(CONTAINER_STARTUP_ATTEMPTS)
             .waitingFor(Wait.forListeningPort())
@@ -112,7 +121,10 @@ public class EntityQueryServiceTest {
                 entityServiceTestConfig.getHost(), entityServiceTestConfig.getPort())
             .usePlaintext()
             .build();
-    entityQueryServiceClient = new EntityQueryServiceClient(channel);
+    blockingStub =
+        EntityQueryServiceGrpc.newBlockingStub(channel)
+            .withCallCredentials(
+                RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
     entityDataServiceClient = new EntityDataServiceClient(channel);
 
     datastore = getDatastore();
@@ -297,7 +309,8 @@ public class EntityQueryServiceTest {
     assertFalse(createdEntity6.getEntityId().trim().isEmpty());
 
     Iterator<ResultSetChunk> resultSetChunkIterator =
-        entityQueryServiceClient.execute(queryRequest, Map.of("x-tenant-id", TENANT_ID));
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            headers, () -> blockingStub.execute(queryRequest));
     List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
     assertEquals(3, list.size());
     assertEquals(2, list.get(0).getRowCount());
@@ -367,7 +380,8 @@ public class EntityQueryServiceTest {
             .build();
 
     Iterator<ResultSetChunk> resultSetChunkIterator =
-        entityQueryServiceClient.execute(queryRequestNoResult, Map.of("x-tenant-id", TENANT_ID));
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            headers, () -> blockingStub.execute(queryRequestNoResult));
     List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
 
     assertEquals(1, list.size());
@@ -398,7 +412,8 @@ public class EntityQueryServiceTest {
             .addSelection(createExpression(API_DISCOVERY_STATE_ATTR))
             .build();
     Iterator<ResultSetChunk> resultSetChunkIterator =
-        entityQueryServiceClient.execute(entityQueryRequest, Map.of("x-tenant-id", TENANT_ID));
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            headers, () -> blockingStub.execute(entityQueryRequest));
 
     List<String> values = new ArrayList<>();
 
@@ -441,7 +456,8 @@ public class EntityQueryServiceTest {
             .addSelection(createExpression(API_DISCOVERY_STATE_ATTR))
             .build();
     Iterator<ResultSetChunk> resultSetChunkIterator =
-        entityQueryServiceClient.execute(entityQueryRequest, Map.of("x-tenant-id", TENANT_ID));
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            headers, () -> blockingStub.execute(entityQueryRequest));
 
     List<String> values = new ArrayList<>();
 
@@ -459,6 +475,122 @@ public class EntityQueryServiceTest {
     assertEquals(2, values.size());
     assertEquals("DISCOVERED", values.get(0));
     assertEquals("UNDER_DISCOVERY", values.get(1));
+  }
+
+  @Test
+  public void testBulkUpdate() {
+    Entity.Builder apiEntityBuilder1 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api1")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api1"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+    ;
+    apiEntityBuilder1
+        .putAttributes(
+            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
+        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+    Entity entity1 = entityDataServiceClient.upsert(apiEntityBuilder1.build());
+
+    Entity.Builder apiEntityBuilder2 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api2")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api2"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+    ;
+    apiEntityBuilder2
+        .putAttributes(
+            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
+        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+    Entity entity2 = entityDataServiceClient.upsert(apiEntityBuilder2.build());
+
+    // create BulkUpdate request
+    UpdateOperation update1 =
+        UpdateOperation.newBuilder()
+            .setSetAttribute(
+                SetAttribute.newBuilder()
+                    .setAttribute(
+                        ColumnIdentifier.newBuilder().setColumnName(API_DISCOVERY_STATE_ATTR))
+                    .setValue(
+                        LiteralConstant.newBuilder()
+                            .setValue(
+                                org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                    .setString("DISCOVERED"))))
+            .build();
+    UpdateOperation update2 =
+        UpdateOperation.newBuilder()
+            .setSetAttribute(
+                SetAttribute.newBuilder()
+                    .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_HTTP_METHOD_ATTR))
+                    .setValue(
+                        LiteralConstant.newBuilder()
+                            .setValue(
+                                org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                    .setString("POST"))))
+            .build();
+    EntityUpdateInfo updateInfo1 =
+        EntityUpdateInfo.newBuilder().addUpdateOperation(update2).build();
+    EntityUpdateInfo updateInfo2 =
+        EntityUpdateInfo.newBuilder()
+            .addUpdateOperation(update1)
+            .addUpdateOperation(update2)
+            .build();
+    BulkEntityUpdateRequest bulkUpdateRequest =
+        BulkEntityUpdateRequest.newBuilder()
+            .setEntityType(EntityType.API.name())
+            .putEntities(entity1.getEntityId(), updateInfo1)
+            .putEntities(entity2.getEntityId(), updateInfo2)
+            .build();
+
+    Map<String, String> headers = Map.of("x-tenant-id", TENANT_ID);
+    Iterator<ResultSetChunk> resultChunkIterator =
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            headers, () -> blockingStub.bulkUpdate(bulkUpdateRequest));
+
+    EntityQueryRequest entityQueryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(EntityType.API.name())
+            .addSelection(createExpression(API_DISCOVERY_STATE_ATTR))
+            .addSelection(createExpression(API_HTTP_METHOD_ATTR))
+            .build();
+
+    Iterator<ResultSetChunk> resultSetChunkIterator =
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            headers, () -> blockingStub.execute(entityQueryRequest));
+
+    List<String> values = new ArrayList<>();
+
+    while (resultSetChunkIterator.hasNext()) {
+      ResultSetChunk chunk = resultSetChunkIterator.next();
+
+      for (Row row : chunk.getRowList()) {
+        for (int i = 0; i < row.getColumnCount(); i++) {
+          String value = row.getColumnList().get(i).getString();
+          values.add(value);
+        }
+      }
+    }
+
+    assertEquals(4, values.size());
+    assertEquals("DISCOVERED", values.get(0));
+    assertEquals("POST", values.get(1));
+    assertEquals("DISCOVERED", values.get(2));
+    assertEquals("POST", values.get(3));
   }
 
   @Nested
@@ -484,7 +616,8 @@ public class EntityQueryServiceTest {
       TotalEntitiesRequest totalEntitiesRequest =
           TotalEntitiesRequest.newBuilder().setEntityType(EntityType.API.name()).build();
       TotalEntitiesResponse response =
-          entityQueryServiceClient.total(totalEntitiesRequest, Map.of("x-tenant-id", TENANT_ID));
+          GrpcClientRequestContextUtil.executeWithHeadersContext(
+              headers, () -> blockingStub.total(totalEntitiesRequest));
 
       assertEquals(2, response.getTotal());
     }
@@ -533,7 +666,8 @@ public class EntityQueryServiceTest {
                       .build())
               .build();
       TotalEntitiesResponse response =
-          entityQueryServiceClient.total(totalEntitiesRequest, Map.of("x-tenant-id", TENANT_ID));
+          GrpcClientRequestContextUtil.executeWithHeadersContext(
+              headers, () -> blockingStub.total(totalEntitiesRequest));
 
       assertEquals(1, response.getTotal());
     }

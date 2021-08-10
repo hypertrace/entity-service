@@ -255,7 +255,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     if (!request.hasOperation()) {
       responseObserver.onError(new ServiceException("Operation is missing in the request."));
     }
-    String tenantId = maybeTenantId.get();
 
     try {
       // Execute the update
@@ -264,7 +263,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       // Finally return the selections
       List<Entity> entities =
           getProjectedEntities(
-              request.getEntityIdsList(), request.getSelectionList(), requestContext, tenantId);
+              request.getEntityIdsList(), request.getSelectionList(), requestContext);
       responseObserver.onNext(
           convertEntitiesToResultSetChunk(requestContext, entities, request.getSelectionList()));
       responseObserver.onCompleted();
@@ -296,12 +295,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       for (String entityId : request.getEntityIdsList()) {
         SingleValueKey key =
             new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId);
-        // TODO better error reporting once doc store exposes the,
         if (entitiesUpdateMap.containsKey(key)) {
-          entitiesUpdateMap.get(key).put(subDocPath, new JSONDocument(jsonValue));
+          entitiesUpdateMap.get(key).put(subDocPath, jsonDocument);
         } else {
           Map<String, Document> subDocument = new HashMap<>();
-          subDocument.put(subDocPath, new JSONDocument(jsonValue));
+          subDocument.put(subDocPath, jsonDocument);
           entitiesUpdateMap.put(key, subDocument);
         }
       }
@@ -309,7 +307,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
       } catch (Exception e) {
         LOG.error(
-            "Failed to update entities, subDocPath {}, with new doc {}.", subDocPath, jsonValue, e);
+            "Failed to update entities {}, subDocPath {}, with new doc {}.",
+            entitiesUpdateMap,
+            subDocPath,
+            jsonValue,
+            e);
         throw e;
       }
     }
@@ -332,9 +334,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     if (request.getEntitiesCount() == 0) {
       responseObserver.onError(new ServiceException("Entities are missing in the request."));
     }
-    String tenantId = maybeTenantId.get();
     Map<String, EntityUpdateInfo> entitiesMap = request.getEntitiesMap();
-
     try {
       doBulkUpdate(requestContext, entitiesMap);
       responseObserver.onCompleted();
@@ -347,14 +347,14 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private List<Entity> getProjectedEntities(
       Iterable<String> entityIdsList,
       List<Expression> selectionList,
-      RequestContext requestContext,
-      String tenantId) {
+      RequestContext requestContext) {
     Query entitiesQuery = Query.newBuilder().addAllEntityId(entityIdsList).build();
     List<String> docStoreSelections =
         entityQueryConverter.convertSelectionsToDocStoreSelections(requestContext, selectionList);
     Iterator<Document> documentIterator =
         entitiesCollection.search(
-            DocStoreConverter.transform(tenantId, entitiesQuery, docStoreSelections));
+            DocStoreConverter.transform(
+                requestContext.getTenantId().orElseThrow(), entitiesQuery, docStoreSelections));
     return convertDocsToEntities(documentIterator);
   }
 
