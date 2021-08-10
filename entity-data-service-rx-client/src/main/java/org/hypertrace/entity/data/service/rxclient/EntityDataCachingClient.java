@@ -12,6 +12,7 @@ import io.grpc.Channel;
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.internal.functions.Functions;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -124,8 +125,8 @@ class EntityDataCachingClient implements EntityDataClient {
       }
       EntityDataCachingClient.this
           .createOrUpdateEntity(entityKey, condition)
-          .doOnError(error -> log.error("Error upserting entity", error))
-          .blockingSubscribe();
+          .blockingSubscribe(
+              Functions.emptyConsumer(), error -> log.error("Error upserting entity", error));
     }
 
     private void addNewUpdate(
