@@ -211,7 +211,7 @@ public class EntityQueryServiceImplTest {
   }
 
   @Nested
-  class testBulkUpdate {
+  class BulkUpdateEntities {
     @Test
     public void testBulkUpdate_noTenantId() throws Exception {
       StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
