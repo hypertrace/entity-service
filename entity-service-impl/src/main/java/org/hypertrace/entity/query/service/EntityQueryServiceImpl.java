@@ -7,16 +7,18 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.stub.StreamObserver;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
+import org.hypertrace.core.documentstore.Key;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -24,6 +26,8 @@ import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
+import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
@@ -37,6 +41,7 @@ import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.SetAttribute;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
+import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -235,8 +240,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   public void update(EntityUpdateRequest request, StreamObserver<ResultSetChunk> responseObserver) {
     // Validations
     RequestContext requestContext = RequestContext.CURRENT.get();
-    Optional<String> tenantId = requestContext.getTenantId();
-    if (tenantId.isEmpty()) {
+    Optional<String> maybeTenantId = requestContext.getTenantId();
+    if (maybeTenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
@@ -256,14 +261,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       doUpdate(requestContext, request);
 
       // Finally return the selections
-      Query entitiesQuery = Query.newBuilder().addAllEntityId(request.getEntityIdsList()).build();
-      List<String> docStoreSelections =
-          entityQueryConverter.convertSelectionsToDocStoreSelections(
-              requestContext, request.getSelectionList());
-      Iterator<Document> documentIterator =
-          entitiesCollection.search(
-              DocStoreConverter.transform(tenantId.get(), entitiesQuery, docStoreSelections));
-      List<Entity> entities = convertDocsToEntities(documentIterator);
+      List<Entity> entities =
+          getProjectedEntities(
+              request.getEntityIdsList(), request.getSelectionList(), requestContext);
       responseObserver.onNext(
           convertEntitiesToResultSetChunk(requestContext, entities, request.getSelectionList()));
       responseObserver.onCompleted();
@@ -274,7 +274,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   }
 
   private void doUpdate(RequestContext requestContext, EntityUpdateRequest request)
-      throws IOException {
+      throws Exception {
     if (request.getOperation().hasSetAttribute()) {
       SetAttribute setAttribute = request.getOperation().getSetAttribute();
       String attributeId = setAttribute.getAttribute().getColumnName();
@@ -289,20 +289,128 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       AttributeValue attributeValue =
           EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
       String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
+      JSONDocument jsonDocument = new JSONDocument(jsonValue);
 
+      Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
       for (String entityId : request.getEntityIdsList()) {
         SingleValueKey key =
             new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId);
-        // TODO better error reporting once doc store exposes the,
-        if (!entitiesCollection.updateSubDoc(key, subDocPath, new JSONDocument(jsonValue))) {
-          LOG.warn(
-              "Failed to update entity {}, subDocPath {}, with new doc {}.",
-              key,
-              subDocPath,
-              jsonValue);
+        if (entitiesUpdateMap.containsKey(key)) {
+          entitiesUpdateMap.get(key).put(subDocPath, jsonDocument);
+        } else {
+          Map<String, Document> subDocument = new HashMap<>();
+          subDocument.put(subDocPath, jsonDocument);
+          entitiesUpdateMap.put(key, subDocument);
         }
       }
+      try {
+        entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to update entities {}, subDocPath {}, with new doc {}.",
+            entitiesUpdateMap,
+            subDocPath,
+            jsonValue,
+            e);
+        throw e;
+      }
     }
+  }
+
+  @Override
+  public void bulkUpdate(
+      BulkEntityUpdateRequest request, StreamObserver<ResultSetChunk> responseObserver) {
+    // Validations
+    RequestContext requestContext = RequestContext.CURRENT.get();
+    Optional<String> maybeTenantId = requestContext.getTenantId();
+    if (maybeTenantId.isEmpty()) {
+      responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
+      return;
+    }
+    if (StringUtils.isEmpty(request.getEntityType())) {
+      responseObserver.onError(new ServiceException("Entity type is missing in the request."));
+      return;
+    }
+    if (request.getEntitiesCount() == 0) {
+      responseObserver.onError(new ServiceException("Entities are missing in the request."));
+    }
+    Map<String, EntityUpdateInfo> entitiesMap = request.getEntitiesMap();
+    try {
+      doBulkUpdate(requestContext, entitiesMap);
+      responseObserver.onCompleted();
+    } catch (Exception e) {
+      responseObserver.onError(
+          new ServiceException("Error occurred while executing " + request, e));
+    }
+  }
+
+  private List<Entity> getProjectedEntities(
+      Iterable<String> entityIdsList,
+      List<Expression> selectionList,
+      RequestContext requestContext) {
+    Query entitiesQuery = Query.newBuilder().addAllEntityId(entityIdsList).build();
+    List<String> docStoreSelections =
+        entityQueryConverter.convertSelectionsToDocStoreSelections(requestContext, selectionList);
+    Iterator<Document> documentIterator =
+        entitiesCollection.search(
+            DocStoreConverter.transform(
+                requestContext.getTenantId().orElseThrow(), entitiesQuery, docStoreSelections));
+    return convertDocsToEntities(documentIterator);
+  }
+
+  private void doBulkUpdate(
+      RequestContext requestContext, Map<String, EntityUpdateInfo> entitiesMap) throws Exception {
+    Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
+    for (String entityId : entitiesMap.keySet()) {
+      Map<String, Document> transformedUpdateOperations =
+          transformUpdateOperations(
+              entitiesMap.get(entityId).getUpdateOperationList(), requestContext);
+      if (transformedUpdateOperations.isEmpty()) {
+        continue;
+      }
+      entitiesUpdateMap.put(
+          new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId),
+          transformedUpdateOperations);
+    }
+
+    if (entitiesUpdateMap.isEmpty()) {
+      LOG.error("There are no entities to update!");
+      return;
+    }
+
+    try {
+      entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
+    } catch (Exception e) {
+      LOG.error("Failed to update entities {}", entitiesMap, e);
+      throw e;
+    }
+  }
+
+  private Map<String, Document> transformUpdateOperations(
+      List<UpdateOperation> updateOperationList, RequestContext requestContext) throws Exception {
+    Map<String, Document> documentMap = new HashMap<>();
+    for (UpdateOperation updateOperation : updateOperationList) {
+      if (!updateOperation.hasSetAttribute()) {
+        continue;
+      }
+      SetAttribute setAttribute = updateOperation.getSetAttribute();
+      String attributeId = setAttribute.getAttribute().getColumnName();
+      String subDocPath =
+          entityAttributeMapping
+              .getDocStorePathByAttributeId(requestContext, attributeId)
+              .orElseThrow(
+                  () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
+      AttributeValue attributeValue =
+          EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
+      try {
+        String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
+        documentMap.put(subDocPath, new JSONDocument(jsonValue));
+      } catch (Exception e) {
+        LOG.error("Failed to put update corresponding to {} in the documentMap", subDocPath, e);
+        throw e;
+      }
+    }
+    return Collections.unmodifiableMap(documentMap);
   }
 
   @Override
