@@ -1,4 +1,4 @@
-rootProject.name = "entity-service"
+rootProject.name = "entity-service-root"
 
 pluginManagement {
   repositories {
