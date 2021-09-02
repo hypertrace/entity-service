@@ -14,10 +14,8 @@ import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.hypertrace.core.documentstore.BulkUpdateResult;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.Filter;
@@ -27,8 +25,6 @@ import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
-import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
-import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
@@ -53,7 +49,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -201,149 +196,10 @@ public class EntityQueryServiceImplTest {
             });
 
     verify(mockEntitiesCollection, times(1))
-        .bulkUpdateSubDocs(
-            eq(
-                Map.of(
-                    new SingleValueKey("tenant1", "entity-id-1"),
-                    Map.of(
-                        "attributes.status",
-                        new JSONDocument(DocStoreJsonFormat.printer().print(newStatus))))));
-  }
-
-  @Nested
-  class BulkUpdateEntities {
-    @Test
-    public void testBulkUpdate_noTenantId() throws Exception {
-      StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
-      when(requestContext.getTenantId()).thenReturn(Optional.empty());
-      Context.current()
-          .withValue(RequestContext.CURRENT, requestContext)
-          .call(
-              () -> {
-                EntityQueryServiceImpl eqs =
-                    new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1);
-
-                eqs.bulkUpdate(null, mockResponseObserver);
-
-                verify(mockResponseObserver, times(1))
-                    .onError(
-                        argThat(
-                            new ExceptionMessageMatcher("Tenant id is missing in the request.")));
-                return null;
-              });
-    }
-
-    @Test
-    public void testBulkUpdate_noEntityType() throws Exception {
-      StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
-
-      Context.current()
-          .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
-          .call(
-              () -> {
-                EntityQueryServiceImpl eqs =
-                    new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1);
-
-                eqs.bulkUpdate(BulkEntityUpdateRequest.newBuilder().build(), mockResponseObserver);
-
-                verify(mockResponseObserver, times(1))
-                    .onError(
-                        argThat(
-                            new ExceptionMessageMatcher("Entity type is missing in the request.")));
-                return null;
-              });
-    }
-
-    @Test
-    public void testBulkUpdate_noEntities() throws Exception {
-      StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
-
-      Context.current()
-          .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
-          .call(
-              () -> {
-                EntityQueryServiceImpl eqs =
-                    new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1);
-
-                eqs.bulkUpdate(
-                    BulkEntityUpdateRequest.newBuilder().setEntityType(TEST_ENTITY_TYPE).build(),
-                    mockResponseObserver);
-
-                verify(mockResponseObserver, times(1))
-                    .onError(
-                        argThat(
-                            new ExceptionMessageMatcher("Entities are missing in the request.")));
-                return null;
-              });
-    }
-
-    @Test
-    public void testBulkUpdate_entitiesWithNoUpdateOperations() throws Exception {
-      EntityUpdateInfo.Builder updateInfo = EntityUpdateInfo.newBuilder();
-      BulkEntityUpdateRequest bulkUpdateRequest =
-          BulkEntityUpdateRequest.newBuilder()
-              .setEntityType(TEST_ENTITY_TYPE)
-              .putEntities("entity-id-1", updateInfo.build())
-              .build();
-
-      StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
-
-      Context.current()
-          .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
-          .call(
-              () -> {
-                EntityQueryServiceImpl eqs =
-                    new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1);
-                eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
-                return null;
-              });
-      verify(entitiesCollection, Mockito.never()).bulkUpdateSubDocs(any());
-    }
-
-    @Test
-    public void testBulkUpdate_success() throws Exception {
-      Collection mockEntitiesCollection = mockEntitiesCollection();
-
-      Builder newStatus =
-          LiteralConstant.newBuilder()
-              .setValue(Value.newBuilder().setValueType(ValueType.STRING).setString("NEW_STATUS"));
-
-      UpdateOperation.Builder updateOperation =
-          UpdateOperation.newBuilder()
-              .setSetAttribute(
-                  SetAttribute.newBuilder()
-                      .setAttribute(ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID1))
-                      .setValue(newStatus));
-      EntityUpdateInfo.Builder updateInfo =
-          EntityUpdateInfo.newBuilder().addUpdateOperation(updateOperation);
-      BulkEntityUpdateRequest bulkUpdateRequest =
-          BulkEntityUpdateRequest.newBuilder()
-              .setEntityType(TEST_ENTITY_TYPE)
-              .putEntities("entity-id-1", updateInfo.build())
-              .build();
-
-      StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
-
-      Context.current()
-          .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
-          .call(
-              () -> {
-                EntityQueryServiceImpl eqs =
-                    new EntityQueryServiceImpl(
-                        mockEntitiesCollection, mockMappingForAttribute1(), 1);
-                eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
-                return null;
-              });
-
-      verify(mockEntitiesCollection, times(1))
-          .bulkUpdateSubDocs(
-              eq(
-                  Map.of(
-                      new SingleValueKey("tenant1", "entity-id-1"),
-                      Map.of(
-                          "attributes.entity_id",
-                          new JSONDocument(DocStoreJsonFormat.printer().print(newStatus))))));
-    }
+        .updateSubDoc(
+            eq(new SingleValueKey("tenant1", "entity-id-1")),
+            eq("attributes.status"),
+            eq(new JSONDocument(DocStoreJsonFormat.printer().print(newStatus))));
   }
 
   @Test
@@ -629,15 +485,9 @@ public class EntityQueryServiceImplTest {
     }
   }
 
-  private Collection mockEntitiesCollection() throws Exception {
+  private Collection mockEntitiesCollection() {
     // mock successful update
-    try {
-      return when(entitiesCollection.bulkUpdateSubDocs(any()))
-          .thenReturn(new BulkUpdateResult(0))
-          .getMock();
-    } catch (Exception e) {
-      throw e;
-    }
+    return when(entitiesCollection.updateSubDoc(any(), any(), any())).thenReturn(true).getMock();
   }
 
   private RequestContext mockRequestContextWithTenantId() {
