@@ -15,13 +15,10 @@ import org.hypertrace.entity.data.service.v1.Entity;
  * available, the key falls back to an equality comparison of the identifying attributes map.
  */
 class EntityKey {
-
-  private static final String DEFAULT_TENANT_ID = "default";
-
   private final Entity inputEntity;
   private final ContextualKey<Void> contextualKey;
   private final RequestContext requestContext;
-  private final Equivalence<Entity> ENTITY_EQUIVALENCE =
+  private static final Equivalence<Entity> ENTITY_EQUIVALENCE =
       Equivalence.equals()
           .onResultOf(
               entity ->
