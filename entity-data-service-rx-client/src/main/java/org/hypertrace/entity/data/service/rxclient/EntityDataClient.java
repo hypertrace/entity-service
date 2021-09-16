@@ -14,17 +14,16 @@ import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest.UpsertCondition;
 
 /**
- * EntityDataClient is an asynchronous, potentially caching client, keyin entities as described in
+ * EntityDataClient is an asynchronous, potentially caching client, key in entities as described in
  * {@link EntityKey}
  */
 public interface EntityDataClient {
 
   /**
    * Performs a throttled update of the provided entity, starting after no longer than the provided
-   * maximumUpsertDelay. If newer candidates for the same entity are received before this update
-   * occurs, the value of the newest value (and its condition, if any) will be used instead. This
-   * allows a high number of potentially repetitive entity upserts to be processed without creating
-   * excessive overhead.
+   * maximumUpsertDelay. The update requests are merged with each other, before this update
+   * operation occurs. This allows a high number of potentially repetitive entity upserts to be
+   * processed without creating excessive overhead.
    *
    * <p>Example:
    *
@@ -35,9 +34,9 @@ public interface EntityDataClient {
    *   <li>entity-1.v3 arrives at t=300ms with a max delay of 500ms
    * </ol>
    *
-   * At t=400ms (the deadline for the second invocation) entity-1 is upserted, using the most recent
-   * values (the fourth invocation - entity-1.v3). At t=500ms, the deadline for the third invocation
-   * entity-2 is upserted.
+   * At t=400ms (the deadline for the second invocation) entity-1 is upserted, using the merged
+   * entity values (entity-1.v1, entity-1.v2 and entity-1.v3). At t=500ms, the deadline for the
+   * third invocation entity-2 is upserted.
    *
    * @param requestContext
    * @param entity
