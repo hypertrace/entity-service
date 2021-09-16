@@ -15,12 +15,12 @@ tasks.integrationTest {
 dependencies {
   implementation(project(":entity-service-impl"))
 
-  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.4.0")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.4.0")
+  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.6.1")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.6.1")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.28")
   implementation("org.hypertrace.core.documentstore:document-store:0.6.0")
 
-  runtimeOnly("io.grpc:grpc-netty:1.36.1")
+  runtimeOnly("io.grpc:grpc-netty:1.40.1")
   constraints {
     runtimeOnly("io.netty:netty-codec-http2:4.1.61.Final") {
       because("https://snyk.io/vuln/SNYK-JAVA-IONETTY-1089809")
