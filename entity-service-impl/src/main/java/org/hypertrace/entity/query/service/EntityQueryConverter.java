@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import lombok.Value;
-import lombok.extern.slf4j.Slf4j;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.AttributeFilter;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
@@ -226,8 +225,9 @@ class EntityQueryConverter {
   public static AttributeValue.Builder convertToAttributeValue(LiteralConstant literal) {
     AttributeValue.Builder builder = AttributeValue.newBuilder();
     org.hypertrace.entity.query.service.v1.Value value = literal.getValue();
-    ValueType valueType = literal.getValue().getValueType();
-    switch (valueType) {
+    switch (literal.getValue().getValueType()) {
+      case UNRECOGNIZED:
+        return null;
       case BOOL:
         builder.setValue(
             org.hypertrace.entity.data.service.v1.Value.newBuilder()
@@ -236,10 +236,6 @@ class EntityQueryConverter {
       case STRING:
         builder.setValue(
             org.hypertrace.entity.data.service.v1.Value.newBuilder().setString(value.getString()));
-        break;
-      case INT:
-        builder.setValue(
-            org.hypertrace.entity.data.service.v1.Value.newBuilder().setInt(value.getInt()));
         break;
       case LONG:
         builder.setValue(
@@ -258,12 +254,6 @@ class EntityQueryConverter {
         builder.setValue(
             org.hypertrace.entity.data.service.v1.Value.newBuilder()
                 .setFloat(value.getFloat())
-                .build());
-        break;
-      case BYTES:
-        builder.setValue(
-            org.hypertrace.entity.data.service.v1.Value.newBuilder()
-                .setBytes(value.getBytes())
                 .build());
         break;
       case BOOLEAN_ARRAY:
@@ -298,50 +288,18 @@ class EntityQueryConverter {
                             .collect(Collectors.toList())))
             .build();
         break;
-      case INT_ARRAY:
+      case LONG_ARRAY:
         builder
             .setValueList(
                 AttributeValueList.newBuilder()
                     .addAllValues(
-                        value.getIntArrayList().stream()
+                        value.getLongArrayList().stream()
                             .map(
                                 x ->
                                     AttributeValue.newBuilder()
                                         .setValue(
                                             org.hypertrace.entity.data.service.v1.Value.newBuilder()
-                                                .setInt(x))
-                                        .build())
-                            .collect(Collectors.toList())))
-            .build();
-        break;
-      case FLOAT_ARRAY:
-        builder
-            .setValueList(
-                AttributeValueList.newBuilder()
-                    .addAllValues(
-                        value.getFloatArrayList().stream()
-                            .map(
-                                x ->
-                                    AttributeValue.newBuilder()
-                                        .setValue(
-                                            org.hypertrace.entity.data.service.v1.Value.newBuilder()
-                                                .setFloat(x))
-                                        .build())
-                            .collect(Collectors.toList())))
-            .build();
-        break;
-      case BYTES_ARRAY:
-        builder
-            .setValueList(
-                AttributeValueList.newBuilder()
-                    .addAllValues(
-                        value.getBytesArrayList().stream()
-                            .map(
-                                x ->
-                                    AttributeValue.newBuilder()
-                                        .setValue(
-                                            org.hypertrace.entity.data.service.v1.Value.newBuilder()
-                                                .setBytes(x))
+                                                .setLong(x))
                                         .build())
                             .collect(Collectors.toList())))
             .build();
@@ -358,22 +316,6 @@ class EntityQueryConverter {
                                         .setValue(
                                             org.hypertrace.entity.data.service.v1.Value.newBuilder()
                                                 .setDouble(x))
-                                        .build())
-                            .collect(Collectors.toList())))
-            .build();
-        break;
-      case LONG_ARRAY:
-        builder
-            .setValueList(
-                AttributeValueList.newBuilder()
-                    .addAllValues(
-                        value.getLongArrayList().stream()
-                            .map(
-                                x ->
-                                    AttributeValue.newBuilder()
-                                        .setValue(
-                                            org.hypertrace.entity.data.service.v1.Value.newBuilder()
-                                                .setLong(x))
                                         .build())
                             .collect(Collectors.toList())))
             .build();
@@ -395,12 +337,7 @@ class EntityQueryConverter {
                                         .build())))
                 .build());
         break;
-      case UNRECOGNIZED:
-      default:
-        throw new IllegalArgumentException(
-            String.format("Unrecognized value type %s for literal %s", valueType, literal));
     }
-
     return builder;
   }
 
