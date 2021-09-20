@@ -6,6 +6,7 @@ import com.google.common.base.Equivalence;
 import java.util.Objects;
 import javax.annotation.Nonnull;
 import org.hypertrace.core.grpcutils.client.rx.GrpcRxExecutionContext;
+import org.hypertrace.core.grpcutils.context.ContextualKey;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.Entity;
 
@@ -14,13 +15,10 @@ import org.hypertrace.entity.data.service.v1.Entity;
  * available, the key falls back to an equality comparison of the identifying attributes map.
  */
 class EntityKey {
-
-  private static final String DEFAULT_TENANT_ID = "default";
-
   private final Entity inputEntity;
-  private final String tenantId;
-  private final GrpcRxExecutionContext executionContext;
-  private final Equivalence<Entity> ENTITY_EQUIVALENCE =
+  private final ContextualKey<Void> contextualKey;
+  private final RequestContext requestContext;
+  private static final Equivalence<Entity> ENTITY_EQUIVALENCE =
       Equivalence.equals()
           .onResultOf(
               entity ->
@@ -31,13 +29,13 @@ class EntityKey {
   EntityKey(@Nonnull RequestContext requestContext, @Nonnull Entity inputEntity) {
     requireNonNull(inputEntity.getEntityId());
     requireNonNull(inputEntity.getEntityType());
-    this.executionContext = GrpcRxExecutionContext.forContext(requestContext);
-    this.tenantId = requestContext.getTenantId().orElse(DEFAULT_TENANT_ID);
+    this.contextualKey = requestContext.buildContextualKey();
+    this.requestContext = requestContext;
     this.inputEntity = inputEntity;
   }
 
   public GrpcRxExecutionContext getExecutionContext() {
-    return executionContext;
+    return GrpcRxExecutionContext.forContext(requestContext);
   }
 
   public Entity getInputEntity() {
@@ -48,18 +46,23 @@ class EntityKey {
     return this.getInputEntity().getEntityType();
   }
 
+  public EntityKey mergeOtherEntity(Entity otherEntity) {
+    return new EntityKey(
+        this.requestContext, this.inputEntity.toBuilder().mergeFrom(otherEntity).build());
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     EntityKey that = (EntityKey) o;
-    return tenantId.equals(that.tenantId)
+    return contextualKey.equals(that.contextualKey)
         && getEntityType().equals(that.getEntityType())
         && ENTITY_EQUIVALENCE.equivalent(getInputEntity(), that.getInputEntity());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tenantId, getEntityType(), ENTITY_EQUIVALENCE.hash(getInputEntity()));
+    return Objects.hash(contextualKey, getEntityType(), ENTITY_EQUIVALENCE.hash(getInputEntity()));
   }
 }

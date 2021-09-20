@@ -7,7 +7,6 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
@@ -23,11 +22,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc.EntityDataServiceImplBase;
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest;
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest.UpsertCondition;
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityResponse;
+import org.hypertrace.entity.data.service.v1.Value;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class EntityDataCachingClientTest {
+  private static final RequestContext REQUEST_CONTEXT =
+      RequestContext.forTenantId("default tenant");
 
   final Entity defaultResponseEntity =
       Entity.newBuilder()
@@ -44,8 +47,6 @@ class EntityDataCachingClientTest {
           .setEntityType("type-1")
           .setEntityName("name-1")
           .build();
-
-  @Mock RequestContext mockContext;
 
   @Mock EntityDataServiceImplBase mockDataService;
 
@@ -68,7 +69,6 @@ class EntityDataCachingClientTest {
             .start();
     this.grpcChannel = InProcessChannelBuilder.forName(uniqueName).directExecutor().build();
     this.dataClient = EntityDataClient.builder(this.grpcChannel).build();
-    when(this.mockContext.getTenantId()).thenReturn(Optional.of("default tenant"));
     this.possibleResponseEntities = List.of(this.defaultResponseEntity);
     this.responseError = Optional.empty();
     doAnswer(
@@ -114,7 +114,7 @@ class EntityDataCachingClientTest {
         this.defaultResponseEntity,
         this.dataClient
             .createOrUpdateEntity(
-                mockContext, this.defaultResponseEntity, UpsertCondition.getDefaultInstance())
+                REQUEST_CONTEXT, this.defaultResponseEntity, UpsertCondition.getDefaultInstance())
             .blockingGet());
 
     verify(this.mockDataService, times(1))
@@ -128,25 +128,46 @@ class EntityDataCachingClientTest {
   }
 
   @Test
-  void createOrUpdateEventuallyThrottlesAndUsesLastProvidedValue() {
+  void createOrUpdateEventuallyThrottlesAndMergesTheUpdateRequests() {
     this.possibleResponseEntities = Collections.emptyList(); // Just reflect entities in this test
-    Entity firstEntity = this.defaultResponseEntity.toBuilder().setEntityName("first name").build();
+    Entity firstEntity =
+        this.defaultResponseEntity.toBuilder()
+            .setEntityName("first name")
+            .putAttributes("key1", createAttribute("value1-1"))
+            .putAttributes("key2", createAttribute("value2-1"))
+            .build();
     Entity secondEntity =
-        this.defaultResponseEntity.toBuilder().setEntityName("second name").build();
-    Entity thirdEntity = this.defaultResponseEntity.toBuilder().setEntityName("third name").build();
+        this.defaultResponseEntity.toBuilder()
+            .setEntityName("second name")
+            .putAttributes("key2", createAttribute("value2-2"))
+            .build();
+    Entity thirdEntity =
+        this.defaultResponseEntity.toBuilder()
+            .setEntityName("third name")
+            .putAttributes("key3", createAttribute("value3-3"))
+            .build();
 
     this.dataClient.createOrUpdateEntityEventually(
-        mockContext, firstEntity, UpsertCondition.getDefaultInstance(), Duration.ofMillis(1000));
+        REQUEST_CONTEXT,
+        firstEntity,
+        UpsertCondition.getDefaultInstance(),
+        Duration.ofMillis(1000));
 
     testScheduler.advanceTimeBy(300, TimeUnit.MILLISECONDS);
 
     this.dataClient.createOrUpdateEntityEventually(
-        mockContext, secondEntity, UpsertCondition.getDefaultInstance(), Duration.ofMillis(200));
+        REQUEST_CONTEXT,
+        secondEntity,
+        UpsertCondition.getDefaultInstance(),
+        Duration.ofMillis(200));
 
     testScheduler.advanceTimeBy(150, TimeUnit.MILLISECONDS);
 
     this.dataClient.createOrUpdateEntityEventually(
-        mockContext, thirdEntity, UpsertCondition.getDefaultInstance(), Duration.ofMillis(5000));
+        REQUEST_CONTEXT,
+        thirdEntity,
+        UpsertCondition.getDefaultInstance(),
+        Duration.ofMillis(5000));
 
     testScheduler.advanceTimeBy(49, TimeUnit.MILLISECONDS);
 
@@ -159,9 +180,21 @@ class EntityDataCachingClientTest {
         .mergeAndUpsertEntity(
             eq(
                 MergeAndUpsertEntityRequest.newBuilder()
-                    .setEntity(thirdEntity)
+                    .setEntity(
+                        Entity.newBuilder()
+                            .setEntityId(thirdEntity.getEntityId())
+                            .setEntityType(thirdEntity.getEntityType())
+                            .setEntityName(thirdEntity.getEntityName())
+                            .putAttributes("key1", createAttribute("value1-1"))
+                            .putAttributes("key2", createAttribute("value2-2"))
+                            .putAttributes("key3", createAttribute("value3-3"))
+                            .build())
                     .setUpsertCondition(UpsertCondition.getDefaultInstance())
                     .build()),
             any());
+  }
+
+  private AttributeValue createAttribute(String value) {
+    return AttributeValue.newBuilder().setValue(Value.newBuilder().setString(value)).build();
   }
 }

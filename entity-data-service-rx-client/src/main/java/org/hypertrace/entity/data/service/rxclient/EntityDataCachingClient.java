@@ -16,6 +16,7 @@ import io.reactivex.rxjava3.internal.functions.Functions;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -130,12 +131,15 @@ class EntityDataCachingClient implements EntityDataClient {
     }
 
     private void addNewUpdate(
-        EntityKey entityKey, UpsertCondition condition, Duration maximumDelay) {
+        EntityKey newEntityKey, UpsertCondition condition, Duration maximumDelay) {
       if (nonNull(updateExecutionTimer) && updateExecutionTimer.isDisposed()) {
         throw new IllegalStateException("Attempting to add new update after execution");
       }
 
-      this.entityKey = entityKey;
+      this.entityKey =
+          Optional.ofNullable(this.entityKey)
+              .map(existingKey -> existingKey.mergeOtherEntity(newEntityKey.getInputEntity()))
+              .orElse(newEntityKey);
       this.condition = condition;
       Instant newDeadline = EntityDataCachingClient.this.clock.instant().plus(maximumDelay);
       if (isNull(currentDeadline) || this.currentDeadline.isAfter(newDeadline)) {
