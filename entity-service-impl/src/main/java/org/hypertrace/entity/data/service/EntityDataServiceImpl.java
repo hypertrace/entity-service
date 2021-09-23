@@ -1,15 +1,21 @@
 package org.hypertrace.entity.data.service;
 
 import static java.util.Objects.isNull;
+import static org.hypertrace.entity.data.service.v1.EntityChangeEventValue.EventType.EVENT_TYPE_CREATE;
+import static org.hypertrace.entity.data.service.v1.EntityChangeEventValue.EventType.EVENT_TYPE_DELETE;
+import static org.hypertrace.entity.data.service.v1.EntityChangeEventValue.EventType.EVENT_TYPE_UPDATE;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENRICHED_ENTITIES_COLLECTION;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENTITY_RELATIONSHIPS_COLLECTION;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
+import com.google.common.collect.MapDifference;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Streams;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.GeneratedMessageV3;
 import com.google.protobuf.Message;
 import com.google.protobuf.ServiceException;
+import com.typesafe.config.Config;
 import io.grpc.Channel;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
@@ -29,6 +35,10 @@ import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.Key;
+import org.hypertrace.core.eventstore.EventProducer;
+import org.hypertrace.core.eventstore.EventProducerConfig;
+import org.hypertrace.core.eventstore.EventStore;
+import org.hypertrace.core.eventstore.EventStoreProvider;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
@@ -38,6 +48,9 @@ import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entities;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Entity.Builder;
+import org.hypertrace.entity.data.service.v1.EntityChangeEventKey;
+import org.hypertrace.entity.data.service.v1.EntityChangeEventValue;
+import org.hypertrace.entity.data.service.v1.EntityChangeEventValue.EventType;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc.EntityDataServiceImplBase;
 import org.hypertrace.entity.data.service.v1.EntityRelationship;
 import org.hypertrace.entity.data.service.v1.EntityRelationships;
@@ -61,6 +74,11 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(EntityDataServiceImpl.class);
   private static final DocumentParser PARSER = new DocumentParser();
   private static final DocStoreJsonFormat.Printer PRINTER = DocStoreJsonFormat.printer();
+  private static final String EVENT_STORE = "event.store";
+  private static final String EVENT_STORE_TYPE_CONFIG = "type";
+  private static final String ENTITY_CHANGE_EVENTS_TOPIC = "entity-change-events";
+  private static final String ENTITY_CHANGE_EVENTS_PRODUCER_CONFIG =
+      "entity.change.events.producer";
 
   private final Collection entitiesCollection;
   private final Collection relationshipsCollection;
@@ -69,7 +87,10 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private final UpsertConditionMatcher upsertConditionMatcher = new UpsertConditionMatcher();
   private final EntityIdGenerator entityIdGenerator;
 
-  public EntityDataServiceImpl(Datastore datastore, Channel entityTypeChannel) {
+  private EventStore eventStore;
+  private EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer;
+
+  public EntityDataServiceImpl(Datastore datastore, Config appConfig, Channel entityTypeChannel) {
     this.entitiesCollection = datastore.getCollection(RAW_ENTITIES_COLLECTION);
     this.relationshipsCollection = datastore.getCollection(ENTITY_RELATIONSHIPS_COLLECTION);
     this.enrichedEntitiesCollection = datastore.getCollection(ENRICHED_ENTITIES_COLLECTION);
@@ -79,6 +100,17 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     IdentifyingAttributeCache identifyingAttributeCache = new IdentifyingAttributeCache(datastore);
     this.entityNormalizer =
         new EntityNormalizer(entityTypeClient, this.entityIdGenerator, identifyingAttributeCache);
+    initEventStore(appConfig.getConfig(EVENT_STORE));
+  }
+
+  private void initEventStore(Config config) {
+    String storeType = config.getString(EVENT_STORE_TYPE_CONFIG);
+    eventStore = EventStoreProvider.getEventStore(storeType, config);
+    entityChangeEventProducer =
+        eventStore.createProducer(
+            ENTITY_CHANGE_EVENTS_TOPIC,
+            new EventProducerConfig(
+                storeType, config.getConfig(ENTITY_CHANGE_EVENTS_PRODUCER_CONFIG)));
   }
 
   /**
@@ -100,6 +132,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
 
     try {
       Entity normalizedEntity = this.entityNormalizer.normalize(tenantId, request);
+      Map<String, Entity> existingEntityMap = searchExistingEntities(List.of(normalizedEntity));
       upsertEntity(
           tenantId,
           normalizedEntity.getEntityId(),
@@ -108,6 +141,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
           Entity.newBuilder(),
           entitiesCollection,
           responseObserver);
+      Map<String, Entity> upsertedEntityMap = Map.of(getDocId(normalizedEntity), normalizedEntity);
+      sendChangeNotification(existingEntityMap, upsertedEntityMap);
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -130,7 +165,13 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                   Collectors.toUnmodifiableMap(
                       entity -> this.entityNormalizer.getEntityDocKey(tenantId, entity),
                       Function.identity()));
+      Map<String, Entity> existingEntitiesMap = searchExistingEntities(entities.values());
       upsertEntities(entities, entitiesCollection, responseObserver);
+      Map<String, Entity> upsertedEntitiesMap =
+          entities.entrySet().stream()
+              .collect(
+                  Collectors.toMap(entry -> entry.getKey().toString(), entry -> entry.getValue()));
+      sendChangeNotification(existingEntitiesMap, upsertedEntitiesMap);
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -692,6 +733,102 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       responseObserver.onNext((T) builder.build());
       responseObserver.onCompleted();
     }
+  }
+
+  private void sendChangeNotification(
+      Map<String, Entity> existingEntityMap, Map<String, Entity> upsertedEntityMap) {
+    MapDifference<String, Entity> mapDifference =
+        Maps.difference(existingEntityMap, upsertedEntityMap);
+
+    mapDifference
+        .entriesOnlyOnLeft()
+        .entrySet()
+        .forEach(
+            entry -> {
+              Entity entity = entry.getValue();
+              sendNotification(
+                  EVENT_TYPE_DELETE,
+                  entity.getTenantId(),
+                  entity.getEntityType(),
+                  entity.getEntityId(),
+                  entity,
+                  null);
+            });
+
+    mapDifference
+        .entriesOnlyOnRight()
+        .entrySet()
+        .forEach(
+            entry -> {
+              Entity entity = entry.getValue();
+              sendNotification(
+                  EVENT_TYPE_CREATE,
+                  entity.getTenantId(),
+                  entity.getEntityType(),
+                  entity.getEntityId(),
+                  null,
+                  entity);
+            });
+
+    mapDifference
+        .entriesDiffering()
+        .entrySet()
+        .forEach(
+            entry -> {
+              MapDifference.ValueDifference<Entity> valueDifference = entry.getValue();
+              Entity prevEntity = valueDifference.leftValue();
+              Entity currEntity = valueDifference.rightValue();
+              sendNotification(
+                  EVENT_TYPE_UPDATE,
+                  prevEntity.getTenantId(),
+                  prevEntity.getEntityType(),
+                  prevEntity.getEntityId(),
+                  prevEntity,
+                  currEntity);
+            });
+  }
+
+  private void sendNotification(
+      EventType eventType,
+      String tenantId,
+      String entityType,
+      String entityId,
+      Entity prevEntity,
+      Entity currEntity) {
+    EntityChangeEventKey entityChangeEventKey =
+        EntityChangeEventKey.newBuilder()
+            .setTenantId(tenantId)
+            .setEntityType(entityType)
+            .setEntityId(entityId)
+            .build();
+    EntityChangeEventValue.Builder builder = EntityChangeEventValue.newBuilder();
+    builder.setEventType(eventType);
+    if (prevEntity != null) {
+      builder.setPreviousVersion(prevEntity);
+    }
+    if (currEntity != null) {
+      builder.setLatestVersion(currEntity);
+    }
+    entityChangeEventProducer.send(entityChangeEventKey, builder.build());
+  }
+
+  private Map<String, Entity> searchExistingEntities(java.util.Collection<Entity> entities) {
+    return doQuery(buildExistingEntitiesInQuery(entities))
+        .collect(Collectors.toMap(entity -> getDocId(entity), Function.identity()));
+  }
+
+  private org.hypertrace.core.documentstore.Query buildExistingEntitiesInQuery(
+      java.util.Collection<Entity> entities) {
+    org.hypertrace.core.documentstore.Query query = new org.hypertrace.core.documentstore.Query();
+    List<String> docIds = entities.stream().map(this::getDocId).collect(Collectors.toList());
+    query.setFilter(new Filter(Filter.Op.IN, EntityServiceConstants.ID, docIds));
+    return query;
+  }
+
+  private String getDocId(Entity entity) {
+    return this.entityNormalizer
+        .getEntityDocKey(entity.getTenantId(), entity.getEntityType(), entity.getEntityId())
+        .toString();
   }
 
   private org.hypertrace.core.documentstore.Query buildExistingEntityQuery(

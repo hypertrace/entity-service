@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.data.service.v1;
+
+message EntityChangeEventKey {
+  string tenant_id = 1;
+  string entity_type = 2;
+  string entity_id = 3;
+}

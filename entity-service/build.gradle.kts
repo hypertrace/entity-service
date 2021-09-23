@@ -21,6 +21,7 @@ dependencies {
   implementation("org.hypertrace.core.documentstore:document-store:0.6.0")
 
   runtimeOnly("io.grpc:grpc-netty:1.36.1")
+  runtimeOnly("io.confluent:kafka-protobuf-serializer:6.0.1")
   constraints {
     runtimeOnly("io.netty:netty-codec-http2:4.1.61.Final") {
       because("https://snyk.io/vuln/SNYK-JAVA-IONETTY-1089809")

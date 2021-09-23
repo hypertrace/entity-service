@@ -63,7 +63,7 @@ public class EntityService extends PlatformService {
             .addService(InterceptorUtil.wrapInterceptors(new EntityTypeServiceImpl(datastore)))
             .addService(
                 InterceptorUtil.wrapInterceptors(
-                    new EntityDataServiceImpl(datastore, localChannel)))
+                    new EntityDataServiceImpl(datastore, getAppConfig(), localChannel)))
             .addService(
                 InterceptorUtil.wrapInterceptors(
                     new EntityQueryServiceImpl(datastore, getAppConfig(), channelRegistry)))
