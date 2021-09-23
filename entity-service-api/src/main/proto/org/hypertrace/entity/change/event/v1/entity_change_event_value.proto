@@ -7,9 +7,9 @@ package org.hypertrace.entity.data.service.v1;
 import "org/hypertrace/entity/data/service/v1/entity.proto";
 
 message EntityChangeEventValue {
-  EventType eventType = 1;
-  optional Entity previousVersion = 2; // previous will not be present for newly created entity
-  optional Entity latestVersion = 3; // latest version will not be present for delete entity
+  EventType event_type = 1;
+  optional Entity previous_version = 2; // previous will not be present for newly created entity
+  optional Entity latest_version = 3; // latest version will not be present for delete entity
 
   enum EventType {
     EVENT_TYPE_UNSPECIFIED = 0;
