@@ -13,7 +13,9 @@ plugins {
 }
 
 include(":entity-service-api")
+include(":entity-service-change-event-api")
 include(":entity-service-client")
+include(":entity-service-change-event-impl")
 include(":entity-service-impl")
 include(":entity-service")
 include(":entity-type-service-rx-client")

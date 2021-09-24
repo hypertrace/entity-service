@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package org.hypertrace.entity.change.event.v1;
+
+import "org/hypertrace/entity/data/service/v1/entity.proto";
+
+message EntityChangeEventValue {
+  oneof event {
+    EntityCreateEvent create_event = 1;
+    EntityUpdateEvent update_event = 2;
+    EntityDeleteEvent delete_event = 3;
+  }
+}
+
+message EntityCreateEvent {
+  org.hypertrace.entity.data.service.v1.Entity created_entity = 1;
+}
+
+message EntityUpdateEvent {
+  org.hypertrace.entity.data.service.v1.Entity previous_entity = 1;
+  org.hypertrace.entity.data.service.v1.Entity latest_entity = 2;
+}
+
+message EntityDeleteEvent {
+  org.hypertrace.entity.data.service.v1.Entity deleted_entity = 1;
+}

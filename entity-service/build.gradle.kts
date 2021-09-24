@@ -14,6 +14,7 @@ tasks.integrationTest {
 
 dependencies {
   implementation(project(":entity-service-impl"))
+  implementation(project(":entity-service-change-event-impl"))
 
   implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.6.1")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.6.1")
