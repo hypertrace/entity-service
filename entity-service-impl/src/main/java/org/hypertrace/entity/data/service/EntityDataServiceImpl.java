@@ -111,7 +111,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
 
     try {
       Entity normalizedEntity = this.entityNormalizer.normalize(tenantId, request);
-      Map<String, Entity> existingEntityMap = searchExistingEntities(List.of(normalizedEntity));
+      java.util.Collection<Entity> existingEntityCollection =
+          getExistingEntities(List.of(normalizedEntity));
       upsertEntity(
           tenantId,
           normalizedEntity.getEntityId(),
@@ -120,8 +121,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
           Entity.newBuilder(),
           entitiesCollection,
           responseObserver);
-      Map<String, Entity> upsertedEntityMap = Map.of(getDocId(normalizedEntity), normalizedEntity);
-      entityChangeEventGenerator.sendChangeNotification(existingEntityMap, upsertedEntityMap);
+      entityChangeEventGenerator.sendChangeNotification(
+          existingEntityCollection, List.of(normalizedEntity));
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -144,13 +145,9 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                   Collectors.toUnmodifiableMap(
                       entity -> this.entityNormalizer.getEntityDocKey(tenantId, entity),
                       Function.identity()));
-      Map<String, Entity> existingEntitiesMap = searchExistingEntities(entities.values());
+      java.util.Collection<Entity> existingEntities = getExistingEntities(entities.values());
       upsertEntities(entities, entitiesCollection, responseObserver);
-      Map<String, Entity> upsertedEntitiesMap =
-          entities.entrySet().stream()
-              .collect(
-                  Collectors.toMap(entry -> entry.getKey().toString(), entry -> entry.getValue()));
-      entityChangeEventGenerator.sendChangeNotification(existingEntitiesMap, upsertedEntitiesMap);
+      entityChangeEventGenerator.sendChangeNotification(existingEntities, entities.values());
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -168,19 +165,26 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     try {
 
       Map<Key, Document> documentMap = new HashMap<>();
+      List<Entity> updatedEntities = new ArrayList<>();
       for (Entity entity : request.getEntityList()) {
         Entity normalizedEntity = this.entityNormalizer.normalize(tenantId, entity);
+        updatedEntities.add(normalizedEntity);
         Document doc = convertEntityToDocument(normalizedEntity);
         Key key = this.entityNormalizer.getEntityDocKey(tenantId, normalizedEntity);
         documentMap.put(key, doc);
       }
 
-      Streams.stream(entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap))
-          .flatMap(document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
-          .map(Entity::toBuilder)
-          .map(builder -> builder.setTenantId(tenantId))
-          .map(Entity.Builder::build)
-          .forEach(responseObserver::onNext);
+      List<Entity> existingEntities =
+          Streams.stream(entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap))
+              .flatMap(
+                  document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
+              .map(Entity::toBuilder)
+              .map(builder -> builder.setTenantId(tenantId))
+              .map(Builder::build)
+              .collect(Collectors.toList());
+
+      entityChangeEventGenerator.sendChangeNotification(existingEntities, updatedEntities);
+      existingEntities.forEach(responseObserver::onNext);
 
       responseObserver.onCompleted();
     } catch (IOException e) {
@@ -273,10 +277,14 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
+    Optional<Entity> existingEntity =
+        getExistingEntity(tenantId.get(), request.getEntityType(), request.getEntityId());
     Key key =
         this.entityNormalizer.getEntityDocKey(
             tenantId.get(), request.getEntityType(), request.getEntityId());
     if (entitiesCollection.delete(key)) {
+      existingEntity.ifPresent(
+          entity -> entityChangeEventGenerator.sendDeleteNotification(List.of(entity)));
       responseObserver.onNext(Empty.newBuilder().build());
       responseObserver.onCompleted();
     } else {
@@ -533,10 +541,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
 
     Entity receivedEntity = this.entityNormalizer.normalize(tenantId, request.getEntity());
     Optional<Entity> existingEntity =
-        this.doQuery(
-                this.buildExistingEntityQuery(
-                    tenantId, receivedEntity.getEntityType(), receivedEntity.getEntityId()))
-            .findFirst();
+        getExistingEntity(tenantId, receivedEntity.getEntityType(), receivedEntity.getEntityId());
 
     boolean rejectUpsertForConditionMismatch =
         existingEntity
@@ -559,10 +564,12 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
               .map(Builder::build)
               .orElse(receivedEntity);
       try {
+        Entity upsertedEntity = this.upsertEntity(tenantId, entityToUpsert);
+        entityChangeEventGenerator.sendChangeNotification(
+            existingEntity.map(e -> List.of(e)).orElse(Collections.emptyList()),
+            List.of(upsertedEntity));
         responseObserver.onNext(
-            MergeAndUpsertEntityResponse.newBuilder()
-                .setEntity(this.upsertEntity(tenantId, entityToUpsert))
-                .build());
+            MergeAndUpsertEntityResponse.newBuilder().setEntity(upsertedEntity).build());
         responseObserver.onCompleted();
       } catch (IOException e) {
         responseObserver.onError(e);
@@ -714,15 +721,14 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
   }
 
-  private Map<String, Entity> searchExistingEntities(java.util.Collection<Entity> entities) {
-    return doQuery(buildExistingEntitiesInQuery(entities))
-        .collect(Collectors.toMap(entity -> getDocId(entity), Function.identity()));
+  private java.util.Collection<Entity> getExistingEntities(java.util.Collection<Entity> entities) {
+    List<String> docIds = entities.stream().map(this::getDocId).collect(Collectors.toList());
+    return doQuery(buildExistingEntitiesInQuery(docIds)).collect(Collectors.toList());
   }
 
   private org.hypertrace.core.documentstore.Query buildExistingEntitiesInQuery(
-      java.util.Collection<Entity> entities) {
+      java.util.Collection<String> docIds) {
     org.hypertrace.core.documentstore.Query query = new org.hypertrace.core.documentstore.Query();
-    List<String> docIds = entities.stream().map(this::getDocId).collect(Collectors.toList());
     query.setFilter(new Filter(Filter.Op.IN, EntityServiceConstants.ID, docIds));
     return query;
   }
@@ -731,6 +737,10 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     return this.entityNormalizer
         .getEntityDocKey(entity.getTenantId(), entity.getEntityType(), entity.getEntityId())
         .toString();
+  }
+
+  private Optional<Entity> getExistingEntity(String tenantId, String entityType, String entityId) {
+    return this.doQuery(this.buildExistingEntityQuery(tenantId, entityType, entityId)).findFirst();
   }
 
   private org.hypertrace.core.documentstore.Query buildExistingEntityQuery(

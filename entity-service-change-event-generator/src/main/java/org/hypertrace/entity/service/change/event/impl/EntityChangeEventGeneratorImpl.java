@@ -1,9 +1,13 @@
 package org.hypertrace.entity.service.change.event.impl;
 
+import static java.util.function.Function.identity;
+
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
+import java.util.Collection;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.hypertrace.core.eventstore.EventProducer;
 import org.hypertrace.core.eventstore.EventProducerConfig;
 import org.hypertrace.core.eventstore.EventStore;
@@ -40,8 +44,22 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   }
 
   @Override
+  public void sendCreateNotification(Collection<Entity> entities) {
+    entities.forEach(this::sendCreateNotification);
+  }
+
+  @Override
+  public void sendDeleteNotification(Collection<Entity> entities) {
+    entities.forEach(this::sendDeleteNotification);
+  }
+
+  @Override
   public void sendChangeNotification(
-      Map<String, Entity> existingEntityMap, Map<String, Entity> upsertedEntityMap) {
+      Collection<Entity> existingEntities, Collection<Entity> updatedEntities) {
+    Map<String, Entity> existingEntityMap =
+        existingEntities.stream().collect(Collectors.toMap(Entity::getEntityId, identity()));
+    Map<String, Entity> upsertedEntityMap =
+        updatedEntities.stream().collect(Collectors.toMap(Entity::getEntityId, identity()));
     MapDifference<String, Entity> mapDifference =
         Maps.difference(existingEntityMap, upsertedEntityMap);
 
