@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.common.collect.Lists;
+import com.google.protobuf.LazyStringList;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.grpc.Channel;
@@ -16,11 +17,13 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.DatastoreProvider;
 import org.hypertrace.core.grpcutils.client.GrpcClientRequestContextUtil;
@@ -31,6 +34,7 @@ import org.hypertrace.entity.constants.v1.CommonAttribute;
 import org.hypertrace.entity.constants.v1.ServiceAttribute;
 import org.hypertrace.entity.data.service.client.EntityDataServiceClient;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
+import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
@@ -94,6 +98,7 @@ public class EntityQueryServiceTest {
   // attributes defined in application.conf in attribute map
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
+  private static final String API_LABELS_ATTR = "API.labels";
   private static final int CONTAINER_STARTUP_ATTEMPTS = 5;
   private static GenericContainer<?> mongo;
 
@@ -484,6 +489,11 @@ public class EntityQueryServiceTest {
             .setTenantId(TENANT_ID)
             .setEntityType(EntityType.API.name())
             .setEntityName("api1")
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
+            .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
+            .putAttributes(
+                apiAttributesMap.get(API_LABELS_ATTR), createArrayAttribute(List.of("Label1")))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -492,10 +502,7 @@ public class EntityQueryServiceTest {
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
                 createAttribute(API_TYPE));
-    apiEntityBuilder1
-        .putAttributes(
-            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
-        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+
     Entity entity1 = entityDataServiceClient.upsert(apiEntityBuilder1.build());
 
     Entity.Builder apiEntityBuilder2 =
@@ -503,6 +510,9 @@ public class EntityQueryServiceTest {
             .setTenantId(TENANT_ID)
             .setEntityType(EntityType.API.name())
             .setEntityName("api2")
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
+            .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -511,43 +521,44 @@ public class EntityQueryServiceTest {
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
                 createAttribute(API_TYPE));
-    apiEntityBuilder2
-        .putAttributes(
-            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
-        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
     Entity entity2 = entityDataServiceClient.upsert(apiEntityBuilder2.build());
 
     // create BulkUpdate request
-    UpdateOperation update1 =
+    UpdateOperation apiDiscoveryStateUpdateOperation =
         UpdateOperation.newBuilder()
             .setSetAttribute(
                 SetAttribute.newBuilder()
                     .setAttribute(
                         ColumnIdentifier.newBuilder().setColumnName(API_DISCOVERY_STATE_ATTR))
-                    .setValue(
-                        LiteralConstant.newBuilder()
-                            .setValue(
-                                org.hypertrace.entity.query.service.v1.Value.newBuilder()
-                                    .setString("DISCOVERED"))))
+                    .setValue(createLiteral("DISCOVERED")))
             .build();
-    UpdateOperation update2 =
+    UpdateOperation httpMethodUpdateOperation =
         UpdateOperation.newBuilder()
             .setSetAttribute(
                 SetAttribute.newBuilder()
                     .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_HTTP_METHOD_ATTR))
-                    .setValue(
-                        LiteralConstant.newBuilder()
-                            .setValue(
-                                org.hypertrace.entity.query.service.v1.Value.newBuilder()
-                                    .setString("POST"))))
+                    .setValue(createLiteral("POST")))
             .build();
+    UpdateOperation apiLabelsUpdateOperation =
+        UpdateOperation.newBuilder()
+            .setSetAttribute(
+                SetAttribute.newBuilder()
+                    .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR))
+                    .setValue(createLiteral(List.of("Label1", "Label2"))))
+            .build();
+
     EntityUpdateInfo updateInfo1 =
-        EntityUpdateInfo.newBuilder().addUpdateOperation(update2).build();
+        EntityUpdateInfo.newBuilder()
+            .addUpdateOperation(httpMethodUpdateOperation)
+            .addUpdateOperation(apiLabelsUpdateOperation)
+            .build();
     EntityUpdateInfo updateInfo2 =
         EntityUpdateInfo.newBuilder()
-            .addUpdateOperation(update1)
-            .addUpdateOperation(update2)
+            .addUpdateOperation(apiDiscoveryStateUpdateOperation)
+            .addUpdateOperation(httpMethodUpdateOperation)
+            .addUpdateOperation(apiLabelsUpdateOperation)
             .build();
+
     BulkEntityUpdateRequest bulkUpdateRequest =
         BulkEntityUpdateRequest.newBuilder()
             .setEntityType(EntityType.API.name())
@@ -563,30 +574,45 @@ public class EntityQueryServiceTest {
             .setEntityType(EntityType.API.name())
             .addSelection(createExpression(API_DISCOVERY_STATE_ATTR))
             .addSelection(createExpression(API_HTTP_METHOD_ATTR))
+            .addSelection(createExpression(API_LABELS_ATTR))
             .build();
 
     Iterator<ResultSetChunk> resultSetChunkIterator =
         GrpcClientRequestContextUtil.executeWithHeadersContext(
             HEADERS, () -> entityQueryServiceClient.execute(entityQueryRequest));
 
-    List<String> values = new ArrayList<>();
+    List<Object> values = new ArrayList<>();
 
     while (resultSetChunkIterator.hasNext()) {
       ResultSetChunk chunk = resultSetChunkIterator.next();
 
       for (Row row : chunk.getRowList()) {
         for (int i = 0; i < row.getColumnCount(); i++) {
-          String value = row.getColumnList().get(i).getString();
-          values.add(value);
+          org.hypertrace.entity.query.service.v1.Value value = row.getColumnList().get(i);
+          switch (value.getValueType()) {
+            case STRING:
+              values.add(value.getString());
+              continue;
+            case STRING_ARRAY:
+              values.add(value.getStringArrayList());
+              continue;
+            default:
+          }
         }
       }
     }
 
-    assertEquals(4, values.size());
+    assertEquals(6, values.size());
     assertEquals("DISCOVERED", values.get(0));
     assertEquals("POST", values.get(1));
-    assertEquals("DISCOVERED", values.get(2));
-    assertEquals("POST", values.get(3));
+    assertListEquals(
+        List.of("Label1", "Label2"),
+        ((LazyStringList) values.get(2)).stream().collect(Collectors.toUnmodifiableList()));
+    assertEquals("DISCOVERED", values.get(3));
+    assertEquals("POST", values.get(4));
+    assertListEquals(
+        List.of("Label1", "Label2"),
+        ((LazyStringList) values.get(5)).stream().collect(Collectors.toUnmodifiableList()));
   }
 
   @Nested
@@ -677,6 +703,34 @@ public class EntityQueryServiceTest {
     return AttributeValue.newBuilder().setValue(Value.newBuilder().setString(name).build()).build();
   }
 
+  private AttributeValue createArrayAttribute(Collection<String> values) {
+    return AttributeValue.newBuilder()
+        .setValueList(
+            AttributeValueList.newBuilder()
+                .addAllValues(
+                    values.stream().map(this::createAttribute).collect(Collectors.toList()))
+                .build())
+        .build();
+  }
+
+  private LiteralConstant createLiteral(String value) {
+    return LiteralConstant.newBuilder()
+        .setValue(
+            org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                .setString(value)
+                .setValueType(ValueType.STRING))
+        .build();
+  }
+
+  private LiteralConstant createLiteral(Collection<String> values) {
+    return LiteralConstant.newBuilder()
+        .setValue(
+            org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                .addAllStringArray(values)
+                .setValueType(ValueType.STRING_ARRAY))
+        .build();
+  }
+
   private Entity.Builder createApiEntity(String serviceId, String apiName, String apiType) {
     return Entity.newBuilder()
         .setTenantId(TENANT_ID)
@@ -733,5 +787,11 @@ public class EntityQueryServiceTest {
         });
 
     return attributesMap;
+  }
+
+  private <T> void assertListEquals(List<T> expected, List<T> actual) {
+    assertEquals(expected.size(), actual.size());
+    assertTrue(actual.containsAll(expected));
+    assertTrue(expected.containsAll(actual));
   }
 }
