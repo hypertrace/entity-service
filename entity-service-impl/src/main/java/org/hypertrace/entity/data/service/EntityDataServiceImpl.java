@@ -10,7 +10,6 @@ import com.google.protobuf.Descriptors;
 import com.google.protobuf.GeneratedMessageV3;
 import com.google.protobuf.Message;
 import com.google.protobuf.ServiceException;
-import com.typesafe.config.Config;
 import io.grpc.Channel;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
@@ -79,7 +78,6 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
 
   public EntityDataServiceImpl(
       Datastore datastore,
-      Config appConfig,
       Channel entityTypeChannel,
       EntityChangeEventGenerator entityChangeEventGenerator) {
     this.entitiesCollection = datastore.getCollection(RAW_ENTITIES_COLLECTION);
