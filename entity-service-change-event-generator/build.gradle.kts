@@ -7,8 +7,10 @@ plugins {
 dependencies {
   api(project(":entity-service-api"))
   api(project(":entity-service-change-event-api"))
-  implementation("com.typesafe:config:1.4.1")
+  api("com.typesafe:config:1.4.1")
+
   implementation("org.hypertrace.core.eventstore:event-store:0.1.2")
+  implementation("com.google.guava:guava:30.1.1-jre")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   testImplementation("org.mockito:mockito-core:3.8.0")

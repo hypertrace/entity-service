@@ -2,6 +2,7 @@ package org.hypertrace.entity.service.change.event.impl;
 
 import static java.util.function.Function.identity;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
@@ -41,6 +42,14 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
             ENTITY_CHANGE_EVENTS_TOPIC,
             new EventProducerConfig(
                 storeType, config.getConfig(ENTITY_CHANGE_EVENTS_PRODUCER_CONFIG)));
+  }
+
+  @VisibleForTesting
+  EntityChangeEventGeneratorImpl(
+      EventStore eventStore,
+      EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer) {
+    this.eventStore = eventStore;
+    this.entityChangeEventProducer = entityChangeEventProducer;
   }
 
   @Override
