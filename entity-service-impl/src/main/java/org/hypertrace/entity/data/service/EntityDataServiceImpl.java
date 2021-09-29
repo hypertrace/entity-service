@@ -121,8 +121,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
           Entity.newBuilder(),
           entitiesCollection,
           responseObserver);
-      entityChangeEventGenerator.sendChangeNotification(
-          existingEntityCollection, List.of(normalizedEntity));
+      sendChangeNotification(tenantId, existingEntityCollection, List.of(normalizedEntity));
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -147,7 +146,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                       Function.identity()));
       java.util.Collection<Entity> existingEntities = getExistingEntities(entities.values());
       upsertEntities(entities, entitiesCollection, responseObserver);
-      entityChangeEventGenerator.sendChangeNotification(existingEntities, entities.values());
+      sendChangeNotification(tenantId, existingEntities, entities.values());
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -183,7 +182,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
               .map(Builder::build)
               .collect(Collectors.toList());
 
-      entityChangeEventGenerator.sendChangeNotification(existingEntities, updatedEntities);
+      sendChangeNotification(tenantId, existingEntities, updatedEntities);
       existingEntities.forEach(responseObserver::onNext);
 
       responseObserver.onCompleted();
@@ -283,8 +282,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         this.entityNormalizer.getEntityDocKey(
             tenantId.get(), request.getEntityType(), request.getEntityId());
     if (entitiesCollection.delete(key)) {
-      existingEntity.ifPresent(
-          entity -> entityChangeEventGenerator.sendDeleteNotification(List.of(entity)));
+      existingEntity.ifPresent(entity -> sentDeleteNotification(tenantId.get(), List.of(entity)));
       responseObserver.onNext(Empty.newBuilder().build());
       responseObserver.onCompleted();
     } else {
@@ -565,7 +563,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
               .orElse(receivedEntity);
       try {
         Entity upsertedEntity = this.upsertEntity(tenantId, entityToUpsert);
-        entityChangeEventGenerator.sendChangeNotification(
+        sendChangeNotification(
+            tenantId,
             existingEntity.map(e -> List.of(e)).orElse(Collections.emptyList()),
             List.of(upsertedEntity));
         responseObserver.onNext(
@@ -719,6 +718,36 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       responseObserver.onNext((T) builder.build());
       responseObserver.onCompleted();
     }
+  }
+
+  private void sentDeleteNotification(String tenantId, java.util.Collection<Entity> entities) {
+    try {
+      entityChangeEventGenerator.sendDeleteNotification(entities);
+    } catch (Exception ex) {
+      LOG.warn(
+          "For tenantId {] unable to send delete notification for entities {}",
+          tenantId,
+          getEntityIds(entities));
+    }
+  }
+
+  private void sendChangeNotification(
+      String tenantId,
+      java.util.Collection<Entity> existingEntities,
+      java.util.Collection<Entity> updatedEntities) {
+    try {
+      entityChangeEventGenerator.sendChangeNotification(existingEntities, updatedEntities);
+    } catch (Exception ex) {
+      LOG.warn(
+          "For tenantId {} unable to send change notification for entities - previous set {} and latest set",
+          tenantId,
+          getEntityIds(existingEntities),
+          getEntityIds(updatedEntities));
+    }
+  }
+
+  private List<String> getEntityIds(java.util.Collection<Entity> entities) {
+    return entities.stream().map(Entity::getEntityId).collect(Collectors.toList());
   }
 
   private java.util.Collection<Entity> getExistingEntities(java.util.Collection<Entity> entities) {
