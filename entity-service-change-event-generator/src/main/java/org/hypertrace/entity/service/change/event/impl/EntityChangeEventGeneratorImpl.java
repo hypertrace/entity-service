@@ -13,7 +13,6 @@ import org.hypertrace.core.eventstore.EventProducer;
 import org.hypertrace.core.eventstore.EventProducerConfig;
 import org.hypertrace.core.eventstore.EventStore;
 import org.hypertrace.core.eventstore.EventStoreProvider;
-import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue.Builder;
 import org.hypertrace.entity.change.event.v1.EntityCreateEvent;
@@ -21,6 +20,7 @@ import org.hypertrace.entity.change.event.v1.EntityDeleteEvent;
 import org.hypertrace.entity.change.event.v1.EntityUpdateEvent;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
+import org.hypertrace.entity.service.change.event.util.KeyUtil;
 
 /** The interface Entity change event generator. */
 public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerator {
@@ -31,7 +31,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
       "entity.change.events.producer";
 
   private EventStore eventStore;
-  private EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer;
+  private EventProducer<String, EntityChangeEventValue> entityChangeEventProducer;
 
   public EntityChangeEventGeneratorImpl(Config appConfig) {
     Config config = appConfig.getConfig(EVENT_STORE);
@@ -47,7 +47,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   @VisibleForTesting
   EntityChangeEventGeneratorImpl(
       EventStore eventStore,
-      EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer) {
+      EventProducer<String, EntityChangeEventValue> entityChangeEventProducer) {
     this.eventStore = eventStore;
     this.entityChangeEventProducer = entityChangeEventProducer;
   }
@@ -122,11 +122,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     entityChangeEventProducer.send(getEntityChangeEventKey(deletedEntity), builder.build());
   }
 
-  private EntityChangeEventKey getEntityChangeEventKey(Entity entity) {
-    return EntityChangeEventKey.newBuilder()
-        .setTenantId(entity.getTenantId())
-        .setEntityType(entity.getEntityType())
-        .setEntityId(entity.getEntityId())
-        .build();
+  private String getEntityChangeEventKey(Entity entity) {
+    return KeyUtil.getKey(entity);
   }
 }

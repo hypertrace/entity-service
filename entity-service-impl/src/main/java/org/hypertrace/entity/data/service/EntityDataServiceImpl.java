@@ -121,7 +121,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
           Entity.newBuilder(),
           entitiesCollection,
           responseObserver);
-      sendChangeNotification(tenantId, existingEntityCollection, List.of(normalizedEntity));
+      trySendChangeNotification(tenantId, existingEntityCollection, List.of(normalizedEntity));
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -146,7 +146,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                       Function.identity()));
       java.util.Collection<Entity> existingEntities = getExistingEntities(entities.values());
       upsertEntities(entities, entitiesCollection, responseObserver);
-      sendChangeNotification(tenantId, existingEntities, entities.values());
+      trySendChangeNotification(tenantId, existingEntities, entities.values());
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -182,10 +182,10 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
               .map(Builder::build)
               .collect(Collectors.toList());
 
-      sendChangeNotification(tenantId, existingEntities, updatedEntities);
       existingEntities.forEach(responseObserver::onNext);
-
       responseObserver.onCompleted();
+
+      trySendChangeNotification(tenantId, existingEntities, updatedEntities);
     } catch (IOException e) {
       LOG.error("Failed to bulk upsert entities", e);
       responseObserver.onError(e);
@@ -282,9 +282,10 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         this.entityNormalizer.getEntityDocKey(
             tenantId.get(), request.getEntityType(), request.getEntityId());
     if (entitiesCollection.delete(key)) {
-      existingEntity.ifPresent(entity -> sentDeleteNotification(tenantId.get(), List.of(entity)));
       responseObserver.onNext(Empty.newBuilder().build());
       responseObserver.onCompleted();
+      existingEntity.ifPresent(
+          entity -> trySendDeleteNotification(tenantId.get(), List.of(entity)));
     } else {
       responseObserver.onError(new RuntimeException("Could not delete the entity."));
     }
@@ -563,13 +564,13 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
               .orElse(receivedEntity);
       try {
         Entity upsertedEntity = this.upsertEntity(tenantId, entityToUpsert);
-        sendChangeNotification(
-            tenantId,
-            existingEntity.map(e -> List.of(e)).orElse(Collections.emptyList()),
-            List.of(upsertedEntity));
         responseObserver.onNext(
             MergeAndUpsertEntityResponse.newBuilder().setEntity(upsertedEntity).build());
         responseObserver.onCompleted();
+        trySendChangeNotification(
+            tenantId,
+            existingEntity.map(List::of).orElse(Collections.emptyList()),
+            List.of(upsertedEntity));
       } catch (IOException e) {
         responseObserver.onError(e);
       }
@@ -720,18 +721,18 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
   }
 
-  private void sentDeleteNotification(String tenantId, java.util.Collection<Entity> entities) {
+  private void trySendDeleteNotification(String tenantId, java.util.Collection<Entity> entities) {
     try {
       entityChangeEventGenerator.sendDeleteNotification(entities);
     } catch (Exception ex) {
       LOG.warn(
-          "For tenantId {] unable to send delete notification for entities {}",
+          "For tenantId {} unable to send delete notification for entities {}",
           tenantId,
           getEntityIds(entities));
     }
   }
 
-  private void sendChangeNotification(
+  private void trySendChangeNotification(
       String tenantId,
       java.util.Collection<Entity> existingEntities,
       java.util.Collection<Entity> updatedEntities) {
@@ -750,7 +751,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     return entities.stream().map(Entity::getEntityId).collect(Collectors.toList());
   }
 
-  private java.util.Collection<Entity> getExistingEntities(java.util.Collection<Entity> entities) {
+  private List<Entity> getExistingEntities(java.util.Collection<Entity> entities) {
     List<String> docIds = entities.stream().map(this::getDocId).collect(Collectors.toList());
     return doQuery(buildExistingEntitiesInQuery(docIds)).collect(Collectors.toList());
   }

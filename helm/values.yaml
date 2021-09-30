@@ -124,9 +124,8 @@ kafka-topic-creator:
         replicationFactor: 3
         partitions: 8
         configs:
-          retention.bytes: 8589934592 # default = -1
+          retention.bytes: 1073741824 # default = -1
           retention.ms: 86400000 # default = 604800000 (7 days)
-          max.message.bytes: 10485760 # Allow larger messages for traces
   zookeeper:
     address: zookeeper:2181
   imagePullSecrets: []
