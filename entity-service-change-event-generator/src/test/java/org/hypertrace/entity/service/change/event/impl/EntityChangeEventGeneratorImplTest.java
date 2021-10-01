@@ -1,5 +1,6 @@
 package org.hypertrace.entity.service.change.event.impl;
 
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -18,6 +19,7 @@ import org.hypertrace.entity.service.change.event.util.KeyUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -42,14 +44,17 @@ class EntityChangeEventGeneratorImplTest {
   void sendCreateNotification() {
     List<Entity> entities = createEntities(2);
     changeEventGenerator.sendCreateNotification(entities);
-    verify(eventProducer, times(1))
+    InOrder inOrderVerifier = inOrder(eventProducer);
+    inOrderVerifier
+        .verify(eventProducer)
         .send(
             KeyUtil.getKey(entities.get(0)),
             EntityChangeEventValue.newBuilder()
                 .setCreateEvent(
                     EntityCreateEvent.newBuilder().setCreatedEntity(entities.get(0)).build())
                 .build());
-    verify(eventProducer, times(1))
+    inOrderVerifier
+        .verify(eventProducer)
         .send(
             KeyUtil.getKey(entities.get(1)),
             EntityChangeEventValue.newBuilder()
@@ -62,14 +67,17 @@ class EntityChangeEventGeneratorImplTest {
   void sendDeleteNotification() {
     List<Entity> entities = createEntities(2);
     changeEventGenerator.sendDeleteNotification(entities);
-    verify(eventProducer, times(1))
+    InOrder inOrderVerifier = inOrder(eventProducer);
+    inOrderVerifier
+        .verify(eventProducer)
         .send(
             KeyUtil.getKey(entities.get(0)),
             EntityChangeEventValue.newBuilder()
                 .setDeleteEvent(
                     EntityDeleteEvent.newBuilder().setDeletedEntity(entities.get(0)).build())
                 .build());
-    verify(eventProducer, times(1))
+    inOrderVerifier
+        .verify(eventProducer)
         .send(
             KeyUtil.getKey(entities.get(1)),
             EntityChangeEventValue.newBuilder()
