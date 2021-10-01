@@ -112,7 +112,8 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
       log.warn(
           "Unable to send create event for entity with id {} for tenant {}",
           createdEntity.getEntityId(),
-          createdEntity.getTenantId());
+          createdEntity.getTenantId(),
+          ex);
     }
   }
 
@@ -129,7 +130,8 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
       log.warn(
           "Unable to send update event for entity with id {} for tenant {}",
           currEntity.getEntityId(),
-          currEntity.getTenantId());
+          currEntity.getTenantId(),
+          ex);
     }
   }
 
@@ -143,7 +145,8 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
       log.warn(
           "Unable to send delete event for entity with id {} for tenant {}",
           deletedEntity.getEntityId(),
-          deletedEntity.getTenantId());
+          deletedEntity.getTenantId(),
+          ex);
     }
   }
 
