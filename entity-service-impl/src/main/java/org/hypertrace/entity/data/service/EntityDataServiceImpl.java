@@ -121,7 +121,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
           Entity.newBuilder(),
           entitiesCollection,
           responseObserver);
-      trySendChangeNotification(tenantId, existingEntityCollection, List.of(normalizedEntity));
+      entityChangeEventGenerator.sendChangeNotification(
+          existingEntityCollection, List.of(normalizedEntity));
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -146,7 +147,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                       Function.identity()));
       java.util.Collection<Entity> existingEntities = getExistingEntities(entities.values());
       upsertEntities(entities, entitiesCollection, responseObserver);
-      trySendChangeNotification(tenantId, existingEntities, entities.values());
+      entityChangeEventGenerator.sendChangeNotification(existingEntities, entities.values());
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -173,19 +174,18 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         documentMap.put(key, doc);
       }
 
-      List<Entity> existingEntities =
-          Streams.stream(entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap))
-              .flatMap(
-                  document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
-              .map(Entity::toBuilder)
-              .map(builder -> builder.setTenantId(tenantId))
-              .map(Builder::build)
-              .collect(Collectors.toList());
+      List<Entity> existingEntities = getExistingEntities(updatedEntities);
 
-      existingEntities.forEach(responseObserver::onNext);
+      Streams.stream(entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap))
+          .flatMap(document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
+          .map(Entity::toBuilder)
+          .map(builder -> builder.setTenantId(tenantId))
+          .map(Entity.Builder::build)
+          .forEach(responseObserver::onNext);
+
       responseObserver.onCompleted();
 
-      trySendChangeNotification(tenantId, existingEntities, updatedEntities);
+      entityChangeEventGenerator.sendChangeNotification(existingEntities, updatedEntities);
     } catch (IOException e) {
       LOG.error("Failed to bulk upsert entities", e);
       responseObserver.onError(e);
@@ -285,7 +285,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       responseObserver.onNext(Empty.newBuilder().build());
       responseObserver.onCompleted();
       existingEntity.ifPresent(
-          entity -> trySendDeleteNotification(tenantId.get(), List.of(entity)));
+          entity -> entityChangeEventGenerator.sendDeleteNotification(List.of(entity)));
     } else {
       responseObserver.onError(new RuntimeException("Could not delete the entity."));
     }
@@ -567,10 +567,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         responseObserver.onNext(
             MergeAndUpsertEntityResponse.newBuilder().setEntity(upsertedEntity).build());
         responseObserver.onCompleted();
-        trySendChangeNotification(
-            tenantId,
-            existingEntity.map(List::of).orElse(Collections.emptyList()),
-            List.of(upsertedEntity));
+        entityChangeEventGenerator.sendChangeNotification(
+            existingEntity.map(List::of).orElse(Collections.emptyList()), List.of(upsertedEntity));
       } catch (IOException e) {
         responseObserver.onError(e);
       }
@@ -718,32 +716,6 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       // TODO : Not convinced with the default instance
       responseObserver.onNext((T) builder.build());
       responseObserver.onCompleted();
-    }
-  }
-
-  private void trySendDeleteNotification(String tenantId, java.util.Collection<Entity> entities) {
-    try {
-      entityChangeEventGenerator.sendDeleteNotification(entities);
-    } catch (Exception ex) {
-      LOG.warn(
-          "For tenantId {} unable to send delete notification for entities {}",
-          tenantId,
-          getEntityIds(entities));
-    }
-  }
-
-  private void trySendChangeNotification(
-      String tenantId,
-      java.util.Collection<Entity> existingEntities,
-      java.util.Collection<Entity> updatedEntities) {
-    try {
-      entityChangeEventGenerator.sendChangeNotification(existingEntities, updatedEntities);
-    } catch (Exception ex) {
-      LOG.warn(
-          "For tenantId {} unable to send change notification for entities - previous set {} and latest set",
-          tenantId,
-          getEntityIds(existingEntities),
-          getEntityIds(updatedEntities));
     }
   }
 

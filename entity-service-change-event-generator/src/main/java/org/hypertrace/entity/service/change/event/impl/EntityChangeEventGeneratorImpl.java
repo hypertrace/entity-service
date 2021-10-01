@@ -9,6 +9,7 @@ import com.typesafe.config.Config;
 import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.hypertrace.core.eventstore.EventProducer;
 import org.hypertrace.core.eventstore.EventProducerConfig;
 import org.hypertrace.core.eventstore.EventStore;
@@ -23,6 +24,7 @@ import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator
 import org.hypertrace.entity.service.change.event.util.KeyUtil;
 
 /** The interface Entity change event generator. */
+@Slf4j
 public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerator {
   private static final String EVENT_STORE = "event.store";
   private static final String EVENT_STORE_TYPE_CONFIG = "type";
@@ -101,25 +103,48 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   }
 
   private void sendCreateNotification(Entity createdEntity) {
-    Builder builder = EntityChangeEventValue.newBuilder();
-    builder.setCreateEvent(EntityCreateEvent.newBuilder().setCreatedEntity(createdEntity).build());
-    entityChangeEventProducer.send(getEntityChangeEventKey(createdEntity), builder.build());
+    try {
+      Builder builder = EntityChangeEventValue.newBuilder();
+      builder.setCreateEvent(
+          EntityCreateEvent.newBuilder().setCreatedEntity(createdEntity).build());
+      entityChangeEventProducer.send(getEntityChangeEventKey(createdEntity), builder.build());
+    } catch (Exception ex) {
+      log.warn(
+          "Unable to send create event for entity with id {} for tenant {}",
+          createdEntity.getEntityId(),
+          createdEntity.getTenantId());
+    }
   }
 
   private void sendUpdateNotification(Entity prevEntity, Entity currEntity) {
-    Builder builder = EntityChangeEventValue.newBuilder();
-    builder.setUpdateEvent(
-        EntityUpdateEvent.newBuilder()
-            .setPreviousEntity(prevEntity)
-            .setLatestEntity(currEntity)
-            .build());
-    entityChangeEventProducer.send(getEntityChangeEventKey(currEntity), builder.build());
+    try {
+      Builder builder = EntityChangeEventValue.newBuilder();
+      builder.setUpdateEvent(
+          EntityUpdateEvent.newBuilder()
+              .setPreviousEntity(prevEntity)
+              .setLatestEntity(currEntity)
+              .build());
+      entityChangeEventProducer.send(getEntityChangeEventKey(currEntity), builder.build());
+    } catch (Exception ex) {
+      log.warn(
+          "Unable to send update event for entity with id {} for tenant {}",
+          currEntity.getEntityId(),
+          currEntity.getTenantId());
+    }
   }
 
   private void sendDeleteNotification(Entity deletedEntity) {
-    Builder builder = EntityChangeEventValue.newBuilder();
-    builder.setDeleteEvent(EntityDeleteEvent.newBuilder().setDeletedEntity(deletedEntity).build());
-    entityChangeEventProducer.send(getEntityChangeEventKey(deletedEntity), builder.build());
+    try {
+      Builder builder = EntityChangeEventValue.newBuilder();
+      builder.setDeleteEvent(
+          EntityDeleteEvent.newBuilder().setDeletedEntity(deletedEntity).build());
+      entityChangeEventProducer.send(getEntityChangeEventKey(deletedEntity), builder.build());
+    } catch (Exception ex) {
+      log.warn(
+          "Unable to send delete event for entity with id {} for tenant {}",
+          deletedEntity.getEntityId(),
+          deletedEntity.getTenantId());
+    }
   }
 
   private String getEntityChangeEventKey(Entity entity) {
