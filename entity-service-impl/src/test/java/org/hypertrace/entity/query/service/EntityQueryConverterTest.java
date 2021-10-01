@@ -8,7 +8,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
@@ -191,6 +193,33 @@ public class EntityQueryConverterTest {
     assertEquals(2, docStoreSelections.size());
     assertEquals(EDS_COLUMN_NAME1, docStoreSelections.get(0));
     assertEquals(EDS_COLUMN_NAME2, docStoreSelections.get(1));
+  }
+
+  @Test
+  void testUnsetAttributeConversion() {
+    LiteralConstant literal =
+        LiteralConstant.newBuilder()
+            .setValue(org.hypertrace.entity.query.service.v1.Value.newBuilder().setLong(123L))
+            .build();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> EntityQueryConverter.convertToAttributeValue(literal));
+  }
+
+  @Test
+  void testValidAttributeConversion() {
+    LiteralConstant literal =
+        LiteralConstant.newBuilder()
+            .setValue(
+                org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                    .setLong(123L)
+                    .setValueType(ValueType.LONG))
+            .build();
+
+    assertEquals(
+        AttributeValue.newBuilder().setValue(Value.newBuilder().setLong(123L).build()).build(),
+        EntityQueryConverter.convertToAttributeValue(literal).build());
   }
 
   private void mockAttribute1() {

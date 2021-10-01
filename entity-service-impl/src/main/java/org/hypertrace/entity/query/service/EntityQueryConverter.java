@@ -2,6 +2,7 @@ package org.hypertrace.entity.query.service;
 
 import static java.util.stream.Collectors.toMap;
 
+import com.google.protobuf.Descriptors.FieldDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -225,9 +226,14 @@ class EntityQueryConverter {
   public static AttributeValue.Builder convertToAttributeValue(LiteralConstant literal) {
     AttributeValue.Builder builder = AttributeValue.newBuilder();
     org.hypertrace.entity.query.service.v1.Value value = literal.getValue();
-    switch (literal.getValue().getValueType()) {
-      case UNRECOGNIZED:
-        return null;
+
+    if (!isValueTypeSet(value)) {
+      throw new IllegalArgumentException(
+          String.format("Value type not set for literal %s", literal));
+    }
+
+    ValueType valueType = value.getValueType();
+    switch (valueType) {
       case BOOL:
         builder.setValue(
             org.hypertrace.entity.data.service.v1.Value.newBuilder()
@@ -337,8 +343,20 @@ class EntityQueryConverter {
                                         .build())))
                 .build());
         break;
+      case UNRECOGNIZED:
+      default:
+        throw new IllegalArgumentException(
+            String.format("Unrecognized value type %s for literal %s", valueType, literal));
     }
     return builder;
+  }
+
+  private static boolean isValueTypeSet(org.hypertrace.entity.query.service.v1.Value value) {
+    return value.hasField(
+        value
+            .getDescriptorForType()
+            .findFieldByNumber(
+                org.hypertrace.entity.query.service.v1.Value.VALUETYPE_FIELD_NUMBER));
   }
 
   private AttributeColumnInformation getAttributeColumnInfo(
