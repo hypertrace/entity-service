@@ -5,7 +5,7 @@ import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator
 
 public class EntityChangeEventGeneratorFactory {
 
-  static final String ENTITY_SERVICE_PUBLISH_CHANGE_EVENTS =
+  static final String ENTITY_SERVICE_CONFIG_PUBLISH_CHANGE_EVENTS =
       "entity.service.config.publish.change.events";
 
   private static final EntityChangeEventGeneratorFactory instance =
@@ -18,7 +18,7 @@ public class EntityChangeEventGeneratorFactory {
   }
 
   public EntityChangeEventGenerator createEntityChangeEventGenerator(Config appConfig) {
-    if (appConfig.getBoolean(ENTITY_SERVICE_PUBLISH_CHANGE_EVENTS)) {
+    if (appConfig.getBoolean(ENTITY_SERVICE_CONFIG_PUBLISH_CHANGE_EVENTS)) {
       return new EntityChangeEventGeneratorImpl(appConfig);
     } else {
       return new NoopEntityChangeEventGenerator();

@@ -1,6 +1,6 @@
 package org.hypertrace.entity.service.change.event.impl;
 
-import static org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorFactory.ENTITY_SERVICE_PUBLISH_CHANGE_EVENTS;
+import static org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorFactory.ENTITY_SERVICE_CONFIG_PUBLISH_CHANGE_EVENTS;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.typesafe.config.Config;
@@ -13,7 +13,7 @@ class EntityChangeEventGeneratorFactoryTest {
 
   @Test
   void createNoopEntityChangeEventGenerator() {
-    Config config = ConfigFactory.parseMap(Map.of(ENTITY_SERVICE_PUBLISH_CHANGE_EVENTS, "false"));
+    Config config = ConfigFactory.parseMap(Map.of(ENTITY_SERVICE_CONFIG_PUBLISH_CHANGE_EVENTS, "false"));
     EntityChangeEventGenerator entityChangeEventGenerator =
         EntityChangeEventGeneratorFactory.getInstance().createEntityChangeEventGenerator(config);
     assertTrue(entityChangeEventGenerator instanceof NoopEntityChangeEventGenerator);
@@ -30,7 +30,7 @@ class EntityChangeEventGeneratorFactoryTest {
   private Config getEventStoreConfig() {
     return ConfigFactory.parseMap(
         Map.of(
-            ENTITY_SERVICE_PUBLISH_CHANGE_EVENTS,
+                ENTITY_SERVICE_CONFIG_PUBLISH_CHANGE_EVENTS,
             "true",
             "event.store",
             Map.of(
