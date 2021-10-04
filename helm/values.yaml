@@ -79,6 +79,7 @@ serviceSelectorLabels:
 ###########
 entityServiceConfig:
   name: entity-service-config
+  publishChangeEvents: false
   dataStoreType: "mongo"
   mongo:
     host: mongo

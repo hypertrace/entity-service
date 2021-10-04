@@ -32,13 +32,12 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   private static final String ENTITY_CHANGE_EVENTS_PRODUCER_CONFIG =
       "entity.change.events.producer";
 
-  private EventStore eventStore;
-  private EventProducer<String, EntityChangeEventValue> entityChangeEventProducer;
+  private final EventProducer<String, EntityChangeEventValue> entityChangeEventProducer;
 
-  public EntityChangeEventGeneratorImpl(Config appConfig) {
+  EntityChangeEventGeneratorImpl(Config appConfig) {
     Config config = appConfig.getConfig(EVENT_STORE);
     String storeType = config.getString(EVENT_STORE_TYPE_CONFIG);
-    eventStore = EventStoreProvider.getEventStore(storeType, config);
+    EventStore eventStore = EventStoreProvider.getEventStore(storeType, config);
     entityChangeEventProducer =
         eventStore.createProducer(
             ENTITY_CHANGE_EVENTS_TOPIC,
@@ -48,9 +47,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   @VisibleForTesting
   EntityChangeEventGeneratorImpl(
-      EventStore eventStore,
       EventProducer<String, EntityChangeEventValue> entityChangeEventProducer) {
-    this.eventStore = eventStore;
     this.entityChangeEventProducer = entityChangeEventProducer;
   }
 

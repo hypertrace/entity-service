@@ -9,7 +9,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.hypertrace.core.eventstore.EventProducer;
-import org.hypertrace.core.eventstore.EventStore;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
 import org.hypertrace.entity.change.event.v1.EntityCreateEvent;
 import org.hypertrace.entity.change.event.v1.EntityDeleteEvent;
@@ -29,15 +28,13 @@ class EntityChangeEventGeneratorImplTest {
   private static final String TEST_ENTITY_TYPE = "test-entity-type";
   private static final String TEST_TENANT_ID = "test-tenant-1";
 
-  @Mock EventStore eventStore;
-
   @Mock EventProducer<String, EntityChangeEventValue> eventProducer;
 
   EntityChangeEventGeneratorImpl changeEventGenerator;
 
   @BeforeEach
   void setup() {
-    changeEventGenerator = new EntityChangeEventGeneratorImpl(eventStore, eventProducer);
+    changeEventGenerator = new EntityChangeEventGeneratorImpl(eventProducer);
   }
 
   @Test

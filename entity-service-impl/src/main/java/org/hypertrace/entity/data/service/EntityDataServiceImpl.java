@@ -174,15 +174,16 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         documentMap.put(key, doc);
       }
 
-      List<Entity> existingEntities = getExistingEntities(updatedEntities);
+      List<Entity> existingEntities =
+          Streams.stream(entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap))
+              .flatMap(
+                  document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
+              .map(Entity::toBuilder)
+              .map(builder -> builder.setTenantId(tenantId))
+              .map(Entity.Builder::build)
+              .collect(Collectors.toList());
 
-      Streams.stream(entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap))
-          .flatMap(document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
-          .map(Entity::toBuilder)
-          .map(builder -> builder.setTenantId(tenantId))
-          .map(Entity.Builder::build)
-          .forEach(responseObserver::onNext);
-
+      existingEntities.forEach(responseObserver::onNext);
       responseObserver.onCompleted();
 
       entityChangeEventGenerator.sendChangeNotification(existingEntities, updatedEntities);

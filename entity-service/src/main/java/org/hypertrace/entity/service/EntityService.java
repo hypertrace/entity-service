@@ -17,7 +17,7 @@ import org.hypertrace.core.serviceframework.config.ConfigClient;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl;
 import org.hypertrace.entity.query.service.EntityQueryServiceImpl;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
-import org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorImpl;
+import org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorFactory;
 import org.hypertrace.entity.type.service.v2.EntityTypeServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +57,8 @@ public class EntityService extends PlatformService {
 
     Channel localChannel = channelRegistry.forAddress("localhost", port);
     EntityChangeEventGenerator entityChangeEventGenerator =
-        new EntityChangeEventGeneratorImpl(getAppConfig());
+        EntityChangeEventGeneratorFactory.getInstance()
+            .createEntityChangeEventGenerator(getAppConfig());
 
     server =
         ServerBuilder.forPort(port)
