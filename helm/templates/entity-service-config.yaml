@@ -18,6 +18,7 @@ data:
           {{- end }}
         }
       }
+      publish.change.events = {{ .Values.entityServiceConfig.publishChangeEvents }}
     }
     attribute.service.config = {
       host = {{ .Values.entityServiceConfig.attributeService.host }}

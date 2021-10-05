@@ -79,6 +79,7 @@ serviceSelectorLabels:
 ###########
 entityServiceConfig:
   name: entity-service-config
+  publishChangeEvents: false
   dataStoreType: "mongo"
   mongo:
     host: mongo
@@ -113,3 +114,20 @@ hpa:
   minReplicas: 1
   maxReplicas: 5
   targetCPUUtilizationPercentage: 80
+
+kafka-topic-creator:
+  enabled: true
+  jobName: entity-service-kafka-topics-creator
+  helmHook: pre-install,pre-upgrade
+  kafka:
+    topics:
+      entity-change-events:
+        replicationFactor: 3
+        partitions: 8
+        configs:
+          retention.bytes: 1073741824 # default = -1
+          retention.ms: 86400000 # default = 604800000 (7 days)
+  zookeeper:
+    address: zookeeper:2181
+  imagePullSecrets: []
+  podAnnotations: {}

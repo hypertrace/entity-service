@@ -1,6 +1,7 @@
 build:
   roots:
     - entity-service-api/src/main/proto
+    - entity-service-change-event-api/src/main/proto
 lint:
   use:
     - DEFAULT
