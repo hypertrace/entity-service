@@ -119,6 +119,8 @@ kafka-topic-creator:
   enabled: true
   jobName: entity-service-kafka-topics-creator
   helmHook: pre-install,pre-upgrade
+  podAnnotations:
+    sidecar.istio.io/inject: "false"
   kafka:
     topics:
       entity-change-events:
@@ -130,4 +132,3 @@ kafka-topic-creator:
   zookeeper:
     address: zookeeper:2181
   imagePullSecrets: []
-  podAnnotations: {}
