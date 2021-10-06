@@ -10,28 +10,39 @@ import com.typesafe.config.Config;
  */
 public class EntityServiceClientCacheConfig {
 
+  public static long DEFAULT_CACHE_REFRESH_MS = 240000L;
   public static long DEFAULT_CACHE_EXPIRY_MS = 300000L;
   public static long DEFAULT_MAX_CACHE_SIZE = 1000L;
 
+  private static final String ENTITY_CACHE_REFRESH_MS = "entity.cache.refresh.ms";
   private static final String ENTITY_CACHE_EXPIRY_MS = "entity.cache.expiry.ms";
   private static final String ENTITY_MAX_CACHE_SIZE = "entity.max.cache.size";
 
+  private static final String ENRICHED_ENTITY_CACHE_REFRESH_MS = "enriched.entity.cache.refresh.ms";
   private static final String ENRICHED_ENTITY_CACHE_EXPIRY_MS = "enriched.entity.cache.expiry.ms";
   private static final String ENRICHED_ENTITY_MAX_CACHE_SIZE = "enriched.entity.max.cache.size";
 
+  private static final String ENTITY_IDS_CACHE_REFRESH_MS = "entity.ids.cache.refresh.ms";
   private static final String ENTITY_IDS_CACHE_EXPIRY_MS = "entity.ids.cache.expiry.ms";
   private static final String ENTITY_IDS_MAX_CACHE_SIZE = "entity.ids.max.cache.size";
 
   public static final EntityServiceClientCacheConfig DEFAULT = new EntityServiceClientCacheConfig();
 
-  private long entityCacheExpiryMs;
-  private long entityMaxCacheSize;
-  private long enrichedEntityCacheExpiryMs;
-  private long enrichedEntityMaxCacheSize;
-  private long entityIdsCacheExpiryMs;
-  private long entityIdsMaxCacheSize;
+  private final long entityCacheRefreshMs;
+  private final long entityCacheExpiryMs;
+  private final long entityMaxCacheSize;
+  private final long enrichedEntityCacheRefreshMs;
+  private final long enrichedEntityCacheExpiryMs;
+  private final long enrichedEntityMaxCacheSize;
+  private final long entityIdsCacheRefreshMs;
+  private final long entityIdsCacheExpiryMs;
+  private final long entityIdsMaxCacheSize;
 
   public EntityServiceClientCacheConfig(Config clientCacheConfig) {
+    entityCacheRefreshMs =
+        clientCacheConfig.hasPath(ENTITY_CACHE_REFRESH_MS)
+            ? clientCacheConfig.getLong(ENTITY_CACHE_REFRESH_MS)
+            : DEFAULT_CACHE_REFRESH_MS;
     entityCacheExpiryMs =
         clientCacheConfig.hasPath(ENTITY_CACHE_EXPIRY_MS)
             ? clientCacheConfig.getLong(ENTITY_CACHE_EXPIRY_MS)
@@ -41,6 +52,10 @@ public class EntityServiceClientCacheConfig {
             ? clientCacheConfig.getLong(ENTITY_MAX_CACHE_SIZE)
             : DEFAULT_MAX_CACHE_SIZE;
 
+    enrichedEntityCacheRefreshMs =
+        clientCacheConfig.hasPath(ENRICHED_ENTITY_CACHE_REFRESH_MS)
+            ? clientCacheConfig.getLong(ENRICHED_ENTITY_CACHE_REFRESH_MS)
+            : DEFAULT_CACHE_REFRESH_MS;
     enrichedEntityCacheExpiryMs =
         clientCacheConfig.hasPath(ENRICHED_ENTITY_CACHE_EXPIRY_MS)
             ? clientCacheConfig.getLong(ENRICHED_ENTITY_CACHE_EXPIRY_MS)
@@ -50,6 +65,10 @@ public class EntityServiceClientCacheConfig {
             ? clientCacheConfig.getLong(ENRICHED_ENTITY_MAX_CACHE_SIZE)
             : DEFAULT_MAX_CACHE_SIZE;
 
+    entityIdsCacheRefreshMs =
+        clientCacheConfig.hasPath(ENTITY_IDS_CACHE_REFRESH_MS)
+            ? clientCacheConfig.getLong(ENTITY_IDS_CACHE_REFRESH_MS)
+            : DEFAULT_CACHE_REFRESH_MS;
     entityIdsCacheExpiryMs =
         clientCacheConfig.hasPath(ENTITY_IDS_CACHE_EXPIRY_MS)
             ? clientCacheConfig.getLong(ENTITY_IDS_CACHE_EXPIRY_MS)
@@ -61,12 +80,19 @@ public class EntityServiceClientCacheConfig {
   }
 
   public EntityServiceClientCacheConfig() {
+    entityCacheRefreshMs = DEFAULT_CACHE_REFRESH_MS;
     entityCacheExpiryMs = DEFAULT_CACHE_EXPIRY_MS;
     entityMaxCacheSize = DEFAULT_MAX_CACHE_SIZE;
+    enrichedEntityCacheRefreshMs = DEFAULT_CACHE_REFRESH_MS;
     enrichedEntityCacheExpiryMs = DEFAULT_CACHE_EXPIRY_MS;
     enrichedEntityMaxCacheSize = DEFAULT_MAX_CACHE_SIZE;
+    entityIdsCacheRefreshMs = DEFAULT_CACHE_REFRESH_MS;
     entityIdsCacheExpiryMs = DEFAULT_CACHE_EXPIRY_MS;
     entityIdsMaxCacheSize = DEFAULT_MAX_CACHE_SIZE;
+  }
+
+  public long getEnrichedEntityCacheRefreshMs() {
+    return enrichedEntityCacheRefreshMs;
   }
 
   public long getEnrichedEntityCacheExpiryMs() {
@@ -77,12 +103,20 @@ public class EntityServiceClientCacheConfig {
     return enrichedEntityMaxCacheSize;
   }
 
+  public long getEntityCacheRefreshMs() {
+    return entityCacheRefreshMs;
+  }
+
   public long getEntityCacheExpiryMs() {
     return entityCacheExpiryMs;
   }
 
   public long getEntityMaxCacheSize() {
     return entityMaxCacheSize;
+  }
+
+  public long getEntityIdsCacheRefreshMs() {
+    return entityIdsCacheRefreshMs;
   }
 
   public long getEntityIdsCacheExpiryMs() {

@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
@@ -27,75 +28,95 @@ import org.slf4j.LoggerFactory;
 public class EdsCacheClient implements EdsClient {
 
   private static final Logger LOG = LoggerFactory.getLogger(EdsCacheClient.class);
+  private final EntityDataServiceClient client;
   private LoadingCache<EdsCacheKey, EnrichedEntity> enrichedEntityCache;
   private LoadingCache<EdsCacheKey, Entity> entityCache;
   private LoadingCache<EdsTypeAndIdAttributesCacheKey, String> entityIdsCache;
 
-  private final EntityDataServiceClient client;
-
   public EdsCacheClient(
       EntityDataServiceClient client, EntityServiceClientCacheConfig cacheConfig) {
-    this.client = client;
-    initCache(cacheConfig);
+    this(client, cacheConfig, Runnable::run);
   }
 
-  private void initCache(EntityServiceClientCacheConfig cacheConfig) {
+  public EdsCacheClient(
+      EntityDataServiceClient client,
+      EntityServiceClientCacheConfig cacheConfig,
+      Executor cacheLoaderExecutor) {
+    this.client = client;
+    initCache(cacheConfig, cacheLoaderExecutor);
+  }
+
+  private void initCache(EntityServiceClientCacheConfig cacheConfig, Executor executor) {
     this.enrichedEntityCache =
         CacheBuilder.newBuilder()
+            .refreshAfterWrite(cacheConfig.getEnrichedEntityCacheRefreshMs(), TimeUnit.MILLISECONDS)
             .expireAfterWrite(cacheConfig.getEnrichedEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEnrichedEntityMaxCacheSize())
             .recordStats()
             .build(
-                new CacheLoader<>() {
-                  public EnrichedEntity load(@Nonnull EdsCacheKey key) throws Exception {
-                    EnrichedEntity enrichedEntity =
-                        client.getEnrichedEntityById(key.tenantId, key.entityId);
-                    if (enrichedEntity == null) {
-                      throw new NotFoundException("Enriched entity not found");
-                    }
-                    return enrichedEntity;
-                  }
-                });
+                CacheLoader.asyncReloading(
+                    new CacheLoader<>() {
+                      public EnrichedEntity load(@Nonnull EdsCacheKey key) throws Exception {
+                        EnrichedEntity enrichedEntity =
+                            client.getEnrichedEntityById(key.tenantId, key.entityId);
+                        if (enrichedEntity == null) {
+                          throw new NotFoundException("Enriched entity not found");
+                        }
+                        return enrichedEntity;
+                      }
+                    },
+                    executor));
 
     this.entityCache =
         CacheBuilder.newBuilder()
+            .refreshAfterWrite(cacheConfig.getEntityCacheRefreshMs(), TimeUnit.MILLISECONDS)
             .expireAfterWrite(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEntityMaxCacheSize())
             .recordStats()
             .build(
-                new CacheLoader<>() {
-                  public Entity load(@Nonnull EdsCacheKey key) throws Exception {
-                    Entity entity = client.getById(key.tenantId, key.entityId);
-                    if (entity == null) {
-                      throw new NotFoundException("Entity not found");
-                    }
-                    return entity;
-                  }
-                });
+                CacheLoader.asyncReloading(
+                    new CacheLoader<>() {
+                      public Entity load(@Nonnull EdsCacheKey key) throws Exception {
+                        Entity entity = client.getById(key.tenantId, key.entityId);
+                        if (entity == null) {
+                          throw new NotFoundException("Entity not found");
+                        }
+                        return entity;
+                      }
+                    },
+                    executor));
 
     this.entityIdsCache =
         CacheBuilder.newBuilder()
+            .refreshAfterWrite(cacheConfig.getEntityIdsCacheRefreshMs(), TimeUnit.MILLISECONDS)
             .expireAfterWrite(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEntityIdsMaxCacheSize())
             .recordStats()
             .build(
-                new CacheLoader<>() {
-                  public String load(@Nonnull EdsTypeAndIdAttributesCacheKey key) throws Exception {
-                    Entity entity =
-                        client.getByTypeAndIdentifyingAttributes(
-                            key.tenantId, key.byTypeAndIdentifyingAttributes);
-                    if (entity == null) {
-                      throw new NotFoundException("Entity not found!!");
-                    }
-                    entityCache.put(
-                        new EdsCacheKey(entity.getTenantId(), entity.getEntityId()), entity);
-                    return entity.getEntityId();
-                  }
-                });
+                CacheLoader.asyncReloading(
+                    new CacheLoader<>() {
+                      public String load(@Nonnull EdsTypeAndIdAttributesCacheKey key)
+                          throws Exception {
+                        Entity entity =
+                            client.getByTypeAndIdentifyingAttributes(
+                                key.tenantId, key.byTypeAndIdentifyingAttributes);
+                        if (entity == null) {
+                          throw new NotFoundException("Entity not found!!");
+                        }
+                        entityCache.put(
+                            new EdsCacheKey(entity.getTenantId(), entity.getEntityId()), entity);
+                        return entity.getEntityId();
+                      }
+                    },
+                    executor));
     PlatformMetricsRegistry.registerCache(
-        "enrichedEntityCache", enrichedEntityCache, Collections.emptyMap());
-    PlatformMetricsRegistry.registerCache("entityCache", entityCache, Collections.emptyMap());
-    PlatformMetricsRegistry.registerCache("entityIdsCache", entityIdsCache, Collections.emptyMap());
+        this.getClass().getName() + ".enrichedEntityCache",
+        enrichedEntityCache,
+        Collections.emptyMap());
+    PlatformMetricsRegistry.registerCache(
+        this.getClass().getName() + ".entityCache", entityCache, Collections.emptyMap());
+    PlatformMetricsRegistry.registerCache(
+        this.getClass().getName() + ".entityIdsCache", entityIdsCache, Collections.emptyMap());
   }
 
   @Override
