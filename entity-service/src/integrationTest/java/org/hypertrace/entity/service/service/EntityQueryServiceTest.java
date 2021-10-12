@@ -596,24 +596,6 @@ public class EntityQueryServiceTest {
 
   @Test
   public void testBulkUpdateWithLabels() {
-    Entity.Builder apiEntityBuilder1 =
-        Entity.newBuilder()
-            .setTenantId(TENANT_ID)
-            .setEntityType(EntityType.API.name())
-            .setEntityName("api1")
-            .putIdentifyingAttributes(
-                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
-                createAttribute(SERVICE_ID))
-            .putIdentifyingAttributes(
-                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api1"))
-            .putIdentifyingAttributes(
-                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
-                createAttribute(API_TYPE));
-    apiEntityBuilder1.putAttributes(
-        apiAttributesMap.get(API_LABELS), createStringArrayAttribute(List.of("Label1")));
-
-    Entity entity1 = entityDataServiceClient.upsert(apiEntityBuilder1.build());
-
     Entity.Builder apiEntityBuilder2 =
         Entity.newBuilder()
             .setTenantId(TENANT_ID)

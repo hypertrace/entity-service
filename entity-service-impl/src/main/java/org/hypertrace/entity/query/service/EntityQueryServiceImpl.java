@@ -48,6 +48,7 @@ import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.util.DocStoreConverter;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat.Parser;
+import org.hypertrace.entity.service.util.DocStoreJsonFormat.Printer;
 import org.hypertrace.entity.service.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +57,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceImpl.class);
   private static final Parser PARSER = DocStoreJsonFormat.parser().ignoringUnknownFields();
+  private static final Printer PRINTER = DocStoreJsonFormat.printer().includingDefaultValueFields();
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final int DEFAULT_CHUNK_SIZE = 10_000;
@@ -288,7 +290,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       // literal constant as an array
       AttributeValue attributeValue =
           EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
-      String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
+      String jsonValue = PRINTER.print(attributeValue);
       JSONDocument jsonDocument = new JSONDocument(jsonValue);
 
       Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
@@ -403,8 +405,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       AttributeValue attributeValue =
           EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
       try {
-        String jsonValue =
-            DocStoreJsonFormat.printer().includingDefaultValueFields().print(attributeValue);
+        String jsonValue = PRINTER.print(attributeValue);
         documentMap.put(subDocPath, new JSONDocument(jsonValue));
       } catch (Exception e) {
         LOG.error("Failed to put update corresponding to {} in the documentMap", subDocPath, e);
