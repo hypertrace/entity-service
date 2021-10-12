@@ -24,6 +24,14 @@ data:
       host = {{ .Values.entityServiceConfig.attributeService.host }}
       port = {{ .Values.entityServiceConfig.attributeService.port }}
     }
+    event.store {
+      type = kafka
+      bootstrap.servers = "bootstrap:9092"
+      entity.change.events.producer {
+        bootstrap.servers = "bootstrap:9092"
+        schema.registry.url = "http://schema-registry-service:8081"
+      }
+    }
   {{- if .Values.attributes }}
     entity.service.attributeMap = [
   {{- range $i, $v := .Values.attributes }}

@@ -9,6 +9,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.hypertrace.core.eventstore.EventProducer;
+import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
 import org.hypertrace.entity.change.event.v1.EntityCreateEvent;
 import org.hypertrace.entity.change.event.v1.EntityDeleteEvent;
@@ -28,19 +30,21 @@ class EntityChangeEventGeneratorImplTest {
   private static final String TEST_ENTITY_TYPE = "test-entity-type";
   private static final String TEST_TENANT_ID = "test-tenant-1";
 
-  @Mock EventProducer<String, EntityChangeEventValue> eventProducer;
+  @Mock EventProducer<EntityChangeEventKey, EntityChangeEventValue> eventProducer;
 
   EntityChangeEventGeneratorImpl changeEventGenerator;
+  RequestContext requestContext;
 
   @BeforeEach
   void setup() {
     changeEventGenerator = new EntityChangeEventGeneratorImpl(eventProducer);
+    requestContext = RequestContext.forTenantId(TEST_TENANT_ID);
   }
 
   @Test
   void sendCreateNotification() {
     List<Entity> entities = createEntities(2);
-    changeEventGenerator.sendCreateNotification(entities);
+    changeEventGenerator.sendCreateNotification(requestContext, entities);
     InOrder inOrderVerifier = inOrder(eventProducer);
     inOrderVerifier
         .verify(eventProducer)
@@ -63,7 +67,7 @@ class EntityChangeEventGeneratorImplTest {
   @Test
   void sendDeleteNotification() {
     List<Entity> entities = createEntities(2);
-    changeEventGenerator.sendDeleteNotification(entities);
+    changeEventGenerator.sendDeleteNotification(requestContext, entities);
     InOrder inOrderVerifier = inOrder(eventProducer);
     inOrderVerifier
         .verify(eventProducer)
@@ -89,7 +93,7 @@ class EntityChangeEventGeneratorImplTest {
     List<Entity> updatedEntities = createEntities(1);
     updatedEntities.add(prevEntities.get(0));
     updatedEntities.add(prevEntities.get(1).toBuilder().setEntityName("Updated Entity").build());
-    changeEventGenerator.sendChangeNotification(prevEntities, updatedEntities);
+    changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
     verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(updatedEntities.get(0)),

@@ -122,7 +122,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
           entitiesCollection,
           responseObserver);
       entityChangeEventGenerator.sendChangeNotification(
-          existingEntityCollection, List.of(normalizedEntity));
+          RequestContext.CURRENT.get(), existingEntityCollection, List.of(normalizedEntity));
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -147,7 +147,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                       Function.identity()));
       java.util.Collection<Entity> existingEntities = getExistingEntities(entities.values());
       upsertEntities(entities, entitiesCollection, responseObserver);
-      entityChangeEventGenerator.sendChangeNotification(existingEntities, entities.values());
+      entityChangeEventGenerator.sendChangeNotification(
+          RequestContext.CURRENT.get(), existingEntities, entities.values());
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -186,7 +187,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       existingEntities.forEach(responseObserver::onNext);
       responseObserver.onCompleted();
 
-      entityChangeEventGenerator.sendChangeNotification(existingEntities, updatedEntities);
+      entityChangeEventGenerator.sendChangeNotification(
+          RequestContext.CURRENT.get(), existingEntities, updatedEntities);
     } catch (IOException e) {
       LOG.error("Failed to bulk upsert entities", e);
       responseObserver.onError(e);
@@ -286,7 +288,9 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       responseObserver.onNext(Empty.newBuilder().build());
       responseObserver.onCompleted();
       existingEntity.ifPresent(
-          entity -> entityChangeEventGenerator.sendDeleteNotification(List.of(entity)));
+          entity ->
+              entityChangeEventGenerator.sendDeleteNotification(
+                  RequestContext.CURRENT.get(), List.of(entity)));
     } else {
       responseObserver.onError(new RuntimeException("Could not delete the entity."));
     }
@@ -569,7 +573,9 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
             MergeAndUpsertEntityResponse.newBuilder().setEntity(upsertedEntity).build());
         responseObserver.onCompleted();
         entityChangeEventGenerator.sendChangeNotification(
-            existingEntity.map(List::of).orElse(Collections.emptyList()), List.of(upsertedEntity));
+            requestContext,
+            existingEntity.map(List::of).orElse(Collections.emptyList()),
+            List.of(upsertedEntity));
       } catch (IOException e) {
         responseObserver.onError(e);
       }

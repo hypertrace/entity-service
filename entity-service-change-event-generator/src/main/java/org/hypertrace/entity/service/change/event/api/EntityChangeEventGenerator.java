@@ -1,6 +1,7 @@
 package org.hypertrace.entity.service.change.event.api;
 
 import java.util.Collection;
+import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.Entity;
 
 /** The interface Entity change event generator. */
@@ -9,16 +10,18 @@ public interface EntityChangeEventGenerator {
   /**
    * Send create notification for newly added entities
    *
+   * @param requestContext requestContext
    * @param entities list of newly created entities
    */
-  void sendCreateNotification(Collection<Entity> entities);
+  void sendCreateNotification(RequestContext requestContext, Collection<Entity> entities);
 
   /**
    * Send delete notification for newly added entities
    *
+   * @param requestContext requestContext
    * @param entities list of deleted entities
    */
-  void sendDeleteNotification(Collection<Entity> entities);
+  void sendDeleteNotification(RequestContext requestContext, Collection<Entity> entities);
 
   /**
    * Send change notification for created, deleted or updated entities. The entities not present in
@@ -27,9 +30,12 @@ public interface EntityChangeEventGenerator {
    * updated entities collection are considered to be deleted. The entities present in both existing
    * and updated entities collection are considered to be updated.
    *
+   * @param requestContext requestContext
    * @param existingEntities list of existing entities
    * @param updatedEntities list of updated entities
    */
   void sendChangeNotification(
-      Collection<Entity> existingEntities, Collection<Entity> updatedEntities);
+      RequestContext requestContext,
+      Collection<Entity> existingEntities,
+      Collection<Entity> updatedEntities);
 }
