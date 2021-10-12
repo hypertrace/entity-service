@@ -45,7 +45,7 @@ jobs:
   validate-protos:
     runs-on: ubuntu-20.04
     container: 
-      image: bufbuild/buf:0.18.1
+      image: bufbuild/buf:0.35.1
       credentials:
         username: ${{ secrets.DOCKERHUB_READ_USER }}
         password: ${{ secrets.DOCKERHUB_READ_TOKEN }}
@@ -59,7 +59,9 @@ jobs:
           fetch-depth: 0
 
       - name: verify-protos
-        run: buf check lint
+        run: |
+          buf lint
+          buf breaking --against-input "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
 
   validate-helm-charts:
     runs-on: ubuntu-20.04
