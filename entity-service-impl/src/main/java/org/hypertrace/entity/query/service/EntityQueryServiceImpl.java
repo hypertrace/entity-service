@@ -403,7 +403,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       AttributeValue attributeValue =
           EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
       try {
-        String jsonValue = DocStoreJsonFormat.printer().print(attributeValue);
+        String jsonValue =
+            DocStoreJsonFormat.printer().includingDefaultValueFields().print(attributeValue);
         documentMap.put(subDocPath, new JSONDocument(jsonValue));
       } catch (Exception e) {
         LOG.error("Failed to put update corresponding to {} in the documentMap", subDocPath, e);

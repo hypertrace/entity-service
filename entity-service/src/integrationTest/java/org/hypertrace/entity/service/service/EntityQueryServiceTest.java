@@ -3,6 +3,7 @@ package org.hypertrace.entity.service.service;
 import static com.github.stefanbirkner.systemlambda.SystemLambda.withEnvironmentVariable;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENTITY_TYPES_COLLECTION;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -16,11 +17,13 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.DatastoreProvider;
 import org.hypertrace.core.grpcutils.client.GrpcClientRequestContextUtil;
@@ -31,6 +34,7 @@ import org.hypertrace.entity.constants.v1.CommonAttribute;
 import org.hypertrace.entity.constants.v1.ServiceAttribute;
 import org.hypertrace.entity.data.service.client.EntityDataServiceClient;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
+import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
@@ -94,6 +98,7 @@ public class EntityQueryServiceTest {
   // attributes defined in application.conf in attribute map
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
+  private static final String API_LABELS = "API.labels";
   private static final int CONTAINER_STARTUP_ATTEMPTS = 5;
   private static GenericContainer<?> mongo;
 
@@ -589,6 +594,69 @@ public class EntityQueryServiceTest {
     assertEquals("POST", values.get(3));
   }
 
+  @Test
+  public void testBulkUpdateWithLabels() {
+    Entity.Builder apiEntityBuilder1 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api1")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api1"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+    apiEntityBuilder1.putAttributes(
+        apiAttributesMap.get(API_LABELS), createStringArrayAttribute(List.of("Label1")));
+
+    Entity entity1 = entityDataServiceClient.upsert(apiEntityBuilder1.build());
+
+    Entity.Builder apiEntityBuilder2 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api2")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api2"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+    apiEntityBuilder2.putAttributes(
+        apiAttributesMap.get(API_LABELS), createStringArrayAttribute(List.of("Label1")));
+
+    Entity entity2 = entityDataServiceClient.upsert(apiEntityBuilder2.build());
+
+    UpdateOperation update =
+        UpdateOperation.newBuilder()
+            .setSetAttribute(
+                SetAttribute.newBuilder()
+                    .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_LABELS))
+                    .setValue(
+                        LiteralConstant.newBuilder()
+                            .setValue(
+                                org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                    .addAllStringArray(Collections.emptyList())
+                                    .setValueType(ValueType.STRING_ARRAY))))
+            .build();
+    EntityUpdateInfo updateInfo = EntityUpdateInfo.newBuilder().addUpdateOperation(update).build();
+    BulkEntityUpdateRequest bulkUpdateRequest =
+        BulkEntityUpdateRequest.newBuilder()
+            .setEntityType(EntityType.API.name())
+            .putEntities(entity2.getEntityId(), updateInfo)
+            .build();
+
+    assertDoesNotThrow(
+        () ->
+            GrpcClientRequestContextUtil.executeWithHeadersContext(
+                HEADERS, () -> entityQueryServiceClient.bulkUpdate(bulkUpdateRequest)));
+  }
+
   @Nested
   class TotalEntities {
 
@@ -675,6 +743,20 @@ public class EntityQueryServiceTest {
 
   private AttributeValue createAttribute(String name) {
     return AttributeValue.newBuilder().setValue(Value.newBuilder().setString(name).build()).build();
+  }
+
+  private AttributeValue createStringArrayAttribute(List<String> values) {
+    List<AttributeValue> collect =
+        values.stream()
+            .map(
+                value ->
+                    AttributeValue.newBuilder()
+                        .setValue(Value.newBuilder().setString(value))
+                        .build())
+            .collect(Collectors.toList());
+    return AttributeValue.newBuilder()
+        .setValueList(AttributeValueList.newBuilder().addAllValues(collect).build())
+        .build();
   }
 
   private Entity.Builder createApiEntity(String serviceId, String apiName, String apiType) {
