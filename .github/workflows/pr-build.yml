@@ -45,7 +45,7 @@ jobs:
   validate-protos:
     runs-on: ubuntu-20.04
     container:
-      image: bufbuild/buf:0.56.1
+      image: bufbuild/buf:0.56.0
       credentials:
         username: ${{ secrets.DOCKERHUB_READ_USER }}
         password: ${{ secrets.DOCKERHUB_READ_TOKEN }}
