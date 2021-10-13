@@ -14,6 +14,8 @@ import org.hypertrace.core.eventstore.EventProducer;
 import org.hypertrace.core.eventstore.EventProducerConfig;
 import org.hypertrace.core.eventstore.EventStore;
 import org.hypertrace.core.eventstore.EventStoreProvider;
+import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue.Builder;
 import org.hypertrace.entity.change.event.v1.EntityCreateEvent;
@@ -32,7 +34,8 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   private static final String ENTITY_CHANGE_EVENTS_PRODUCER_CONFIG =
       "entity.change.events.producer";
 
-  private final EventProducer<String, EntityChangeEventValue> entityChangeEventProducer;
+  private final EventProducer<EntityChangeEventKey, EntityChangeEventValue>
+      entityChangeEventProducer;
 
   EntityChangeEventGeneratorImpl(Config appConfig) {
     Config config = appConfig.getConfig(EVENT_STORE);
@@ -47,23 +50,25 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   @VisibleForTesting
   EntityChangeEventGeneratorImpl(
-      EventProducer<String, EntityChangeEventValue> entityChangeEventProducer) {
+      EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer) {
     this.entityChangeEventProducer = entityChangeEventProducer;
   }
 
   @Override
-  public void sendCreateNotification(Collection<Entity> entities) {
-    entities.forEach(this::sendCreateNotification);
+  public void sendCreateNotification(RequestContext requestContext, Collection<Entity> entities) {
+    entities.forEach(entity -> this.sendCreateNotification(requestContext, entity));
   }
 
   @Override
-  public void sendDeleteNotification(Collection<Entity> entities) {
-    entities.forEach(this::sendDeleteNotification);
+  public void sendDeleteNotification(RequestContext requestContext, Collection<Entity> entities) {
+    entities.forEach(entity -> this.sendDeleteNotification(requestContext, entity));
   }
 
   @Override
   public void sendChangeNotification(
-      Collection<Entity> existingEntities, Collection<Entity> updatedEntities) {
+      RequestContext requestContext,
+      Collection<Entity> existingEntities,
+      Collection<Entity> updatedEntities) {
     Map<String, Entity> existingEntityMap =
         existingEntities.stream().collect(Collectors.toMap(Entity::getEntityId, identity()));
     Map<String, Entity> upsertedEntityMap =
@@ -76,7 +81,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
         .entrySet()
         .forEach(
             entry -> {
-              sendCreateNotification(entry.getValue());
+              sendCreateNotification(requestContext, entry.getValue());
             });
 
     mapDifference
@@ -87,7 +92,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
               MapDifference.ValueDifference<Entity> valueDifference = entry.getValue();
               Entity prevEntity = valueDifference.leftValue();
               Entity currEntity = valueDifference.rightValue();
-              sendUpdateNotification(prevEntity, currEntity);
+              sendUpdateNotification(requestContext, prevEntity, currEntity);
             });
 
     mapDifference
@@ -95,15 +100,16 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
         .entrySet()
         .forEach(
             entry -> {
-              sendDeleteNotification(entry.getValue());
+              sendDeleteNotification(requestContext, entry.getValue());
             });
   }
 
-  private void sendCreateNotification(Entity createdEntity) {
+  private void sendCreateNotification(RequestContext requestContext, Entity createdEntity) {
     try {
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setCreateEvent(
           EntityCreateEvent.newBuilder().setCreatedEntity(createdEntity).build());
+      populateUserDetails(requestContext, builder);
       entityChangeEventProducer.send(getEntityChangeEventKey(createdEntity), builder.build());
     } catch (Exception ex) {
       log.warn(
@@ -114,7 +120,8 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     }
   }
 
-  private void sendUpdateNotification(Entity prevEntity, Entity currEntity) {
+  private void sendUpdateNotification(
+      RequestContext requestContext, Entity prevEntity, Entity currEntity) {
     try {
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setUpdateEvent(
@@ -122,6 +129,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
               .setPreviousEntity(prevEntity)
               .setLatestEntity(currEntity)
               .build());
+      populateUserDetails(requestContext, builder);
       entityChangeEventProducer.send(getEntityChangeEventKey(currEntity), builder.build());
     } catch (Exception ex) {
       log.warn(
@@ -132,11 +140,12 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     }
   }
 
-  private void sendDeleteNotification(Entity deletedEntity) {
+  private void sendDeleteNotification(RequestContext requestContext, Entity deletedEntity) {
     try {
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setDeleteEvent(
           EntityDeleteEvent.newBuilder().setDeletedEntity(deletedEntity).build());
+      populateUserDetails(requestContext, builder);
       entityChangeEventProducer.send(getEntityChangeEventKey(deletedEntity), builder.build());
     } catch (Exception ex) {
       log.warn(
@@ -147,7 +156,12 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     }
   }
 
-  private String getEntityChangeEventKey(Entity entity) {
+  private void populateUserDetails(RequestContext requestContext, Builder builder) {
+    requestContext.getUserId().ifPresent(userId -> builder.setUserId(userId));
+    requestContext.getName().ifPresent(userName -> builder.setUserName(userName));
+  }
+
+  private EntityChangeEventKey getEntityChangeEventKey(Entity entity) {
     return KeyUtil.getKey(entity);
   }
 }

@@ -12,6 +12,8 @@ message EntityChangeEventValue {
     EntityUpdateEvent update_event = 2;
     EntityDeleteEvent delete_event = 3;
   }
+  optional string user_id = 4;
+  optional string user_name = 5;
 }
 
 message EntityCreateEvent {
