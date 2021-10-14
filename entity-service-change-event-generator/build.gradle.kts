@@ -14,6 +14,8 @@ dependencies {
   implementation("com.google.guava:guava:30.1.1-jre")
   implementation("org.slf4j:slf4j-api:1.7.30")
 
+  runtimeOnly("io.confluent:kafka-protobuf-serializer:6.0.1")
+
   annotationProcessor("org.projectlombok:lombok:1.18.18")
   compileOnly("org.projectlombok:lombok:1.18.18")
 
