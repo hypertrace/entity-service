@@ -14,7 +14,7 @@ message EntityChangeEventValue {
   }
   optional string user_id = 4;
   optional string user_name = 5;
-  int64 event_time_millis = 6;
+  optional int64 event_time_millis = 6;
 }
 
 message EntityCreateEvent {
