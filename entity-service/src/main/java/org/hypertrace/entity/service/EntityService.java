@@ -5,6 +5,7 @@ import io.grpc.Channel;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -58,7 +59,7 @@ public class EntityService extends PlatformService {
     Channel localChannel = channelRegistry.forAddress("localhost", port);
     EntityChangeEventGenerator entityChangeEventGenerator =
         EntityChangeEventGeneratorFactory.getInstance()
-            .createEntityChangeEventGenerator(getAppConfig());
+            .createEntityChangeEventGenerator(getAppConfig(), Clock.systemUTC());
 
     server =
         ServerBuilder.forPort(port)

@@ -6,6 +6,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
+import java.time.Clock;
 import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,9 +37,11 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   private final EventProducer<EntityChangeEventKey, EntityChangeEventValue>
       entityChangeEventProducer;
+  private Clock clock;
 
-  EntityChangeEventGeneratorImpl(Config appConfig) {
+  EntityChangeEventGeneratorImpl(Config appConfig, Clock clock) {
     Config config = appConfig.getConfig(EVENT_STORE);
+    this.clock = clock;
     String storeType = config.getString(EVENT_STORE_TYPE_CONFIG);
     EventStore eventStore = EventStoreProvider.getEventStore(storeType, config);
     entityChangeEventProducer =
@@ -50,7 +53,9 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   @VisibleForTesting
   EntityChangeEventGeneratorImpl(
-      EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer) {
+      EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer,
+      Clock clock) {
+    this.clock = clock;
     this.entityChangeEventProducer = entityChangeEventProducer;
   }
 
@@ -109,6 +114,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setCreateEvent(
           EntityCreateEvent.newBuilder().setCreatedEntity(createdEntity).build());
+      builder.setEventTimeMillis(clock.millis());
       populateUserDetails(requestContext, builder);
       entityChangeEventProducer.send(getEntityChangeEventKey(createdEntity), builder.build());
     } catch (Exception ex) {
@@ -129,6 +135,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
               .setPreviousEntity(prevEntity)
               .setLatestEntity(currEntity)
               .build());
+      builder.setEventTimeMillis(clock.millis());
       populateUserDetails(requestContext, builder);
       entityChangeEventProducer.send(getEntityChangeEventKey(currEntity), builder.build());
     } catch (Exception ex) {
@@ -145,6 +152,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setDeleteEvent(
           EntityDeleteEvent.newBuilder().setDeletedEntity(deletedEntity).build());
+      builder.setEventTimeMillis(clock.millis());
       populateUserDetails(requestContext, builder);
       entityChangeEventProducer.send(getEntityChangeEventKey(deletedEntity), builder.build());
     } catch (Exception ex) {
