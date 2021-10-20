@@ -13,7 +13,8 @@ public interface EntityChangeEventGenerator {
    * @param requestContext requestContext
    * @param entities list of newly created entities
    */
-  void sendCreateNotification(RequestContext requestContext, Collection<Entity> entities);
+  void sendCreateNotification(
+      RequestContext requestContext, Collection<Entity> entities, long eventTimeMillis);
 
   /**
    * Send delete notification for newly added entities
@@ -21,7 +22,8 @@ public interface EntityChangeEventGenerator {
    * @param requestContext requestContext
    * @param entities list of deleted entities
    */
-  void sendDeleteNotification(RequestContext requestContext, Collection<Entity> entities);
+  void sendDeleteNotification(
+      RequestContext requestContext, Collection<Entity> entities, long eventTimeMillis);
 
   /**
    * Send change notification for created, deleted or updated entities. The entities not present in
@@ -37,5 +39,6 @@ public interface EntityChangeEventGenerator {
   void sendChangeNotification(
       RequestContext requestContext,
       Collection<Entity> existingEntities,
-      Collection<Entity> updatedEntities);
+      Collection<Entity> updatedEntities,
+      long eventTimeMillis);
 }

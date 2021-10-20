@@ -34,17 +34,19 @@ class EntityChangeEventGeneratorImplTest {
 
   EntityChangeEventGeneratorImpl changeEventGenerator;
   RequestContext requestContext;
+  long eventTimeMillis;
 
   @BeforeEach
   void setup() {
     changeEventGenerator = new EntityChangeEventGeneratorImpl(eventProducer);
     requestContext = RequestContext.forTenantId(TEST_TENANT_ID);
+    eventTimeMillis = System.currentTimeMillis();
   }
 
   @Test
   void sendCreateNotification() {
     List<Entity> entities = createEntities(2);
-    changeEventGenerator.sendCreateNotification(requestContext, entities);
+    changeEventGenerator.sendCreateNotification(requestContext, entities, eventTimeMillis);
     InOrder inOrderVerifier = inOrder(eventProducer);
     inOrderVerifier
         .verify(eventProducer)
@@ -53,6 +55,7 @@ class EntityChangeEventGeneratorImplTest {
             EntityChangeEventValue.newBuilder()
                 .setCreateEvent(
                     EntityCreateEvent.newBuilder().setCreatedEntity(entities.get(0)).build())
+                .setEventTimeMillis(eventTimeMillis)
                 .build());
     inOrderVerifier
         .verify(eventProducer)
@@ -61,13 +64,14 @@ class EntityChangeEventGeneratorImplTest {
             EntityChangeEventValue.newBuilder()
                 .setCreateEvent(
                     EntityCreateEvent.newBuilder().setCreatedEntity(entities.get(1)).build())
+                .setEventTimeMillis(eventTimeMillis)
                 .build());
   }
 
   @Test
   void sendDeleteNotification() {
     List<Entity> entities = createEntities(2);
-    changeEventGenerator.sendDeleteNotification(requestContext, entities);
+    changeEventGenerator.sendDeleteNotification(requestContext, entities, eventTimeMillis);
     InOrder inOrderVerifier = inOrder(eventProducer);
     inOrderVerifier
         .verify(eventProducer)
@@ -76,6 +80,7 @@ class EntityChangeEventGeneratorImplTest {
             EntityChangeEventValue.newBuilder()
                 .setDeleteEvent(
                     EntityDeleteEvent.newBuilder().setDeletedEntity(entities.get(0)).build())
+                .setEventTimeMillis(eventTimeMillis)
                 .build());
     inOrderVerifier
         .verify(eventProducer)
@@ -84,6 +89,7 @@ class EntityChangeEventGeneratorImplTest {
             EntityChangeEventValue.newBuilder()
                 .setDeleteEvent(
                     EntityDeleteEvent.newBuilder().setDeletedEntity(entities.get(1)).build())
+                .setEventTimeMillis(eventTimeMillis)
                 .build());
   }
 
@@ -93,13 +99,15 @@ class EntityChangeEventGeneratorImplTest {
     List<Entity> updatedEntities = createEntities(1);
     updatedEntities.add(prevEntities.get(0));
     updatedEntities.add(prevEntities.get(1).toBuilder().setEntityName("Updated Entity").build());
-    changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
+    changeEventGenerator.sendChangeNotification(
+        requestContext, prevEntities, updatedEntities, eventTimeMillis);
     verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(updatedEntities.get(0)),
             EntityChangeEventValue.newBuilder()
                 .setCreateEvent(
                     EntityCreateEvent.newBuilder().setCreatedEntity(updatedEntities.get(0)).build())
+                .setEventTimeMillis(eventTimeMillis)
                 .build());
     verify(eventProducer, times(1))
         .send(
@@ -110,6 +118,7 @@ class EntityChangeEventGeneratorImplTest {
                         .setPreviousEntity(prevEntities.get(1))
                         .setLatestEntity(updatedEntities.get(2))
                         .build())
+                .setEventTimeMillis(eventTimeMillis)
                 .build());
     verify(eventProducer, times(1))
         .send(
@@ -117,6 +126,7 @@ class EntityChangeEventGeneratorImplTest {
             EntityChangeEventValue.newBuilder()
                 .setDeleteEvent(
                     EntityDeleteEvent.newBuilder().setDeletedEntity(prevEntities.get(2)).build())
+                .setEventTimeMillis(eventTimeMillis)
                 .build());
   }
 
