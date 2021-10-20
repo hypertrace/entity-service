@@ -6,6 +6,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
+import java.time.Clock;
 import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,9 +37,11 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   private final EventProducer<EntityChangeEventKey, EntityChangeEventValue>
       entityChangeEventProducer;
+  private Clock clock;
 
-  EntityChangeEventGeneratorImpl(Config appConfig) {
+  EntityChangeEventGeneratorImpl(Config appConfig, Clock clock) {
     Config config = appConfig.getConfig(EVENT_STORE);
+    this.clock = clock;
     String storeType = config.getString(EVENT_STORE_TYPE_CONFIG);
     EventStore eventStore = EventStoreProvider.getEventStore(storeType, config);
     entityChangeEventProducer =
@@ -50,30 +53,27 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   @VisibleForTesting
   EntityChangeEventGeneratorImpl(
-      EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer) {
+      EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer,
+      Clock clock) {
+    this.clock = clock;
     this.entityChangeEventProducer = entityChangeEventProducer;
   }
 
   @Override
-  public void sendCreateNotification(
-      RequestContext requestContext, Collection<Entity> entities, long eventTimeMillis) {
-    entities.forEach(
-        entity -> this.sendCreateNotification(requestContext, entity, eventTimeMillis));
+  public void sendCreateNotification(RequestContext requestContext, Collection<Entity> entities) {
+    entities.forEach(entity -> this.sendCreateNotification(requestContext, entity));
   }
 
   @Override
-  public void sendDeleteNotification(
-      RequestContext requestContext, Collection<Entity> entities, long eventTimeMillis) {
-    entities.forEach(
-        entity -> this.sendDeleteNotification(requestContext, entity, eventTimeMillis));
+  public void sendDeleteNotification(RequestContext requestContext, Collection<Entity> entities) {
+    entities.forEach(entity -> this.sendDeleteNotification(requestContext, entity));
   }
 
   @Override
   public void sendChangeNotification(
       RequestContext requestContext,
       Collection<Entity> existingEntities,
-      Collection<Entity> updatedEntities,
-      long eventTimeMillis) {
+      Collection<Entity> updatedEntities) {
     Map<String, Entity> existingEntityMap =
         existingEntities.stream().collect(Collectors.toMap(Entity::getEntityId, identity()));
     Map<String, Entity> upsertedEntityMap =
@@ -86,7 +86,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
         .entrySet()
         .forEach(
             entry -> {
-              sendCreateNotification(requestContext, entry.getValue(), eventTimeMillis);
+              sendCreateNotification(requestContext, entry.getValue());
             });
 
     mapDifference
@@ -97,7 +97,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
               MapDifference.ValueDifference<Entity> valueDifference = entry.getValue();
               Entity prevEntity = valueDifference.leftValue();
               Entity currEntity = valueDifference.rightValue();
-              sendUpdateNotification(requestContext, prevEntity, currEntity, eventTimeMillis);
+              sendUpdateNotification(requestContext, prevEntity, currEntity);
             });
 
     mapDifference
@@ -105,17 +105,16 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
         .entrySet()
         .forEach(
             entry -> {
-              sendDeleteNotification(requestContext, entry.getValue(), eventTimeMillis);
+              sendDeleteNotification(requestContext, entry.getValue());
             });
   }
 
-  private void sendCreateNotification(
-      RequestContext requestContext, Entity createdEntity, long eventTimeMillis) {
+  private void sendCreateNotification(RequestContext requestContext, Entity createdEntity) {
     try {
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setCreateEvent(
           EntityCreateEvent.newBuilder().setCreatedEntity(createdEntity).build());
-      builder.setEventTimeMillis(eventTimeMillis);
+      builder.setEventTimeMillis(clock.millis());
       populateUserDetails(requestContext, builder);
       entityChangeEventProducer.send(getEntityChangeEventKey(createdEntity), builder.build());
     } catch (Exception ex) {
@@ -128,7 +127,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   }
 
   private void sendUpdateNotification(
-      RequestContext requestContext, Entity prevEntity, Entity currEntity, long eventTimeMillis) {
+      RequestContext requestContext, Entity prevEntity, Entity currEntity) {
     try {
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setUpdateEvent(
@@ -136,7 +135,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
               .setPreviousEntity(prevEntity)
               .setLatestEntity(currEntity)
               .build());
-      builder.setEventTimeMillis(eventTimeMillis);
+      builder.setEventTimeMillis(clock.millis());
       populateUserDetails(requestContext, builder);
       entityChangeEventProducer.send(getEntityChangeEventKey(currEntity), builder.build());
     } catch (Exception ex) {
@@ -148,13 +147,12 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     }
   }
 
-  private void sendDeleteNotification(
-      RequestContext requestContext, Entity deletedEntity, long eventTimeMillis) {
+  private void sendDeleteNotification(RequestContext requestContext, Entity deletedEntity) {
     try {
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setDeleteEvent(
           EntityDeleteEvent.newBuilder().setDeletedEntity(deletedEntity).build());
-      builder.setEventTimeMillis(eventTimeMillis);
+      builder.setEventTimeMillis(clock.millis());
       populateUserDetails(requestContext, builder);
       entityChangeEventProducer.send(getEntityChangeEventKey(deletedEntity), builder.build());
     } catch (Exception ex) {

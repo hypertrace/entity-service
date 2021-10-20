@@ -1,9 +1,12 @@
 package org.hypertrace.entity.service.change.event.impl;
 
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -29,24 +32,26 @@ class EntityChangeEventGeneratorImplTest {
 
   private static final String TEST_ENTITY_TYPE = "test-entity-type";
   private static final String TEST_TENANT_ID = "test-tenant-1";
+  private static final long CURRENT_TIME_MILLIS = 1000;
 
   @Mock EventProducer<EntityChangeEventKey, EntityChangeEventValue> eventProducer;
 
   EntityChangeEventGeneratorImpl changeEventGenerator;
   RequestContext requestContext;
-  long eventTimeMillis;
+  private Clock mockClock;
 
   @BeforeEach
   void setup() {
-    changeEventGenerator = new EntityChangeEventGeneratorImpl(eventProducer);
+    mockClock = mock(Clock.class);
+    when(mockClock.millis()).thenReturn(CURRENT_TIME_MILLIS);
+    changeEventGenerator = new EntityChangeEventGeneratorImpl(eventProducer, mockClock);
     requestContext = RequestContext.forTenantId(TEST_TENANT_ID);
-    eventTimeMillis = System.currentTimeMillis();
   }
 
   @Test
   void sendCreateNotification() {
     List<Entity> entities = createEntities(2);
-    changeEventGenerator.sendCreateNotification(requestContext, entities, eventTimeMillis);
+    changeEventGenerator.sendCreateNotification(requestContext, entities);
     InOrder inOrderVerifier = inOrder(eventProducer);
     inOrderVerifier
         .verify(eventProducer)
@@ -55,7 +60,7 @@ class EntityChangeEventGeneratorImplTest {
             EntityChangeEventValue.newBuilder()
                 .setCreateEvent(
                     EntityCreateEvent.newBuilder().setCreatedEntity(entities.get(0)).build())
-                .setEventTimeMillis(eventTimeMillis)
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
                 .build());
     inOrderVerifier
         .verify(eventProducer)
@@ -64,14 +69,14 @@ class EntityChangeEventGeneratorImplTest {
             EntityChangeEventValue.newBuilder()
                 .setCreateEvent(
                     EntityCreateEvent.newBuilder().setCreatedEntity(entities.get(1)).build())
-                .setEventTimeMillis(eventTimeMillis)
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
                 .build());
   }
 
   @Test
   void sendDeleteNotification() {
     List<Entity> entities = createEntities(2);
-    changeEventGenerator.sendDeleteNotification(requestContext, entities, eventTimeMillis);
+    changeEventGenerator.sendDeleteNotification(requestContext, entities);
     InOrder inOrderVerifier = inOrder(eventProducer);
     inOrderVerifier
         .verify(eventProducer)
@@ -80,7 +85,7 @@ class EntityChangeEventGeneratorImplTest {
             EntityChangeEventValue.newBuilder()
                 .setDeleteEvent(
                     EntityDeleteEvent.newBuilder().setDeletedEntity(entities.get(0)).build())
-                .setEventTimeMillis(eventTimeMillis)
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
                 .build());
     inOrderVerifier
         .verify(eventProducer)
@@ -89,7 +94,7 @@ class EntityChangeEventGeneratorImplTest {
             EntityChangeEventValue.newBuilder()
                 .setDeleteEvent(
                     EntityDeleteEvent.newBuilder().setDeletedEntity(entities.get(1)).build())
-                .setEventTimeMillis(eventTimeMillis)
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
                 .build());
   }
 
@@ -99,15 +104,14 @@ class EntityChangeEventGeneratorImplTest {
     List<Entity> updatedEntities = createEntities(1);
     updatedEntities.add(prevEntities.get(0));
     updatedEntities.add(prevEntities.get(1).toBuilder().setEntityName("Updated Entity").build());
-    changeEventGenerator.sendChangeNotification(
-        requestContext, prevEntities, updatedEntities, eventTimeMillis);
+    changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
     verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(updatedEntities.get(0)),
             EntityChangeEventValue.newBuilder()
                 .setCreateEvent(
                     EntityCreateEvent.newBuilder().setCreatedEntity(updatedEntities.get(0)).build())
-                .setEventTimeMillis(eventTimeMillis)
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
                 .build());
     verify(eventProducer, times(1))
         .send(
@@ -118,7 +122,7 @@ class EntityChangeEventGeneratorImplTest {
                         .setPreviousEntity(prevEntities.get(1))
                         .setLatestEntity(updatedEntities.get(2))
                         .build())
-                .setEventTimeMillis(eventTimeMillis)
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
                 .build());
     verify(eventProducer, times(1))
         .send(
@@ -126,7 +130,7 @@ class EntityChangeEventGeneratorImplTest {
             EntityChangeEventValue.newBuilder()
                 .setDeleteEvent(
                     EntityDeleteEvent.newBuilder().setDeletedEntity(prevEntities.get(2)).build())
-                .setEventTimeMillis(eventTimeMillis)
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
                 .build());
   }
 

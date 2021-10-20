@@ -11,14 +11,12 @@ public class NoopEntityChangeEventGenerator implements EntityChangeEventGenerato
   NoopEntityChangeEventGenerator() {}
 
   @Override
-  public void sendCreateNotification(
-      RequestContext requestContext, Collection<Entity> entities, long eventTimeMillis) {
+  public void sendCreateNotification(RequestContext requestContext, Collection<Entity> entities) {
     // No-op
   }
 
   @Override
-  public void sendDeleteNotification(
-      RequestContext requestContext, Collection<Entity> entities, long eventTimeMillis) {
+  public void sendDeleteNotification(RequestContext requestContext, Collection<Entity> entities) {
     // No-op
   }
 
@@ -26,8 +24,7 @@ public class NoopEntityChangeEventGenerator implements EntityChangeEventGenerato
   public void sendChangeNotification(
       RequestContext requestContext,
       Collection<Entity> existingEntities,
-      Collection<Entity> updatedEntities,
-      long eventTimeMillis) {
+      Collection<Entity> updatedEntities) {
     // No-op
   }
 }

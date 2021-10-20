@@ -1,6 +1,7 @@
 package org.hypertrace.entity.service.change.event.impl;
 
 import com.typesafe.config.Config;
+import java.time.Clock;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 
 public class EntityChangeEventGeneratorFactory {
@@ -17,9 +18,10 @@ public class EntityChangeEventGeneratorFactory {
     return instance;
   }
 
-  public EntityChangeEventGenerator createEntityChangeEventGenerator(Config appConfig) {
+  public EntityChangeEventGenerator createEntityChangeEventGenerator(
+      Config appConfig, Clock clock) {
     if (appConfig.getBoolean(ENTITY_SERVICE_CONFIG_PUBLISH_CHANGE_EVENTS)) {
-      return new EntityChangeEventGeneratorImpl(appConfig);
+      return new EntityChangeEventGeneratorImpl(appConfig, clock);
     } else {
       return new NoopEntityChangeEventGenerator();
     }

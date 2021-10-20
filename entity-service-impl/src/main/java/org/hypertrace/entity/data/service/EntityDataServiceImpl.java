@@ -122,10 +122,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
           entitiesCollection,
           responseObserver);
       entityChangeEventGenerator.sendChangeNotification(
-          RequestContext.CURRENT.get(),
-          existingEntityCollection,
-          List.of(normalizedEntity),
-          System.currentTimeMillis());
+          RequestContext.CURRENT.get(), existingEntityCollection, List.of(normalizedEntity));
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -151,10 +148,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       java.util.Collection<Entity> existingEntities = getExistingEntities(entities.values());
       upsertEntities(entities, entitiesCollection, responseObserver);
       entityChangeEventGenerator.sendChangeNotification(
-          RequestContext.CURRENT.get(),
-          existingEntities,
-          entities.values(),
-          System.currentTimeMillis());
+          RequestContext.CURRENT.get(), existingEntities, entities.values());
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -194,10 +188,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       responseObserver.onCompleted();
 
       entityChangeEventGenerator.sendChangeNotification(
-          RequestContext.CURRENT.get(),
-          existingEntities,
-          updatedEntities,
-          System.currentTimeMillis());
+          RequestContext.CURRENT.get(), existingEntities, updatedEntities);
     } catch (IOException e) {
       LOG.error("Failed to bulk upsert entities", e);
       responseObserver.onError(e);
@@ -299,7 +290,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       existingEntity.ifPresent(
           entity ->
               entityChangeEventGenerator.sendDeleteNotification(
-                  RequestContext.CURRENT.get(), List.of(entity), System.currentTimeMillis()));
+                  RequestContext.CURRENT.get(), List.of(entity)));
     } else {
       responseObserver.onError(new RuntimeException("Could not delete the entity."));
     }
@@ -584,8 +575,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         entityChangeEventGenerator.sendChangeNotification(
             requestContext,
             existingEntity.map(List::of).orElse(Collections.emptyList()),
-            List.of(upsertedEntity),
-            System.currentTimeMillis());
+            List.of(upsertedEntity));
       } catch (IOException e) {
         responseObserver.onError(e);
       }
