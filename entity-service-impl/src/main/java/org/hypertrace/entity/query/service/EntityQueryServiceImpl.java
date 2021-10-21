@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -365,7 +366,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       Set<Key> keys =
           request.getEntityIdsList().stream()
               .map(entityId -> new SingleValueKey(tenantId, entityId))
-              .collect(Collectors.toSet());
+              .collect(Collectors.toCollection(LinkedHashSet::new));
 
       String attributeId = request.getAttribute().getColumnName();
 
