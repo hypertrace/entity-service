@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.common.collect.Lists;
+import com.google.protobuf.ProtocolStringList;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.grpc.Channel;
@@ -22,6 +23,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.hypertrace.core.documentstore.Datastore;
@@ -38,6 +40,7 @@ import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
+import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
@@ -96,9 +99,10 @@ public class EntityQueryServiceTest {
   private static Map<String, String> apiAttributesMap;
   private static final Map<String, String> HEADERS = Map.of("x-tenant-id", TENANT_ID);
   // attributes defined in application.conf in attribute map
+  private static final String API_ID_ATTR = "API.id";
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
-  private static final String API_LABELS = "API.labels";
+  private static final String API_LABELS_ATTR = "API.labels";
   private static final int CONTAINER_STARTUP_ATTEMPTS = 5;
   private static GenericContainer<?> mongo;
 
@@ -610,7 +614,7 @@ public class EntityQueryServiceTest {
                 EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
                 createAttribute(API_TYPE));
     apiEntityBuilder2.putAttributes(
-        apiAttributesMap.get(API_LABELS), createStringArrayAttribute(List.of("Label1")));
+        apiAttributesMap.get(API_LABELS_ATTR), createStringArrayAttribute(List.of("Label1")));
 
     Entity entity2 = entityDataServiceClient.upsert(apiEntityBuilder2.build());
 
@@ -618,7 +622,7 @@ public class EntityQueryServiceTest {
         UpdateOperation.newBuilder()
             .setSetAttribute(
                 SetAttribute.newBuilder()
-                    .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_LABELS))
+                    .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR))
                     .setValue(
                         LiteralConstant.newBuilder()
                             .setValue(
@@ -637,6 +641,102 @@ public class EntityQueryServiceTest {
         () ->
             GrpcClientRequestContextUtil.executeWithHeadersContext(
                 HEADERS, () -> entityQueryServiceClient.bulkUpdate(bulkUpdateRequest)));
+  }
+
+  @Test
+  public void testBulkArrayValueUpdateWithLabels() {
+    Entity.Builder apiEntityBuilder1 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api1")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api1"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+    apiEntityBuilder1.putAttributes(
+        apiAttributesMap.get(API_LABELS_ATTR), createStringArrayAttribute(List.of("Label1")));
+
+    Entity entity1 = entityDataServiceClient.upsert(apiEntityBuilder1.build());
+
+    Entity.Builder apiEntityBuilder2 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api2")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api2"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+    apiEntityBuilder2.putAttributes(
+        apiAttributesMap.get(API_LABELS_ATTR), createStringArrayAttribute(List.of("Label2")));
+
+    Entity entity2 = entityDataServiceClient.upsert(apiEntityBuilder2.build());
+
+    BulkEntityArrayAttributeUpdateRequest request =
+        BulkEntityArrayAttributeUpdateRequest.newBuilder()
+            .build()
+            .newBuilder()
+            .setEntityType(EntityType.API.name())
+            .addAllEntityIds(Set.of(entity1.getEntityId(), entity2.getEntityId()))
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR))
+            .setOperation(BulkEntityArrayAttributeUpdateRequest.Operation.OPERATION_ADD)
+            .addAllValues(
+                List.of(
+                    LiteralConstant.newBuilder()
+                        .setValue(
+                            org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                .setString("Label3")
+                                .build())
+                        .build(),
+                    LiteralConstant.newBuilder()
+                        .setValue(
+                            org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                .setString("Label4")
+                                .build())
+                        .build()))
+            .build();
+
+    assertDoesNotThrow(
+        () ->
+            GrpcClientRequestContextUtil.executeWithHeadersContext(
+                HEADERS, () -> entityQueryServiceClient.bulkUpdateEntityArrayAttribute(request)));
+
+    EntityQueryRequest entityQueryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(EntityType.API.name())
+            .addSelection(createExpression(API_ID_ATTR))
+            .addSelection(createExpression(API_LABELS_ATTR))
+            .build();
+
+    Iterator<ResultSetChunk> resultSetChunkIterator =
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            HEADERS, () -> entityQueryServiceClient.execute(entityQueryRequest));
+
+    Map<String, List<String>> labelsMap = new HashMap<>();
+
+    while (resultSetChunkIterator.hasNext()) {
+      ResultSetChunk chunk = resultSetChunkIterator.next();
+
+      for (Row row : chunk.getRowList()) {
+        assertEquals(2, row.getColumnCount());
+        String apiName = row.getColumn(0).getString();
+        ProtocolStringList labelsValue = row.getColumn(1).getStringArrayList();
+        labelsMap.put(apiName, labelsValue);
+      }
+    }
+
+    assertEquals(2, labelsMap.size());
+    assertEquals(List.of("Label1", "Label3", "Label4"), labelsMap.get(entity1.getEntityId()));
+    assertEquals(List.of("Label2", "Label3", "Label4"), labelsMap.get(entity2.getEntityId()));
   }
 
   @Nested
