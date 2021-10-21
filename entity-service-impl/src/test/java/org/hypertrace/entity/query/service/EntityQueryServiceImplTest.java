@@ -13,10 +13,14 @@ import com.google.common.collect.Lists;
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import org.hypertrace.core.documentstore.BulkArrayValueUpdateRequest;
 import org.hypertrace.core.documentstore.BulkUpdateResult;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Document;
@@ -27,6 +31,8 @@ import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
+import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
+import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
@@ -68,6 +74,8 @@ public class EntityQueryServiceImplTest {
   private static final String EDS_COLUMN_NAME1 = "attributes.entity_id";
   private static final String ATTRIBUTE_ID2 = "Entity.status";
   private static final String EDS_COLUMN_NAME2 = "attributes.status";
+  private static final String ATTRIBUTE_ID3 = "Entity.labels";
+  private static final String EDS_COLUMN_NAME3 = "attributes.labels";
 
   @Test
   public void testUpdate_noTenantId() throws Exception {
@@ -559,6 +567,63 @@ public class EntityQueryServiceImplTest {
     assertEquals(entityId, row.getColumn(0).getString());
     assertEquals(entityName, row.getColumn(1).getString());
     assertEquals("doing good", row.getColumn(2).getString());
+  }
+
+  @Test
+  void testBulkUpdateEntityArrayAttribute() throws Exception {
+    List<String> entityIds =
+        IntStream.rangeClosed(1, 5)
+            .mapToObj(i -> UUID.randomUUID().toString())
+            .collect(Collectors.toList());
+    BulkEntityArrayAttributeUpdateRequest request =
+        BulkEntityArrayAttributeUpdateRequest.newBuilder()
+            .addAllEntityIds(entityIds)
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID3).build())
+            .setEntityType(TEST_ENTITY_TYPE)
+            .setOperation(BulkEntityArrayAttributeUpdateRequest.Operation.OPERATION_ADD)
+            .addAllValues(
+                List.of(
+                    LiteralConstant.newBuilder()
+                        .setValue(Value.newBuilder().setString("Label1"))
+                        .build(),
+                    LiteralConstant.newBuilder()
+                        .setValue(Value.newBuilder().setString("Label2"))
+                        .build()))
+            .build();
+
+    when(mockAttributeMapping.getDocStorePathByAttributeId(requestContext, ATTRIBUTE_ID3))
+        .thenReturn(Optional.of(EDS_COLUMN_NAME3));
+
+    StreamObserver<BulkEntityArrayAttributeUpdateResponse> mockResponseObserver =
+        mock(StreamObserver.class);
+
+    Context.current()
+        .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
+        .call(
+            () -> {
+              EntityQueryServiceImpl eqs =
+                  new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1);
+              eqs.bulkUpdateEntityArrayAttribute(request, mockResponseObserver);
+              return null;
+            });
+
+    ArgumentCaptor<BulkArrayValueUpdateRequest> argumentCaptor =
+        ArgumentCaptor.forClass(BulkArrayValueUpdateRequest.class);
+    verify(entitiesCollection, times(1)).bulkOperationOnArrayValue(argumentCaptor.capture());
+    BulkArrayValueUpdateRequest bulkArrayValueUpdateRequest = argumentCaptor.getValue();
+    assertEquals(
+        entityIds.stream()
+            .map(entityId -> new SingleValueKey("tenant1", entityId))
+            .collect(Collectors.toCollection(LinkedHashSet::new)),
+        bulkArrayValueUpdateRequest.getKeys());
+    assertEquals(
+        BulkArrayValueUpdateRequest.Operation.ADD, bulkArrayValueUpdateRequest.getOperation());
+    assertEquals(
+        EDS_COLUMN_NAME3 + ".valueList.values", bulkArrayValueUpdateRequest.getSubDocPath());
+    List<Document> subDocuments = bulkArrayValueUpdateRequest.getSubDocuments();
+    assertEquals(2, subDocuments.size());
+    assertEquals("{\"value\":{\"string\":\"Label1\"}}", subDocuments.get(0).toString());
+    assertEquals("{\"value\":{\"string\":\"Label2\"}}", subDocuments.get(1).toString());
   }
 
   @Nested
