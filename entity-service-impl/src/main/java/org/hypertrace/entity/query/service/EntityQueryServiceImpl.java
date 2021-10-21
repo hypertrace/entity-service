@@ -1,5 +1,6 @@
 package org.hypertrace.entity.query.service;
 
+import static java.util.Objects.isNull;
 import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
@@ -7,6 +8,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.stub.StreamObserver;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,6 +16,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.hypertrace.core.documentstore.BulkArrayValueUpdateRequest;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
@@ -26,6 +31,7 @@ import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
@@ -35,6 +41,7 @@ import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQuery
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
+import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.ResultSetMetadata;
 import org.hypertrace.entity.query.service.v1.Row;
@@ -61,6 +68,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final int DEFAULT_CHUNK_SIZE = 10_000;
+  private static final String ARRAY_VALUE_PATH_SUFFIX = ".valueList.values";
 
   private final Collection entitiesCollection;
   private final EntityQueryConverter entityQueryConverter;
@@ -286,12 +294,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
               .getDocStorePathByAttributeId(requestContext, attributeId)
               .orElseThrow(
                   () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
-      // Convert setAttribute LiteralConstant to AttributeValue. Need to be able to store an array
-      // literal constant as an array
-      AttributeValue attributeValue =
-          EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
-      String jsonValue = PRINTER.print(attributeValue);
-      JSONDocument jsonDocument = new JSONDocument(jsonValue);
+
+      JSONDocument jsonDocument = convertToJsonDocument(setAttribute.getValue());
 
       Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
       for (String entityId : request.getEntityIdsList()) {
@@ -312,7 +316,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             "Failed to update entities {}, subDocPath {}, with new doc {}.",
             entitiesUpdateMap,
             subDocPath,
-            jsonValue,
+            jsonDocument,
             e);
         throw e;
       }
@@ -344,6 +348,70 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       responseObserver.onError(
           new ServiceException("Error occurred while executing " + request, e));
     }
+  }
+
+  @Override
+  public void bulkUpdateEntityArrayAttribute(
+      BulkEntityArrayAttributeUpdateRequest request,
+      StreamObserver<ResultSetChunk> responseObserver) {
+    RequestContext requestContext = RequestContext.CURRENT.get();
+    String tenantId = requestContext.getTenantId().orElse(null);
+    if (isNull(tenantId)) {
+      responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
+      return;
+    }
+    try {
+      Set<Key> keys =
+          request.getEntityIdsList().stream()
+              .map(entityId -> new SingleValueKey(tenantId, entityId))
+              .collect(Collectors.toSet());
+
+      String attributeId = request.getAttribute().getColumnName();
+
+      String subDocPath =
+          entityAttributeMapping
+              .getDocStorePathByAttributeId(requestContext, attributeId)
+              .orElseThrow(
+                  () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
+
+      List<Document> subDocuments = new ArrayList<>();
+      for (LiteralConstant literalConstant : request.getValuesList()) {
+        subDocuments.add(convertToJsonDocument(literalConstant));
+      }
+      BulkArrayValueUpdateRequest bulkArrayValueUpdateRequest =
+          new BulkArrayValueUpdateRequest(
+              keys,
+              subDocPath + ARRAY_VALUE_PATH_SUFFIX,
+              getMatchingOperation(request.getOperation()),
+              subDocuments);
+      entitiesCollection.bulkOperationOnArrayValue(bulkArrayValueUpdateRequest);
+      responseObserver.onCompleted();
+    } catch (Exception e) {
+      responseObserver.onError(e);
+    }
+  }
+
+  private BulkArrayValueUpdateRequest.Operation getMatchingOperation(
+      BulkEntityArrayAttributeUpdateRequest.Operation operation) {
+    switch (operation) {
+      case OPERATION_ADD:
+        return BulkArrayValueUpdateRequest.Operation.ADD;
+      case OPERATION_REMOVE:
+        return BulkArrayValueUpdateRequest.Operation.REMOVE;
+      case OPERATION_SET:
+        return BulkArrayValueUpdateRequest.Operation.SET;
+      default:
+        throw new UnsupportedOperationException("Unknow operation " + operation);
+    }
+  }
+
+  private JSONDocument convertToJsonDocument(LiteralConstant literalConstant) throws IOException {
+    // Convert setAttribute LiteralConstant to AttributeValue. Need to be able to store an array
+    // literal constant as an array
+    AttributeValue attributeValue =
+        EntityQueryConverter.convertToAttributeValue(literalConstant).build();
+    String jsonValue = PRINTER.print(attributeValue);
+    return new JSONDocument(jsonValue);
   }
 
   private List<Entity> getProjectedEntities(
@@ -402,11 +470,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
               .getDocStorePathByAttributeId(requestContext, attributeId)
               .orElseThrow(
                   () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
-      AttributeValue attributeValue =
-          EntityQueryConverter.convertToAttributeValue(setAttribute.getValue()).build();
       try {
-        String jsonValue = PRINTER.print(attributeValue);
-        documentMap.put(subDocPath, new JSONDocument(jsonValue));
+        documentMap.put(subDocPath, convertToJsonDocument(setAttribute.getValue()));
       } catch (Exception e) {
         LOG.error("Failed to put update corresponding to {} in the documentMap", subDocPath, e);
         throw e;

@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.hypertrace.core.documentstore.Datastore;
@@ -38,6 +39,7 @@ import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
+import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
@@ -637,6 +639,74 @@ public class EntityQueryServiceTest {
         () ->
             GrpcClientRequestContextUtil.executeWithHeadersContext(
                 HEADERS, () -> entityQueryServiceClient.bulkUpdate(bulkUpdateRequest)));
+  }
+
+  @Test
+  public void testBulkArrayValueUpdateWithLabels() {
+    Entity.Builder apiEntityBuilder1 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api1")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api1"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+    apiEntityBuilder1.putAttributes(
+        apiAttributesMap.get(API_LABELS), createStringArrayAttribute(List.of("Label1")));
+
+    Entity entity1 = entityDataServiceClient.upsert(apiEntityBuilder1.build());
+
+    Entity.Builder apiEntityBuilder2 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api2")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api2"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+    apiEntityBuilder2.putAttributes(
+        apiAttributesMap.get(API_LABELS), createStringArrayAttribute(List.of("Label2")));
+
+    Entity entity2 = entityDataServiceClient.upsert(apiEntityBuilder2.build());
+
+    BulkEntityArrayAttributeUpdateRequest request =
+        BulkEntityArrayAttributeUpdateRequest.newBuilder()
+            .build()
+            .newBuilder()
+            .setEntityType(EntityType.API.name())
+            .addAllEntityIds(Set.of(entity1.getEntityId(), entity2.getEntityId()))
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_LABELS))
+            .setOperation(BulkEntityArrayAttributeUpdateRequest.Operation.OPERATION_ADD)
+            .addAllValues(
+                List.of(
+                    LiteralConstant.newBuilder()
+                        .setValue(
+                            org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                .setString("Label3")
+                                .build())
+                        .build(),
+                    LiteralConstant.newBuilder()
+                        .setValue(
+                            org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                .setString("Label4")
+                                .build())
+                        .build()))
+            .build();
+
+    assertDoesNotThrow(
+        () ->
+            GrpcClientRequestContextUtil.executeWithHeadersContext(
+                HEADERS, () -> entityQueryServiceClient.bulkUpdateEntityArrayAttribute(request)));
   }
 
   @Nested
