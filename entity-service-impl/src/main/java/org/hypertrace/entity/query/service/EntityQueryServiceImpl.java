@@ -8,7 +8,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.stub.StreamObserver;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.SneakyThrows;
 import org.hypertrace.core.documentstore.BulkArrayValueUpdateRequest;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
@@ -32,6 +32,7 @@ import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
+import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
@@ -353,7 +354,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   @Override
   public void bulkUpdateEntityArrayAttribute(
       BulkEntityArrayAttributeUpdateRequest request,
-      StreamObserver<ResultSetChunk> responseObserver) {
+      StreamObserver<BulkEntityArrayAttributeUpdateResponse> responseObserver) {
     RequestContext requestContext = RequestContext.CURRENT.get();
     String tenantId = requestContext.getTenantId().orElse(null);
     if (isNull(tenantId)) {
@@ -371,13 +372,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       String subDocPath =
           entityAttributeMapping
               .getDocStorePathByAttributeId(requestContext, attributeId)
-              .orElseThrow(
-                  () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
+              .orElseThrow(() -> new IllegalArgumentException("Unknown attribute " + attributeId));
 
-      List<Document> subDocuments = new ArrayList<>();
-      for (LiteralConstant literalConstant : request.getValuesList()) {
-        subDocuments.add(convertToJsonDocument(literalConstant));
-      }
+      List<Document> subDocuments =
+          request.getValuesList().stream()
+              .map(this::convertToJsonDocument)
+              .collect(Collectors.toUnmodifiableList());
       BulkArrayValueUpdateRequest bulkArrayValueUpdateRequest =
           new BulkArrayValueUpdateRequest(
               keys,
@@ -385,6 +385,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
               getMatchingOperation(request.getOperation()),
               subDocuments);
       entitiesCollection.bulkOperationOnArrayValue(bulkArrayValueUpdateRequest);
+      responseObserver.onNext(BulkEntityArrayAttributeUpdateResponse.newBuilder().build());
       responseObserver.onCompleted();
     } catch (Exception e) {
       responseObserver.onError(e);
@@ -405,7 +406,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
-  private JSONDocument convertToJsonDocument(LiteralConstant literalConstant) throws IOException {
+  @SneakyThrows
+  private JSONDocument convertToJsonDocument(LiteralConstant literalConstant) {
     // Convert setAttribute LiteralConstant to AttributeValue. Need to be able to store an array
     // literal constant as an array
     AttributeValue attributeValue =

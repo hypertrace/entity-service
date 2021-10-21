@@ -18,6 +18,6 @@ service EntityQueryService {
   }
   rpc total (TotalEntitiesRequest) returns (TotalEntitiesResponse) {
   }
-  rpc bulkUpdateEntityArrayAttribute (BulkEntityArrayAttributeUpdateRequest) returns (stream ResultSetChunk) {
+  rpc bulkUpdateEntityArrayAttribute (BulkEntityArrayAttributeUpdateRequest) returns (BulkEntityArrayAttributeUpdateResponse) {
   }
 }

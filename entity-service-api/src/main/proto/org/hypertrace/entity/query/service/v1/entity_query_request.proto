@@ -52,8 +52,8 @@ message SetAttribute {
 }
 
 message BulkEntityArrayAttributeUpdateRequest {
-  string entityType = 1;
-  repeated string entityIds = 2;
+  string entity_type = 1;
+  repeated string entity_ids = 2;
   ColumnIdentifier attribute = 3;
   Operation operation = 4;
   repeated LiteralConstant values = 5;
@@ -64,4 +64,7 @@ message BulkEntityArrayAttributeUpdateRequest {
     OPERATION_REMOVE = 2;
     OPERATION_SET = 3;
   }
+}
+
+message BulkEntityArrayAttributeUpdateResponse {
 }
