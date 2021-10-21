@@ -1,6 +1,9 @@
 package org.hypertrace.entity.query.service;
 
 import static java.util.Objects.isNull;
+import static java.util.stream.Collectors.joining;
+import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
+import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
 import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
@@ -18,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import org.hypertrace.core.documentstore.BulkArrayValueUpdateRequest;
 import org.hypertrace.core.documentstore.Collection;
@@ -30,6 +34,7 @@ import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
+import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
@@ -70,7 +75,16 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final int DEFAULT_CHUNK_SIZE = 10_000;
-  private static final String ARRAY_VALUE_PATH_SUFFIX = ".valueList.values";
+  private static final String ARRAY_VALUE_PATH_SUFFIX =
+      Stream.of(
+              "",
+              AttributeValue.getDescriptor()
+                  .findFieldByNumber(VALUE_LIST_FIELD_NUMBER)
+                  .getJsonName(),
+              AttributeValueList.getDescriptor()
+                  .findFieldByNumber(VALUES_FIELD_NUMBER)
+                  .getJsonName())
+          .collect(joining("."));
 
   private final Collection entitiesCollection;
   private final EntityQueryConverter entityQueryConverter;
