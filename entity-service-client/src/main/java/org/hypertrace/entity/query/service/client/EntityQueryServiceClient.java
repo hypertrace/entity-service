@@ -38,9 +38,9 @@ public class EntityQueryServiceClient {
   }
 
   public BulkEntityArrayAttributeUpdateResponse bulkUpdateEntityArrayAttribute(
-          BulkEntityArrayAttributeUpdateRequest request, Map<String, String> headers) {
+      BulkEntityArrayAttributeUpdateRequest request, Map<String, String> headers) {
     return GrpcClientRequestContextUtil.executeWithHeadersContext(
-            headers, () -> blockingStub.bulkUpdateEntityArrayAttribute(request));
+        headers, () -> blockingStub.bulkUpdateEntityArrayAttribute(request));
   }
 
   public TotalEntitiesResponse total(TotalEntitiesRequest request, Map<String, String> headers) {
