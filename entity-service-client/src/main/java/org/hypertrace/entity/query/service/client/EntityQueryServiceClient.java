@@ -5,6 +5,8 @@ import java.util.Iterator;
 import java.util.Map;
 import org.hypertrace.core.grpcutils.client.GrpcClientRequestContextUtil;
 import org.hypertrace.core.grpcutils.client.RequestContextClientCallCredsProviderFactory;
+import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
+import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceBlockingStub;
@@ -33,6 +35,12 @@ public class EntityQueryServiceClient {
       EntityUpdateRequest updateRequest, Map<String, String> headers) {
     return GrpcClientRequestContextUtil.executeWithHeadersContext(
         headers, () -> blockingStub.update(updateRequest));
+  }
+
+  public BulkEntityArrayAttributeUpdateResponse bulkUpdateEntityArrayAttribute(
+          BulkEntityArrayAttributeUpdateRequest request, Map<String, String> headers) {
+    return GrpcClientRequestContextUtil.executeWithHeadersContext(
+            headers, () -> blockingStub.bulkUpdateEntityArrayAttribute(request));
   }
 
   public TotalEntitiesResponse total(TotalEntitiesRequest request, Map<String, String> headers) {
