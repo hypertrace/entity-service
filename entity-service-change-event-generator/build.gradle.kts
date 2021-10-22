@@ -14,6 +14,15 @@ dependencies {
   implementation("com.google.guava:guava:30.1.1-jre")
   implementation("org.slf4j:slf4j-api:1.7.30")
 
+  constraints {
+    implementation("org.glassfish.jersey.core:jersey-common:2.34") {
+      because("https://snyk.io/vuln/SNYK-JAVA-ORGGLASSFISHJERSEYCORE-1255637")
+    }
+    implementation("org.apache.commons:commons-compress:1.21") {
+      because("Multiple vulnerabilities")
+    }
+  }
+
   runtimeOnly("io.confluent:kafka-protobuf-serializer:6.0.1")
 
   annotationProcessor("org.projectlombok:lombok:1.18.18")
