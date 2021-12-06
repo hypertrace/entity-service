@@ -11,14 +11,14 @@ dependencies {
   annotationProcessor("org.projectlombok:lombok:1.18.18")
   compileOnly("org.projectlombok:lombok:1.18.18")
 
-  implementation("org.hypertrace.core.documentstore:document-store:0.6.1")
-  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.6.1")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.6.1")
+  implementation("org.hypertrace.core.documentstore:document-store:0.6.2")
+  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.6.2")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.6.2")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.12.3")
   implementation(project(":entity-type-service-rx-client"))
   implementation(project(":entity-service-change-event-generator"))
 
-  implementation("com.google.protobuf:protobuf-java-util:3.15.6")
+  implementation("com.google.protobuf:protobuf-java-util:3.19.1")
   implementation("com.github.f4b6a3:uuid-creator:3.5.0")
   implementation("io.reactivex.rxjava3:rxjava:3.0.11")
   implementation("com.google.guava:guava:30.1.1-jre")
