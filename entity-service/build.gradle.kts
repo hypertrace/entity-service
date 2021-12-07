@@ -16,12 +16,12 @@ dependencies {
   implementation(project(":entity-service-impl"))
   implementation(project(":entity-service-change-event-generator"))
 
-  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.6.1")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.6.1")
+  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.6.2")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.6.2")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.28")
-  implementation("org.hypertrace.core.documentstore:document-store:0.6.1")
+  implementation("org.hypertrace.core.documentstore:document-store:0.6.2")
 
-  runtimeOnly("io.grpc:grpc-netty:1.40.1")
+  runtimeOnly("io.grpc:grpc-netty:1.42.0")
   constraints {
     runtimeOnly("io.netty:netty-codec-http2:4.1.68.Final") {
       because("https://snyk.io/vuln/SNYK-JAVA-IONETTY-1089809")
@@ -43,7 +43,7 @@ dependencies {
   integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.4.0")
   integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.28")
-  integrationTestImplementation("org.testcontainers:testcontainers:1.15.2")
+  integrationTestImplementation("org.testcontainers:testcontainers:1.16.1")
   integrationTestImplementation("com.github.stefanbirkner:system-lambda:1.2.0")
 }
 

@@ -22,6 +22,6 @@ sourceSets {
 }
 
 dependencies {
-  api("com.google.protobuf:protobuf-java:3.18.0")
+  api("com.google.protobuf:protobuf-java:3.19.1")
   api(project(":entity-service-api"))
 }
