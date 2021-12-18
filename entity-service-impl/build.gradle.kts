@@ -11,7 +11,7 @@ dependencies {
   annotationProcessor("org.projectlombok:lombok:1.18.18")
   compileOnly("org.projectlombok:lombok:1.18.18")
 
-  implementation("org.hypertrace.core.documentstore:document-store:0.6.2")
+  implementation("org.hypertrace.core.documentstore:document-store:0.6.4")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.6.2")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.6.2")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.12.3")
@@ -29,7 +29,7 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   testImplementation("org.mockito:mockito-core:3.8.0")
   testImplementation("org.mockito:mockito-junit-jupiter:3.8.0")
-  testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:2.15.0")
+  testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:2.16.0")
 }
 
 tasks.test {
