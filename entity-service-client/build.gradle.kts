@@ -13,13 +13,13 @@ dependencies {
   api(project(":entity-service-api"))
   api("com.typesafe:config:1.4.1")
 
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.6.2")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.0")
   implementation("org.slf4j:slf4j-api:1.7.30")
   implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.28")
 
-  testImplementation("io.grpc:grpc-core:1.42.0")
+  testImplementation("io.grpc:grpc-core:1.43.1")
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   testImplementation("org.mockito:mockito-core:3.8.0")
   testImplementation("org.mockito:mockito-junit-jupiter:3.8.0")
-  testImplementation("org.apache.logging.log4j:log4j-slf4j-impl:2.17.0")
+  testImplementation("org.apache.logging.log4j:log4j-slf4j-impl:2.17.1")
 }
