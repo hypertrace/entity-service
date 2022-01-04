@@ -41,7 +41,6 @@ import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequ
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
-import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceImplBase;
@@ -132,15 +131,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             DocStoreConverter.transform(tenantId.get(), query, docStoreSelections));
 
     ResultSetMetadata resultSetMetadata =
-        ResultSetMetadata.newBuilder()
-            .addAllColumnMetadata(
-                () ->
-                    request.getSelectionList().stream()
-                        .map(Expression::getColumnIdentifier)
-                        .map(ColumnIdentifier::getColumnName)
-                        .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build())
-                        .iterator())
-            .build();
+        this.buildMetadataForSelections(request.getSelectionList());
+
     if (!documentIterator.hasNext()) {
       ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
       resultBuilder.setResultSetMetadata(resultSetMetadata);
@@ -200,16 +192,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
     // Build metadata
-    resultBuilder.setResultSetMetadata(
-        ResultSetMetadata.newBuilder()
-            .addAllColumnMetadata(
-                () ->
-                    selections.stream()
-                        .map(Expression::getColumnIdentifier)
-                        .map(ColumnIdentifier::getColumnName)
-                        .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build())
-                        .iterator())
-            .build());
+    resultBuilder.setResultSetMetadata(this.buildMetadataForSelections(selections));
     // Build data
     resultBuilder.addAllRow(
         () ->
@@ -521,5 +504,21 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             DocStoreConverter.transform(tenantId.get(), query, Collections.emptyList()));
     responseObserver.onNext(TotalEntitiesResponse.newBuilder().setTotal(total).build());
     responseObserver.onCompleted();
+  }
+
+  private ResultSetMetadata buildMetadataForSelections(List<Expression> selections) {
+    return ResultSetMetadata.newBuilder()
+        .addAllColumnMetadata(
+            () ->
+                selections.stream()
+                    .map(Expression::getColumnIdentifier)
+                    .map(
+                        identifier ->
+                            identifier.getAlias().isEmpty()
+                                ? identifier.getColumnName()
+                                : identifier.getAlias())
+                    .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build())
+                    .iterator())
+        .build();
   }
 }

@@ -36,6 +36,7 @@ import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResp
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
+import org.hypertrace.entity.query.service.v1.ColumnMetadata;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
@@ -43,6 +44,7 @@ import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.LiteralConstant.Builder;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
+import org.hypertrace.entity.query.service.v1.ResultSetMetadata;
 import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.SetAttribute;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
@@ -624,6 +626,78 @@ public class EntityQueryServiceImplTest {
     assertEquals(2, subDocuments.size());
     assertEquals("{\"value\":{\"string\":\"Label1\"}}", subDocuments.get(0).toString());
     assertEquals("{\"value\":{\"string\":\"Label2\"}}", subDocuments.get(1).toString());
+  }
+
+  @Test
+  public void testExecute_withAliases() throws Exception {
+    Collection mockEntitiesCollection = mock(Collection.class);
+    List<Document> docs =
+        List.of(
+            new JSONDocument(
+                JsonFormat.printer()
+                    .print(
+                        Entity.newBuilder()
+                            .setTenantId("tenant-1")
+                            .setEntityType(TEST_ENTITY_TYPE)
+                            .setEntityId(UUID.randomUUID().toString())
+                            .setEntityName("Test entity 1")
+                            .putAttributes(
+                                "entity_id",
+                                AttributeValue.newBuilder()
+                                    .setValue(
+                                        org.hypertrace.entity.data.service.v1.Value.newBuilder()
+                                            .setString("col1-value"))
+                                    .build())
+                            .putAttributes(
+                                "status",
+                                AttributeValue.newBuilder()
+                                    .setValue(
+                                        org.hypertrace.entity.data.service.v1.Value.newBuilder()
+                                            .setString("col2-value"))
+                                    .build())
+                            .build())));
+    when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
+    EntityQueryRequest request =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(TEST_ENTITY_TYPE)
+            .addSelection(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder()
+                            .setColumnName(ATTRIBUTE_ID1)
+                            .setAlias("col1")))
+            .addSelection(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID2)))
+            .build();
+    StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
+    Context.current()
+        .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
+        .run(
+            () -> {
+              EntityQueryServiceImpl eqs =
+                  new EntityQueryServiceImpl(
+                      mockEntitiesCollection, mockMappingForAttributes1And2(), 100);
+
+              eqs.execute(request, mockResponseObserver);
+            });
+
+    ResultSetChunk expectedResponse =
+        ResultSetChunk.newBuilder()
+            .setIsLastChunk(true)
+            .setResultSetMetadata(
+                ResultSetMetadata.newBuilder()
+                    .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("col1"))
+                    .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName(ATTRIBUTE_ID2)))
+            .addRow(
+                Row.newBuilder()
+                    .addColumn(Value.newBuilder().setString("col1-value"))
+                    .addColumn(Value.newBuilder().setString("col2-value"))
+                    .build())
+            .build();
+    verify(mockResponseObserver, times(1)).onNext(eq(expectedResponse));
+    verify(mockResponseObserver, times(1)).onCompleted();
   }
 
   @Nested
