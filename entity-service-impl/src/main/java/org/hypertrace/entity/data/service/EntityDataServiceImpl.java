@@ -564,6 +564,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       Entity entityToUpsert =
           existingEntity
               .map(Entity::toBuilder)
+              .map(Entity.Builder::clearCreatedTime)
               .map(builder -> builder.mergeFrom(receivedEntity))
               .map(Builder::build)
               .orElse(receivedEntity);

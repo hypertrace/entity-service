@@ -42,11 +42,14 @@ message Entity {
   string version = 3;
   string entity_type = 4;
   string entity_name = 5;
-  //attributes that uniquely identify the entity
+  // attributes that uniquely identify the entity
   map<string, AttributeValue> identifying_attributes = 6;
 
-  //attributes that describe the entity (e.g. service labels, service version, lang etc)
+  // attributes that describe the entity (e.g. service labels, service version, lang etc)
   map<string, AttributeValue> attributes = 7;
+  // no need to set it. document-store automatically adds a `createdTime` field
+  // can directly read the value from the returned entity
+  int64 created_time = 8;
 }
 
 message Entities {

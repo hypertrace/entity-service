@@ -384,6 +384,11 @@ public class EntityQueryServiceTest {
             .addSelection(
                 Expression.newBuilder()
                     .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder().setColumnName("SERVICE.createdTime").build())
+                    .build())
+            .addSelection(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
                         ColumnIdentifier.newBuilder().setColumnName("SERVICE.name").build())
                     .build())
             .build();
@@ -396,7 +401,7 @@ public class EntityQueryServiceTest {
     assertEquals(1, list.size());
     assertEquals(0, list.get(0).getChunkId());
     assertTrue(list.get(0).getIsLastChunk());
-    assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
+    assertEquals(3, list.get(0).getResultSetMetadata().getColumnMetadataCount());
   }
 
   private AttributeValue generateRandomUUIDAttrValue() {
@@ -405,6 +410,7 @@ public class EntityQueryServiceTest {
         .build();
   }
 
+  @Test
   public void testCreateAndGetEntity() {
     // creating an api entity with attributes
     Entity.Builder apiEntityBuilder = createApiEntity(SERVICE_ID, API_NAME, API_TYPE);
