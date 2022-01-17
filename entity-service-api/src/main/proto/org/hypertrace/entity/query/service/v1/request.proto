@@ -12,6 +12,7 @@ message Expression {
     LiteralConstant literal = 2;
     Function function = 3;
     OrderByExpression orderBy = 4;
+    AggregateExpression aggregation = 5;
   }
 }
 
@@ -64,4 +65,20 @@ message OrderByExpression {
 enum SortOrder {
   ASC = 0;
   DESC = 1;
+}
+
+message AggregateExpression {
+  Aggregation operator = 1;
+  Expression expression = 2;
+}
+
+enum Aggregation {
+  AGGREGATION_UNSPECIFIED = 0;
+  AGGREGATION_AVG = 1;
+  AGGREGATION_MIN = 2;
+  AGGREGATION_MAX = 3;
+  AGGREGATION_SUM = 4;
+  AGGREGATION_COUNT = 5;
+  AGGREGATION_DISTINCT_COUNT = 6;
+  AGGREGATION_DISTINCT = 7;
 }
