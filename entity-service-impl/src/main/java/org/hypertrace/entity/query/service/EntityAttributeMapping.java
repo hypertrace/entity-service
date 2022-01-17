@@ -12,7 +12,7 @@ import org.hypertrace.core.attribute.service.v1.AttributeSource;
 import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 
-class EntityAttributeMapping {
+public class EntityAttributeMapping {
   private static final String ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.attributeMap";
   private static final String ATTRIBUTE_SERVICE_HOST = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT = "attribute.service.config.port";
