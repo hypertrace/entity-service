@@ -8,7 +8,7 @@ dependencies {
   api(project(":entity-service-api"))
   api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.28")
 
-  annotationProcessor("org.projectlombok:lombok:1.18.18")
+  annotationProcessor("org.projectlombok:lombok:1.18.22")
   compileOnly("org.projectlombok:lombok:1.18.18")
 
   implementation("org.hypertrace.core.documentstore:document-store:0.6.5")
@@ -20,7 +20,7 @@ dependencies {
   implementation(project(":entity-type-service-rx-client"))
   implementation(project(":entity-service-change-event-generator"))
 
-  implementation("com.google.protobuf:protobuf-java-util:3.19.1")
+  implementation("com.google.protobuf:protobuf-java-util:3.19.3")
   implementation("com.github.f4b6a3:uuid-creator:3.5.0")
   implementation("io.reactivex.rxjava3:rxjava:3.0.11")
   implementation("com.google.guava:guava:30.1.1-jre")
@@ -32,6 +32,9 @@ dependencies {
   testImplementation("org.mockito:mockito-core:3.8.0")
   testImplementation("org.mockito:mockito-junit-jupiter:3.8.0")
   testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:2.17.1")
+}
+repositories {
+  mavenCentral()
 }
 
 tasks.test {

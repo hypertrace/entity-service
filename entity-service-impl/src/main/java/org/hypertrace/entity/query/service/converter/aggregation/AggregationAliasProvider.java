@@ -1,30 +1,32 @@
 package org.hypertrace.entity.query.service.converter.aggregation;
 
+import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.COLUMNIDENTIFIER;
+
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.converter.ConversionException;
+import org.hypertrace.entity.query.service.converter.accessor.IOneOfAccessor;
 import org.hypertrace.entity.query.service.v1.AggregateExpression;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
+import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
 import org.hypertrace.entity.service.util.StringUtils;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class AggregationAliasProvider implements AliasProvider<AggregateExpression> {
   private final AliasProvider<ColumnIdentifier> identifierAliasProvider;
+  private final IOneOfAccessor<Expression, ValueCase> expressionAccessor;
 
   @Override
   public String getAlias(final AggregateExpression aggregateExpression) throws ConversionException {
     final Expression innerExpression = aggregateExpression.getExpression();
-
-    if (!innerExpression.hasColumnIdentifier()) {
-      throw new ConversionException(
-          String.format("Column identifier expected in: %s", aggregateExpression));
-    }
-
-    final ColumnIdentifier containingIdentifier = innerExpression.getColumnIdentifier();
+    final ColumnIdentifier containingIdentifier =
+        expressionAccessor.access(
+            innerExpression, innerExpression.getValueCase(), Set.of(COLUMNIDENTIFIER));
     final String alias = identifierAliasProvider.getAlias(containingIdentifier);
 
     if (StringUtils.isNotBlank(alias)) {

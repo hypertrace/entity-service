@@ -12,6 +12,6 @@ public class SelectionConverterModule extends AbstractModule {
   @Override
   protected void configure() {
     bind(new TypeLiteral<Converter<List<Expression>, Selection>>() {}).to(SelectionConverter.class);
-    bind(SelectionConverterFactory.class).to(SelectionConverterFactoryImpl.class);
+    bind(SelectionFactory.class).to(SelectionFactoryImpl.class);
   }
 }

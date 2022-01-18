@@ -6,7 +6,7 @@ import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.v1.Expression;
 
-public interface SelectionConverterFactory {
+public interface SelectionFactory {
   <T> Converter<T, ? extends SelectingExpression> getConverter(final Expression.ValueCase valueCase)
       throws ConversionException;
 

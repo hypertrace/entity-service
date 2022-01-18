@@ -16,11 +16,13 @@ import static org.hypertrace.entity.query.service.v1.AggregationOperator.AGGREGA
 import static org.hypertrace.entity.query.service.v1.AggregationOperator.AGGREGATION_OPERATOR_MAX;
 import static org.hypertrace.entity.query.service.v1.AggregationOperator.AGGREGATION_OPERATOR_MIN;
 import static org.hypertrace.entity.query.service.v1.AggregationOperator.AGGREGATION_OPERATOR_SUM;
+import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.COLUMNIDENTIFIER;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.AggregateExpression;
@@ -28,6 +30,7 @@ import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.operators.AggregationOperator;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
+import org.hypertrace.entity.query.service.converter.accessor.IOneOfAccessor;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 
@@ -40,6 +43,7 @@ public class AggregateExpressionConverter
           Map<org.hypertrace.entity.query.service.v1.AggregationOperator, AggregationOperator>>
       OPERATOR_MAP = memoize(AggregateExpressionConverter::getOperatorMap);
 
+  private final IOneOfAccessor<Expression, Expression.ValueCase> expressionAccessor;
   private final Converter<ColumnIdentifier, IdentifierExpression> identifierConverter;
 
   @Override
@@ -54,12 +58,9 @@ public class AggregateExpressionConverter
     }
 
     final Expression innerExpression = aggregateExpression.getExpression();
-    if (!innerExpression.hasColumnIdentifier()) {
-      throw new ConversionException(
-          String.format("Column identifier expected in: %s", aggregateExpression));
-    }
-
-    final ColumnIdentifier containingIdentifier = innerExpression.getColumnIdentifier();
+    final ColumnIdentifier containingIdentifier =
+        expressionAccessor.access(
+            innerExpression, innerExpression.getValueCase(), Set.of(COLUMNIDENTIFIER));
     final IdentifierExpression identifierExpression =
         identifierConverter.convert(containingIdentifier);
 

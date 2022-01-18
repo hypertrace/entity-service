@@ -18,7 +18,7 @@ import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class SelectionConverter implements Converter<List<Expression>, Selection> {
-  private final SelectionConverterFactory selectionConverterFactory;
+  private final SelectionFactory selectionFactory;
   private final IOneOfAccessor<Expression, ValueCase> expressionAccessor;
 
   @Override
@@ -40,8 +40,8 @@ public class SelectionConverter implements Converter<List<Expression>, Selection
   private <T> SelectionSpec getSpec(final ValueCase valueCase, final T innerExpression)
       throws ConversionException {
     final Converter<T, ? extends SelectingExpression> converter =
-        selectionConverterFactory.getConverter(valueCase);
-    final AliasProvider<T> aliasProvider = selectionConverterFactory.getAliasProvider(valueCase);
+        selectionFactory.getConverter(valueCase);
+    final AliasProvider<T> aliasProvider = selectionFactory.getAliasProvider(valueCase);
 
     final SelectingExpression selectingExpression = converter.convert(innerExpression);
     final String alias = aliasProvider.getAlias(innerExpression);

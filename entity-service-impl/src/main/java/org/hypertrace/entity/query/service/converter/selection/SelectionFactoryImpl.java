@@ -20,7 +20,7 @@ import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
 
 @Singleton
-public class SelectionConverterFactoryImpl implements SelectionConverterFactory {
+public class SelectionFactoryImpl implements SelectionFactory {
   private final Converter<
           org.hypertrace.entity.query.service.v1.AggregateExpression, AggregateExpression>
       aggregateExpressionConverter;
@@ -34,7 +34,7 @@ public class SelectionConverterFactoryImpl implements SelectionConverterFactory 
   private final Supplier<Map<ValueCase, AliasProvider<?>>> aliasProviderMap;
 
   @Inject
-  public SelectionConverterFactoryImpl(
+  public SelectionFactoryImpl(
       final Converter<
               org.hypertrace.entity.query.service.v1.AggregateExpression, AggregateExpression>
           aggregateExpressionConverter,
