@@ -1,8 +1,10 @@
-package org.hypertrace.entity.query.service.converter;
+package org.hypertrace.entity.query.service.converter.aggregation;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.AllArgsConstructor;
+import org.hypertrace.entity.query.service.converter.AliasProvider;
+import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.v1.AggregateExpression;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
@@ -18,7 +20,8 @@ public class AggregationAliasProvider implements AliasProvider<AggregateExpressi
     final Expression innerExpression = aggregateExpression.getExpression();
 
     if (!innerExpression.hasColumnIdentifier()) {
-      throw new ConversionException(String.format("Column identifier expected in: %s", aggregateExpression));
+      throw new ConversionException(
+          String.format("Column identifier expected in: %s", aggregateExpression));
     }
 
     final ColumnIdentifier containingIdentifier = innerExpression.getColumnIdentifier();
@@ -28,6 +31,8 @@ public class AggregationAliasProvider implements AliasProvider<AggregateExpressi
       return alias;
     }
 
-    return aggregateExpression.getOperator() + ALIAS_SEPARATOR + containingIdentifier.getColumnName();
+    return aggregateExpression.getOperator()
+        + ALIAS_SEPARATOR
+        + containingIdentifier.getColumnName();
   }
 }

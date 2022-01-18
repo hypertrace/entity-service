@@ -1,8 +1,9 @@
-package org.hypertrace.entity.query.service.converter;
+package org.hypertrace.entity.query.service.converter.identifier;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.AllArgsConstructor;
+import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.service.util.StringUtils;
 

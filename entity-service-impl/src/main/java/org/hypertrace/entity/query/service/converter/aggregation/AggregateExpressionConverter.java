@@ -1,6 +1,7 @@
-package org.hypertrace.entity.query.service.converter;
+package org.hypertrace.entity.query.service.converter.aggregation;
 
 import static com.google.common.base.Suppliers.memoize;
+import static java.util.Collections.unmodifiableMap;
 import static org.hypertrace.core.documentstore.expression.operators.AggregationOperator.AVG;
 import static org.hypertrace.core.documentstore.expression.operators.AggregationOperator.COUNT;
 import static org.hypertrace.core.documentstore.expression.operators.AggregationOperator.DISTINCT;
@@ -25,39 +26,51 @@ import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.AggregateExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.operators.AggregationOperator;
+import org.hypertrace.entity.query.service.converter.ConversionException;
+import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
-public class AggregateExpressionConverter implements Converter<org.hypertrace.entity.query.service.v1.AggregateExpression, AggregateExpression> {
-  private static final Supplier<Map<org.hypertrace.entity.query.service.v1.AggregationOperator, AggregationOperator>> OPERATOR_MAP = memoize(
-      AggregateExpressionConverter::getOperatorMap);
+public class AggregateExpressionConverter
+    implements Converter<
+        org.hypertrace.entity.query.service.v1.AggregateExpression, AggregateExpression> {
+  private static final Supplier<
+          Map<org.hypertrace.entity.query.service.v1.AggregationOperator, AggregationOperator>>
+      OPERATOR_MAP = memoize(AggregateExpressionConverter::getOperatorMap);
 
   private final Converter<ColumnIdentifier, IdentifierExpression> identifierConverter;
 
   @Override
   public AggregateExpression convert(
-      org.hypertrace.entity.query.service.v1.AggregateExpression aggregateExpression) throws ConversionException {
+      org.hypertrace.entity.query.service.v1.AggregateExpression aggregateExpression)
+      throws ConversionException {
     final AggregationOperator operator = OPERATOR_MAP.get().get(aggregateExpression.getOperator());
 
     if (operator == null) {
-      throw new ConversionException(String.format("Operator not found for: %s", aggregateExpression));
+      throw new ConversionException(
+          String.format("Operator not found for: %s", aggregateExpression));
     }
 
     final Expression innerExpression = aggregateExpression.getExpression();
     if (!innerExpression.hasColumnIdentifier()) {
-      throw new ConversionException(String.format("Column identifier expected in: %s", aggregateExpression));
+      throw new ConversionException(
+          String.format("Column identifier expected in: %s", aggregateExpression));
     }
 
     final ColumnIdentifier containingIdentifier = innerExpression.getColumnIdentifier();
-    final IdentifierExpression identifierExpression = identifierConverter.convert(containingIdentifier);
+    final IdentifierExpression identifierExpression =
+        identifierConverter.convert(containingIdentifier);
 
     return AggregateExpression.of(operator, identifierExpression);
   }
 
-  private static Map<org.hypertrace.entity.query.service.v1.AggregationOperator, AggregationOperator> getOperatorMap() {
-    final Map<org.hypertrace.entity.query.service.v1.AggregationOperator, AggregationOperator> map = new EnumMap<>(org.hypertrace.entity.query.service.v1.AggregationOperator.class);
+  private static Map<
+          org.hypertrace.entity.query.service.v1.AggregationOperator, AggregationOperator>
+      getOperatorMap() {
+    final Map<org.hypertrace.entity.query.service.v1.AggregationOperator, AggregationOperator> map =
+        new EnumMap<>(org.hypertrace.entity.query.service.v1.AggregationOperator.class);
 
     map.put(AGGREGATION_OPERATOR_AVG, AVG);
     map.put(AGGREGATION_OPERATOR_MIN, MIN);
@@ -67,6 +80,6 @@ public class AggregateExpressionConverter implements Converter<org.hypertrace.en
     map.put(AGGREGATION_OPERATOR_DISTINCT_COUNT, DISTINCT_COUNT);
     map.put(AGGREGATION_OPERATOR_DISTINCT, DISTINCT);
 
-    return map;
+    return unmodifiableMap(map);
   }
 }
