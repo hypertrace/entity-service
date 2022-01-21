@@ -16,6 +16,7 @@ import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.operators.LogicalOperator;
 import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
+import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.v1.Filter;
@@ -29,7 +30,8 @@ public class LogicalExpressionConverter implements Converter<Filter, LogicalExpr
   private final FilterConverterFactory filterConverterFactory;
 
   @Override
-  public LogicalExpression convert(final Filter filter) throws ConversionException {
+  public LogicalExpression convert(final Filter filter, final RequestContext requestContext)
+      throws ConversionException {
     final LogicalOperator operator = LOGICAL_OPERATOR_MAP.get().get(filter.getOperator());
 
     if (operator == null) {
@@ -39,17 +41,18 @@ public class LogicalExpressionConverter implements Converter<Filter, LogicalExpr
 
     final List<FilteringExpression> innerFilters = new ArrayList<>();
     for (final Filter innerFilter : filter.getChildFilterList()) {
-      final FilteringExpression expression = convertInnerFilter(innerFilter);
+      final FilteringExpression expression = convertInnerFilter(innerFilter, requestContext);
       innerFilters.add(expression);
     }
 
     return LogicalExpression.builder().operator(operator).operands(innerFilters).build();
   }
 
-  private FilteringExpression convertInnerFilter(final Filter filter) throws ConversionException {
+  private FilteringExpression convertInnerFilter(
+      final Filter filter, final RequestContext requestContext) throws ConversionException {
     final Converter<Filter, ? extends FilteringExpression> filterConverter =
         filterConverterFactory.getFilterConverter(filter.getOperator());
-    return filterConverter.convert(filter);
+    return filterConverter.convert(filter, requestContext);
   }
 
   private static Map<Operator, LogicalOperator> getLogicalOperatorMap() {

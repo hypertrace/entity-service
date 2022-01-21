@@ -27,9 +27,10 @@ import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
+import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
-import org.hypertrace.entity.query.service.converter.accessor.IOneOfAccessor;
+import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
@@ -42,12 +43,13 @@ import org.hypertrace.entity.query.service.v1.Operator;
 public class RelationalExpressionConverter implements Converter<Filter, RelationalExpression> {
   private static final Supplier<Map<Operator, RelationalOperator>> RELATIONAL_OPERATOR_MAP =
       Suppliers.memoize(RelationalExpressionConverter::getRelationalOperatorMap);
-  private final IOneOfAccessor<Expression, ValueCase> expressionAccessor;
+  private final OneOfAccessor<Expression, ValueCase> expressionAccessor;
   private final Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
   private final Converter<LiteralConstant, ConstantExpression> constantExpressionConverter;
 
   @Override
-  public RelationalExpression convert(final Filter filter) throws ConversionException {
+  public RelationalExpression convert(final Filter filter, final RequestContext requestContext)
+      throws ConversionException {
     final Expression lhs = filter.getLhs();
     final Operator operator = filter.getOperator();
     final Expression rhs = filter.getRhs();
@@ -58,8 +60,9 @@ public class RelationalExpressionConverter implements Converter<Filter, Relation
         expressionAccessor.access(rhs, rhs.getValueCase(), Set.of(LITERAL));
 
     final IdentifierExpression identifierExpression =
-        identifierExpressionConverter.convert(identifier);
-    final ConstantExpression constantExpression = constantExpressionConverter.convert(literal);
+        identifierExpressionConverter.convert(identifier, requestContext);
+    final ConstantExpression constantExpression =
+        constantExpressionConverter.convert(literal, requestContext);
 
     final RelationalOperator relationalOperator = RELATIONAL_OPERATOR_MAP.get().get(operator);
 
@@ -75,13 +78,13 @@ public class RelationalExpressionConverter implements Converter<Filter, Relation
     final Map<Operator, RelationalOperator> map = new EnumMap<>(Operator.class);
 
     // TODO: Add support for NOT
-    //        map.put(NOT, RelationalOperator.NOT);
+    //  map.put(NOT, RelationalOperator.NOT);
     map.put(EQ, RelationalOperator.EQ);
     map.put(NEQ, RelationalOperator.NEQ);
     map.put(IN, RelationalOperator.IN);
     map.put(NOT_IN, RelationalOperator.NOT_IN);
     // TODO: Add support for range
-    //        map.put(RANGE, RelationalOperator.RANGE);
+    //  map.put(RANGE, RelationalOperator.RANGE);
     map.put(GT, RelationalOperator.GT);
     map.put(LT, RelationalOperator.LT);
     map.put(GE, RelationalOperator.GTE);

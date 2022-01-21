@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.query.Query;
 import org.hypertrace.core.documentstore.query.Sort;
-import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.accessor.AccessorModule;
 import org.hypertrace.entity.query.service.converter.aggregation.AggregationModule;
@@ -22,7 +21,6 @@ import org.hypertrace.entity.query.service.v1.OrderByExpression;
 @AllArgsConstructor
 public class ConverterModule extends AbstractModule {
   private final EntityAttributeMapping attributeMapping;
-  private final RequestContext requestContext;
 
   @Override
   protected void configure() {
@@ -41,10 +39,5 @@ public class ConverterModule extends AbstractModule {
   @Provides
   EntityAttributeMapping getEntityAttributeMapping() {
     return attributeMapping;
-  }
-
-  @Provides
-  RequestContext getRequestContext() {
-    return requestContext;
   }
 }

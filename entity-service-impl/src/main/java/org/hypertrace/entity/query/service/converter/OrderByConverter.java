@@ -19,7 +19,8 @@ import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.operators.SortingOrder;
 import org.hypertrace.core.documentstore.query.Sort;
 import org.hypertrace.core.documentstore.query.SortingSpec;
-import org.hypertrace.entity.query.service.converter.accessor.IOneOfAccessor;
+import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
@@ -31,28 +32,31 @@ import org.hypertrace.entity.query.service.v1.SortOrder;
 public class OrderByConverter implements Converter<List<OrderByExpression>, Sort> {
   private static final Supplier<Map<SortOrder, SortingOrder>> ORDER_MAP =
       memoize(OrderByConverter::getMapping);
-  private final IOneOfAccessor<Expression, ValueCase> expressionAccessor;
+  private final OneOfAccessor<Expression, ValueCase> expressionAccessor;
   private final Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
 
   @Override
-  public Sort convert(final List<OrderByExpression> orders) throws ConversionException {
+  public Sort convert(final List<OrderByExpression> orders, final RequestContext requestContext)
+      throws ConversionException {
     final List<SortingSpec> specs = new ArrayList<>();
 
     for (final OrderByExpression orderBy : orders) {
-      specs.add(convert(orderBy));
+      final SortingSpec spec = convert(orderBy, requestContext);
+      specs.add(spec);
     }
 
     return Sort.builder().sortingSpecs(specs).build();
   }
 
-  private SortingSpec convert(final OrderByExpression orderBy) throws ConversionException {
+  private SortingSpec convert(final OrderByExpression orderBy, final RequestContext requestContext)
+      throws ConversionException {
     final Expression innerExpression = orderBy.getExpression();
 
     final ColumnIdentifier identifier =
         expressionAccessor.access(
             innerExpression, innerExpression.getValueCase(), Set.of(COLUMNIDENTIFIER));
     final IdentifierExpression identifierExpression =
-        identifierExpressionConverter.convert(identifier);
+        identifierExpressionConverter.convert(identifier, requestContext);
 
     final SortingOrder order = ORDER_MAP.get().get(orderBy.getOrder());
 

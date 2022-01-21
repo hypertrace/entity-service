@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.toUnmodifiableList;
 
 import com.google.inject.Singleton;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
+import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Value;
 
@@ -11,7 +12,8 @@ import org.hypertrace.entity.query.service.v1.Value;
 public class ConstantExpressionConverter implements Converter<LiteralConstant, ConstantExpression> {
 
   @Override
-  public ConstantExpression convert(final LiteralConstant literalConstant)
+  public ConstantExpression convert(
+      final LiteralConstant literalConstant, final RequestContext requestContext)
       throws ConversionException {
     final Value value = literalConstant.getValue();
 

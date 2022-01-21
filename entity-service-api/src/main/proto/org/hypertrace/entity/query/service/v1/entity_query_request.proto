@@ -16,7 +16,6 @@ message EntityQueryRequest {
   int32 limit = 5;
   int32 offset = 6;
   repeated GroupByExpression groupBy = 8;
-  // TODO: Do we need to support filtering on grouped values (HAVING clause)?
 }
 
 message EntityUpdateRequest {

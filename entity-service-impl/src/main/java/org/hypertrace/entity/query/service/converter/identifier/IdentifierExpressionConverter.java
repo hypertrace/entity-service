@@ -16,10 +16,10 @@ import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 public class IdentifierExpressionConverter
     implements Converter<ColumnIdentifier, IdentifierExpression> {
   private final EntityAttributeMapping attributeMapping;
-  private final RequestContext requestContext;
 
   @Override
-  public IdentifierExpression convert(final ColumnIdentifier identifier)
+  public IdentifierExpression convert(
+      final ColumnIdentifier identifier, final RequestContext requestContext)
       throws ConversionException {
     final Optional<String> maybeSubDocPath =
         attributeMapping.getDocStorePathByAttributeId(requestContext, identifier.getColumnName());

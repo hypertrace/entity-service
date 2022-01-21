@@ -33,9 +33,6 @@ dependencies {
   testImplementation("org.mockito:mockito-junit-jupiter:3.8.0")
   testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:2.17.1")
 }
-repositories {
-  mavenCentral()
-}
 
 tasks.test {
   useJUnitPlatform()

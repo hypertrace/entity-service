@@ -1,4 +1,7 @@
 package org.hypertrace.entity.query.service.converter;
+
+import org.hypertrace.core.grpcutils.context.RequestContext;
+
 /**
  * A generic converter interface to convert from proto-type (message/enum) to document-store type
  *
@@ -6,5 +9,5 @@ package org.hypertrace.entity.query.service.converter;
  * @param <U> The document store class
  */
 public interface Converter<T, U> {
-  U convert(T proto) throws ConversionException;
+  U convert(final T proto, final RequestContext requestContext) throws ConversionException;
 }

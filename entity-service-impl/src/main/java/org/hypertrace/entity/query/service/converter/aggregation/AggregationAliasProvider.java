@@ -8,7 +8,7 @@ import java.util.Set;
 import lombok.AllArgsConstructor;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.converter.ConversionException;
-import org.hypertrace.entity.query.service.converter.accessor.IOneOfAccessor;
+import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.AggregateExpression;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
@@ -19,7 +19,7 @@ import org.hypertrace.entity.service.util.StringUtils;
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class AggregationAliasProvider implements AliasProvider<AggregateExpression> {
   private final AliasProvider<ColumnIdentifier> identifierAliasProvider;
-  private final IOneOfAccessor<Expression, ValueCase> expressionAccessor;
+  private final OneOfAccessor<Expression, ValueCase> expressionAccessor;
 
   @Override
   public String getAlias(final AggregateExpression aggregateExpression) throws ConversionException {

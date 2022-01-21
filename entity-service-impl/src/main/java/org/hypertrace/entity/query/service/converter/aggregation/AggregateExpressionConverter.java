@@ -28,11 +28,13 @@ import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.AggregateExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.operators.AggregationOperator;
+import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
-import org.hypertrace.entity.query.service.converter.accessor.IOneOfAccessor;
+import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
+import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
@@ -43,12 +45,13 @@ public class AggregateExpressionConverter
           Map<org.hypertrace.entity.query.service.v1.AggregationOperator, AggregationOperator>>
       OPERATOR_MAP = memoize(AggregateExpressionConverter::getOperatorMap);
 
-  private final IOneOfAccessor<Expression, Expression.ValueCase> expressionAccessor;
-  private final Converter<ColumnIdentifier, IdentifierExpression> identifierConverter;
+  private final OneOfAccessor<Expression, ValueCase> expressionAccessor;
+  private final Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
 
   @Override
   public AggregateExpression convert(
-      org.hypertrace.entity.query.service.v1.AggregateExpression aggregateExpression)
+      final org.hypertrace.entity.query.service.v1.AggregateExpression aggregateExpression,
+      final RequestContext requestContext)
       throws ConversionException {
     final AggregationOperator operator = OPERATOR_MAP.get().get(aggregateExpression.getOperator());
 
@@ -62,7 +65,7 @@ public class AggregateExpressionConverter
         expressionAccessor.access(
             innerExpression, innerExpression.getValueCase(), Set.of(COLUMNIDENTIFIER));
     final IdentifierExpression identifierExpression =
-        identifierConverter.convert(containingIdentifier);
+        identifierExpressionConverter.convert(containingIdentifier, requestContext);
 
     return AggregateExpression.of(operator, identifierExpression);
   }

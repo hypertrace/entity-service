@@ -11,6 +11,7 @@ import org.hypertrace.core.documentstore.query.Pagination.PaginationBuilder;
 import org.hypertrace.core.documentstore.query.Query;
 import org.hypertrace.core.documentstore.query.Selection;
 import org.hypertrace.core.documentstore.query.Sort;
+import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.GroupByExpression;
@@ -28,13 +29,16 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
   private final PaginationBuilder paginationBuilder = Pagination.builder();
 
   @Override
-  public Query convert(final EntityQueryRequest request) throws ConversionException {
-    final Selection selection = selectionConverter.convert(request.getSelectionList());
-    final Filter filter = filterConverter.convert(request.getFilter());
+  public Query convert(final EntityQueryRequest request, final RequestContext requestContext)
+      throws ConversionException {
+    final Selection selection =
+        selectionConverter.convert(request.getSelectionList(), requestContext);
+    final Filter filter = filterConverter.convert(request.getFilter(), requestContext);
 
-    final Aggregation aggregation = groupByConverter.convert(request.getGroupByList());
+    final Aggregation aggregation =
+        groupByConverter.convert(request.getGroupByList(), requestContext);
 
-    final Sort sort = sortConverter.convert(request.getOrderByList());
+    final Sort sort = sortConverter.convert(request.getOrderByList(), requestContext);
     final Pagination pagination =
         paginationBuilder.limit(request.getLimit()).offset(request.getOffset()).build();
 
