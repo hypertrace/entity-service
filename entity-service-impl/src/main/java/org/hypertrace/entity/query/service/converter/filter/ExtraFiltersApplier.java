@@ -12,6 +12,5 @@ public interface ExtraFiltersApplier {
       final RequestContext context);
 
   LogicalExpression getExtraFilters(
-      final EntityQueryRequest entityQueryRequest,
-      final RequestContext context);
+      final EntityQueryRequest entityQueryRequest, final RequestContext context);
 }

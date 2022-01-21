@@ -35,22 +35,35 @@ class AggregationAliasProviderTest {
     OneOfAccessor<Expression, ValueCase> expressionAccessor = new ExpressionOneOfAccessor();
     columnIdentifierBuilder = ColumnIdentifier.newBuilder().setColumnName("Welcome_Mars");
 
-    aggregationAliasProvider = new AggregationAliasProvider(identifierAliasProvider, expressionAccessor);
-    aggregateExpressionBuilder = AggregateExpression.newBuilder()
-        .setExpression(Expression.newBuilder().setColumnIdentifier(columnIdentifierBuilder));
+    aggregationAliasProvider =
+        new AggregationAliasProvider(identifierAliasProvider, expressionAccessor);
+    aggregateExpressionBuilder =
+        AggregateExpression.newBuilder()
+            .setExpression(Expression.newBuilder().setColumnIdentifier(columnIdentifierBuilder));
 
-    when(identifierAliasProvider.getAlias(columnIdentifierBuilder.build())).thenReturn("Welcome_Mars");
+    when(identifierAliasProvider.getAlias(columnIdentifierBuilder.build()))
+        .thenReturn("Welcome_Mars");
   }
 
   @Test
   void testGetAlias() throws ConversionException {
-    AggregateExpression expression = aggregateExpressionBuilder.setOperator(AGGREGATION_OPERATOR_DISTINCT).build();
-    assertEquals("AGGREGATION_OPERATOR_DISTINCT_Welcome_Mars", aggregationAliasProvider.getAlias(expression));
+    AggregateExpression expression =
+        aggregateExpressionBuilder.setOperator(AGGREGATION_OPERATOR_DISTINCT).build();
+    assertEquals(
+        "AGGREGATION_OPERATOR_DISTINCT_Welcome_Mars",
+        aggregationAliasProvider.getAlias(expression));
   }
 
   @Test
   void testGetSetAlias() throws ConversionException {
-    AggregateExpression expression = aggregateExpressionBuilder.setOperator(AGGREGATION_OPERATOR_DISTINCT).setExpression(Expression.newBuilder().setColumnIdentifier(columnIdentifierBuilder.setAlias("total_population_in_Mars"))).build();
+    AggregateExpression expression =
+        aggregateExpressionBuilder
+            .setOperator(AGGREGATION_OPERATOR_DISTINCT)
+            .setExpression(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        columnIdentifierBuilder.setAlias("total_population_in_Mars")))
+            .build();
     assertEquals("total_population_in_Mars", aggregationAliasProvider.getAlias(expression));
   }
 }

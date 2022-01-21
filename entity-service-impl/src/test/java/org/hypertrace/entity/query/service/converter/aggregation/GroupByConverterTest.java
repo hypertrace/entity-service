@@ -31,16 +31,21 @@ class GroupByConverterTest {
 
   private Converter<List<GroupByExpression>, Aggregation> groupByConverter;
 
-  private final ColumnIdentifier columnIdentifier = ColumnIdentifier.newBuilder().setColumnName("Planet_Mars").build();
+  private final ColumnIdentifier columnIdentifier =
+      ColumnIdentifier.newBuilder().setColumnName("Planet_Mars").build();
   private final IdentifierExpression identifierExpression = IdentifierExpression.of("Planet_Mars");
-  private final GroupByExpression groupByExpression = GroupByExpression.newBuilder().setExpression(Expression.newBuilder().setColumnIdentifier(columnIdentifier)).build();
+  private final GroupByExpression groupByExpression =
+      GroupByExpression.newBuilder()
+          .setExpression(Expression.newBuilder().setColumnIdentifier(columnIdentifier))
+          .build();
 
   @BeforeEach
   void setup() throws ConversionException {
     OneOfAccessor<Expression, ValueCase> expressionAccessor = new ExpressionOneOfAccessor();
     groupByConverter = new GroupByConverter(expressionAccessor, identifierExpressionConverter);
 
-    when(identifierExpressionConverter.convert(columnIdentifier, requestContext)).thenReturn(identifierExpression);
+    when(identifierExpressionConverter.convert(columnIdentifier, requestContext))
+        .thenReturn(identifierExpression);
   }
 
   @Test

@@ -27,7 +27,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 class ExpressionOneOfAccessorTest {
-  private final OneOfAccessor<Expression, ValueCase> expressionAccessor = Guice.createInjector(new AccessorModule()).getInstance(Key.get(new TypeLiteral<OneOfAccessor<Expression, ValueCase>>() {}));
+  private final OneOfAccessor<Expression, ValueCase> expressionAccessor =
+      Guice.createInjector(new AccessorModule())
+          .getInstance(Key.get(new TypeLiteral<OneOfAccessor<Expression, ValueCase>>() {}));
 
   @ParameterizedTest
   @EnumSource(ValueCase.class)
@@ -42,23 +44,37 @@ class ExpressionOneOfAccessorTest {
   @Test
   void testAccess() throws ConversionException {
     Expression expression = Expression.newBuilder().build();
-    assertEquals(ColumnIdentifier.getDefaultInstance(), expressionAccessor.access(expression, COLUMNIDENTIFIER));
+    assertEquals(
+        ColumnIdentifier.getDefaultInstance(),
+        expressionAccessor.access(expression, COLUMNIDENTIFIER));
     assertEquals(
         LiteralConstant.getDefaultInstance(), expressionAccessor.access(expression, LITERAL));
+    assertEquals(Function.getDefaultInstance(), expressionAccessor.access(expression, FUNCTION));
     assertEquals(
-        Function.getDefaultInstance(), expressionAccessor.access(expression, FUNCTION));
-    assertEquals(OrderByExpression.getDefaultInstance(), expressionAccessor.access(expression, ORDERBY));
-    assertEquals(AggregateExpression.getDefaultInstance(), expressionAccessor.access(expression, AGGREGATION));
+        OrderByExpression.getDefaultInstance(), expressionAccessor.access(expression, ORDERBY));
+    assertEquals(
+        AggregateExpression.getDefaultInstance(),
+        expressionAccessor.access(expression, AGGREGATION));
   }
 
   @Test
   void testAccessWithAllowedValueCases() throws ConversionException {
     Expression expression = Expression.newBuilder().build();
-    assertEquals(ColumnIdentifier.getDefaultInstance(), expressionAccessor.access(expression, COLUMNIDENTIFIER, Set.of(COLUMNIDENTIFIER, LITERAL)));
     assertEquals(
-        LiteralConstant.getDefaultInstance(), expressionAccessor.access(expression, LITERAL, Set.of(COLUMNIDENTIFIER, LITERAL)));
-    assertThrows(ConversionException.class, () -> expressionAccessor.access(expression, FUNCTION, Set.of(COLUMNIDENTIFIER, LITERAL)));
-    assertThrows(ConversionException.class, () -> expressionAccessor.access(expression, ORDERBY, Set.of(COLUMNIDENTIFIER, LITERAL)));
-    assertThrows(ConversionException.class, () -> expressionAccessor.access(expression, AGGREGATION, Set.of(COLUMNIDENTIFIER, LITERAL)));
+        ColumnIdentifier.getDefaultInstance(),
+        expressionAccessor.access(expression, COLUMNIDENTIFIER, Set.of(COLUMNIDENTIFIER, LITERAL)));
+    assertEquals(
+        LiteralConstant.getDefaultInstance(),
+        expressionAccessor.access(expression, LITERAL, Set.of(COLUMNIDENTIFIER, LITERAL)));
+    assertThrows(
+        ConversionException.class,
+        () -> expressionAccessor.access(expression, FUNCTION, Set.of(COLUMNIDENTIFIER, LITERAL)));
+    assertThrows(
+        ConversionException.class,
+        () -> expressionAccessor.access(expression, ORDERBY, Set.of(COLUMNIDENTIFIER, LITERAL)));
+    assertThrows(
+        ConversionException.class,
+        () ->
+            expressionAccessor.access(expression, AGGREGATION, Set.of(COLUMNIDENTIFIER, LITERAL)));
   }
 }

@@ -34,8 +34,8 @@ public class ExtraFiltersApplierImpl implements ExtraFiltersApplier {
   }
 
   @Override
-  public LogicalExpression getExtraFilters(final EntityQueryRequest entityQueryRequest,
-      final RequestContext context) {
+  public LogicalExpression getExtraFilters(
+      final EntityQueryRequest entityQueryRequest, final RequestContext context) {
     final RelationalExpression tenantIdFilter = getTenantIdFilter(context);
     final RelationalExpression entityTypeFilter = getEntityTypeFilter(entityQueryRequest);
 

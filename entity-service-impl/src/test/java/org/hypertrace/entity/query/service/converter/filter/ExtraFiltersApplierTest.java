@@ -30,21 +30,37 @@ public class ExtraFiltersApplierTest {
   private final String tenantId = "Mars-man";
   private final String entityType = "SERVICE";
 
-  private final EntityQueryRequest request = EntityQueryRequest.newBuilder().setEntityType(entityType).build();
+  private final EntityQueryRequest request =
+      EntityQueryRequest.newBuilder().setEntityType(entityType).build();
   private final RequestContext context = RequestContext.forTenantId(tenantId);
 
-  private final RelationalExpression entityTypeFilter = RelationalExpression.of(IdentifierExpression.of(ENTITY_TYPE), EQ, ConstantExpression.of(entityType));
-  private final RelationalExpression tenantIdFilter = RelationalExpression.of(IdentifierExpression.of(TENANT_ID), EQ, ConstantExpression.of(tenantId));
+  private final RelationalExpression entityTypeFilter =
+      RelationalExpression.of(
+          IdentifierExpression.of(ENTITY_TYPE), EQ, ConstantExpression.of(entityType));
+  private final RelationalExpression tenantIdFilter =
+      RelationalExpression.of(
+          IdentifierExpression.of(TENANT_ID), EQ, ConstantExpression.of(tenantId));
 
   @Test
   void testGetExtraFilters() {
-    final LogicalExpression expected = LogicalExpression.builder().operator(AND).operand(tenantIdFilter).operand(entityTypeFilter).build();
+    final LogicalExpression expected =
+        LogicalExpression.builder()
+            .operator(AND)
+            .operand(tenantIdFilter)
+            .operand(entityTypeFilter)
+            .build();
     assertEquals(expected, extraFiltersApplier.getExtraFilters(request, context));
   }
 
   @Test
   void testAddExtraFilters() {
-    final LogicalExpression expected = LogicalExpression.builder().operator(AND).operand(filter).operand(tenantIdFilter).operand(entityTypeFilter).build();
+    final LogicalExpression expected =
+        LogicalExpression.builder()
+            .operator(AND)
+            .operand(filter)
+            .operand(tenantIdFilter)
+            .operand(entityTypeFilter)
+            .build();
     assertEquals(expected, extraFiltersApplier.addExtraFilters(filter, request, context));
   }
 }

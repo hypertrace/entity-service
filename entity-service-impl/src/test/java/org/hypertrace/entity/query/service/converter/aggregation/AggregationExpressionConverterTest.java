@@ -32,40 +32,49 @@ import org.mockito.junit.jupiter.MockitoSettings;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
 public class AggregationExpressionConverterTest {
-  private Converter<
-      org.hypertrace.entity.query.service.v1.AggregateExpression, AggregateExpression> aggregateExpressionConverter;
+  private Converter<org.hypertrace.entity.query.service.v1.AggregateExpression, AggregateExpression>
+      aggregateExpressionConverter;
 
   @Mock private Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
   @Mock private RequestContext requestContext;
 
-  private final ColumnIdentifier columnIdentifier = ColumnIdentifier.newBuilder().setColumnName("Hello_Mars").build();
+  private final ColumnIdentifier columnIdentifier =
+      ColumnIdentifier.newBuilder().setColumnName("Hello_Mars").build();
   private final IdentifierExpression identifierExpression = IdentifierExpression.of("Hello_Mars");
 
-  private org.hypertrace.entity.query.service.v1.AggregateExpression.Builder aggregateExpressionBuilder;
+  private org.hypertrace.entity.query.service.v1.AggregateExpression.Builder
+      aggregateExpressionBuilder;
 
   @BeforeEach
   void setup() throws ConversionException {
     OneOfAccessor<Expression, ValueCase> expressionAccessor = new ExpressionOneOfAccessor();
-    aggregateExpressionConverter = new AggregateExpressionConverter(expressionAccessor, identifierExpressionConverter);
-    aggregateExpressionBuilder = org.hypertrace.entity.query.service.v1.AggregateExpression.newBuilder()
-        .setExpression(Expression.newBuilder().setColumnIdentifier(columnIdentifier));
+    aggregateExpressionConverter =
+        new AggregateExpressionConverter(expressionAccessor, identifierExpressionConverter);
+    aggregateExpressionBuilder =
+        org.hypertrace.entity.query.service.v1.AggregateExpression.newBuilder()
+            .setExpression(Expression.newBuilder().setColumnIdentifier(columnIdentifier));
 
-    when(identifierExpressionConverter.convert(columnIdentifier, requestContext)).thenReturn(identifierExpression);
+    when(identifierExpressionConverter.convert(columnIdentifier, requestContext))
+        .thenReturn(identifierExpression);
   }
 
   @ParameterizedTest
   @EnumSource(org.hypertrace.entity.query.service.v1.AggregationOperator.class)
-  void testAggregationOperatorCoverage(final org.hypertrace.entity.query.service.v1.AggregationOperator operator)
+  void testAggregationOperatorCoverage(
+      final org.hypertrace.entity.query.service.v1.AggregationOperator operator)
       throws ConversionException {
 
     if (operator == UNRECOGNIZED) {
       return;
     }
 
-    org.hypertrace.entity.query.service.v1.AggregateExpression expression = aggregateExpressionBuilder.setOperator(operator).build();
+    org.hypertrace.entity.query.service.v1.AggregateExpression expression =
+        aggregateExpressionBuilder.setOperator(operator).build();
 
     if (operator == AGGREGATION_OPERATOR_UNSPECIFIED) {
-      assertThrows(ConversionException.class, () -> aggregateExpressionConverter.convert(expression, requestContext));
+      assertThrows(
+          ConversionException.class,
+          () -> aggregateExpressionConverter.convert(expression, requestContext));
     } else {
       assertNotNull(aggregateExpressionConverter.convert(expression, requestContext));
     }
@@ -73,7 +82,8 @@ public class AggregationExpressionConverterTest {
 
   @Test
   void testConvert() throws ConversionException {
-    org.hypertrace.entity.query.service.v1.AggregateExpression expression = aggregateExpressionBuilder.setOperator(AGGREGATION_OPERATOR_DISTINCT_COUNT).build();
+    org.hypertrace.entity.query.service.v1.AggregateExpression expression =
+        aggregateExpressionBuilder.setOperator(AGGREGATION_OPERATOR_DISTINCT_COUNT).build();
     AggregateExpression expected = AggregateExpression.of(DISTINCT_COUNT, identifierExpression);
 
     assertEquals(expected, aggregateExpressionConverter.convert(expression, requestContext));

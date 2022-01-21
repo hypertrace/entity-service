@@ -35,13 +35,16 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
       throws ConversionException {
     final QueryBuilder builder = Query.builder();
 
-    setFieldIfNotEmpty(request.getSelectionList(), builder::setSelection, selectionConverter, requestContext);
+    setFieldIfNotEmpty(
+        request.getSelectionList(), builder::setSelection, selectionConverter, requestContext);
 
     final Filter filter = filterConverter.convert(request, requestContext);
     builder.setFilter(filter);
 
-    setFieldIfNotEmpty(request.getGroupByList(), builder::setAggregation, groupByConverter, requestContext);
-    setFieldIfNotEmpty(request.getOrderByList(), builder::setSort, orderByConverter, requestContext);
+    setFieldIfNotEmpty(
+        request.getGroupByList(), builder::setAggregation, groupByConverter, requestContext);
+    setFieldIfNotEmpty(
+        request.getOrderByList(), builder::setSort, orderByConverter, requestContext);
 
     if (request.getLimit() > 0 || request.getOffset() > 0) {
       final Pagination pagination =
@@ -52,7 +55,11 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
     return builder.build();
   }
 
-  private <T, U> void setFieldIfNotEmpty(final List<U> list, final Function<T, QueryBuilder> setter, final Converter<List<U>, T> converter, final RequestContext requestContext)
+  private <T, U> void setFieldIfNotEmpty(
+      final List<U> list,
+      final Function<T, QueryBuilder> setter,
+      final Converter<List<U>, T> converter,
+      final RequestContext requestContext)
       throws ConversionException {
     if (list.isEmpty()) {
       return;
