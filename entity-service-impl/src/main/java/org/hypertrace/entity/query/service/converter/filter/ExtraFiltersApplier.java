@@ -10,4 +10,8 @@ public interface ExtraFiltersApplier {
       final FilteringExpression filters,
       final EntityQueryRequest entityQueryRequest,
       final RequestContext context);
+
+  LogicalExpression getExtraFilters(
+      final EntityQueryRequest entityQueryRequest,
+      final RequestContext context);
 }

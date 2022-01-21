@@ -2,7 +2,7 @@ package org.hypertrace.entity.query.service.converter.filter;
 
 import static org.hypertrace.core.documentstore.expression.operators.LogicalOperator.AND;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.EQ;
-import static org.hypertrace.entity.service.constants.EntityServiceConstants.ENTITY_ID;
+import static org.hypertrace.entity.service.constants.EntityServiceConstants.ENTITY_TYPE;
 import static org.hypertrace.entity.service.constants.EntityServiceConstants.TENANT_ID;
 
 import com.google.inject.Singleton;
@@ -33,6 +33,19 @@ public class ExtraFiltersApplierImpl implements ExtraFiltersApplier {
         .build();
   }
 
+  @Override
+  public LogicalExpression getExtraFilters(EntityQueryRequest entityQueryRequest,
+      RequestContext context) {
+    final RelationalExpression tenantIdFilter = getTenantIdFilter(context);
+    final RelationalExpression entityTypeFilter = getEntityTypeFilter(entityQueryRequest);
+
+    return LogicalExpression.builder()
+        .operator(AND)
+        .operand(tenantIdFilter)
+        .operand(entityTypeFilter)
+        .build();
+  }
+
   private RelationalExpression getTenantIdFilter(final RequestContext context) {
     final String tenantId = context.getTenantId().orElseThrow();
     return RelationalExpression.of(
@@ -42,6 +55,6 @@ public class ExtraFiltersApplierImpl implements ExtraFiltersApplier {
   private RelationalExpression getEntityTypeFilter(final EntityQueryRequest entityQueryRequest) {
     final String entityType = entityQueryRequest.getEntityType();
     return RelationalExpression.of(
-        IdentifierExpression.of(ENTITY_ID), EQ, ConstantExpression.of(entityType));
+        IdentifierExpression.of(ENTITY_TYPE), EQ, ConstantExpression.of(entityType));
   }
 }

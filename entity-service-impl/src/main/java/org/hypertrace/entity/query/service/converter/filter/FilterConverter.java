@@ -21,11 +21,15 @@ public class FilterConverter implements Converter<EntityQueryRequest, Filter> {
       throws ConversionException {
     final org.hypertrace.entity.query.service.v1.Filter filter = request.getFilter();
 
-    final Converter<org.hypertrace.entity.query.service.v1.Filter, ? extends FilteringExpression>
-        filterConverter = filterConverterFactory.getFilterConverter(filter.getOperator());
-    final FilteringExpression filteringExpression = filterConverter.convert(filter, requestContext);
-    final FilteringExpression allFilters =
-        extraFiltersApplier.addExtraFilters(filteringExpression, request, requestContext);
+    final FilteringExpression allFilters;
+
+    if (org.hypertrace.entity.query.service.v1.Filter.getDefaultInstance().equals(filter)) {
+      allFilters = extraFiltersApplier.getExtraFilters(request, requestContext);
+    } else {
+      final Converter<org.hypertrace.entity.query.service.v1.Filter, ? extends FilteringExpression> filterConverter = filterConverterFactory.getFilterConverter(filter.getOperator());
+      final FilteringExpression filteringExpression = filterConverter.convert(filter, requestContext);
+      allFilters = extraFiltersApplier.addExtraFilters(filteringExpression, request, requestContext);
+    }
 
     return Filter.builder().expression(allFilters).build();
   }
