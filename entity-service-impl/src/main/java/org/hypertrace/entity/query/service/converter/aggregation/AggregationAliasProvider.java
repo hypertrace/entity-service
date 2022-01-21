@@ -27,7 +27,7 @@ public class AggregationAliasProvider implements AliasProvider<AggregateExpressi
     final ColumnIdentifier containingIdentifier =
         expressionAccessor.access(
             innerExpression, innerExpression.getValueCase(), Set.of(COLUMNIDENTIFIER));
-    final String alias = identifierAliasProvider.getAlias(containingIdentifier);
+    final String alias = containingIdentifier.getAlias();
 
     if (StringUtils.isNotBlank(alias)) {
       return alias;
@@ -35,6 +35,6 @@ public class AggregationAliasProvider implements AliasProvider<AggregateExpressi
 
     return aggregateExpression.getOperator()
         + ALIAS_SEPARATOR
-        + containingIdentifier.getColumnName();
+        + identifierAliasProvider.getAlias(containingIdentifier);
   }
 }
