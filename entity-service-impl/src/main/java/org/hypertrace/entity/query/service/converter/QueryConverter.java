@@ -21,7 +21,7 @@ import org.hypertrace.entity.query.service.v1.OrderByExpression;
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class QueryConverter implements Converter<EntityQueryRequest, Query> {
   private final Converter<List<Expression>, Selection> selectionConverter;
-  private final Converter<org.hypertrace.entity.query.service.v1.Filter, Filter> filterConverter;
+  private final Converter<EntityQueryRequest, Filter> filterConverter;
 
   private final Converter<List<GroupByExpression>, Aggregation> groupByConverter;
 
@@ -33,7 +33,7 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
       throws ConversionException {
     final Selection selection =
         selectionConverter.convert(request.getSelectionList(), requestContext);
-    final Filter filter = filterConverter.convert(request.getFilter(), requestContext);
+    final Filter filter = filterConverter.convert(request, requestContext);
 
     final Aggregation aggregation =
         groupByConverter.convert(request.getGroupByList(), requestContext);

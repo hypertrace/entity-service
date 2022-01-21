@@ -6,13 +6,13 @@ import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.query.Filter;
 import org.hypertrace.entity.query.service.converter.Converter;
+import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 
 public class FilterModule extends AbstractModule {
 
   @Override
   protected void configure() {
-    bind(new TypeLiteral<Converter<org.hypertrace.entity.query.service.v1.Filter, Filter>>() {})
-        .to(FilterConverter.class);
+    bind(new TypeLiteral<Converter<EntityQueryRequest, Filter>>() {}).to(FilterConverter.class);
     bind(FilterConverterFactory.class).to(FilterConverterFactoryImpl.class);
     bind(new TypeLiteral<
             Converter<org.hypertrace.entity.query.service.v1.Filter, LogicalExpression>>() {})
@@ -20,5 +20,6 @@ public class FilterModule extends AbstractModule {
     bind(new TypeLiteral<
             Converter<org.hypertrace.entity.query.service.v1.Filter, RelationalExpression>>() {})
         .to(RelationalExpressionConverter.class);
+    bind(ExtraFiltersApplier.class).to(ExtraFiltersApplierImpl.class);
   }
 }
