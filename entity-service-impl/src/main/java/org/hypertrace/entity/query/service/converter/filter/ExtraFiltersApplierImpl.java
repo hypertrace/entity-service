@@ -18,21 +18,30 @@ import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 public class ExtraFiltersApplierImpl implements ExtraFiltersApplier {
 
   @Override
-  public LogicalExpression addExtraFilters(final FilteringExpression filters,
-      final EntityQueryRequest entityQueryRequest, final RequestContext context) {
+  public LogicalExpression addExtraFilters(
+      final FilteringExpression filters,
+      final EntityQueryRequest entityQueryRequest,
+      final RequestContext context) {
     final RelationalExpression tenantIdFilter = getTenantIdFilter(context);
     final RelationalExpression entityTypeFilter = getEntityTypeFilter(entityQueryRequest);
 
-    return LogicalExpression.builder().operator(AND).operand(filters).operand(tenantIdFilter).operand(entityTypeFilter).build();
+    return LogicalExpression.builder()
+        .operator(AND)
+        .operand(filters)
+        .operand(tenantIdFilter)
+        .operand(entityTypeFilter)
+        .build();
   }
 
   private RelationalExpression getTenantIdFilter(final RequestContext context) {
     final String tenantId = context.getTenantId().orElseThrow();
-    return RelationalExpression.of(IdentifierExpression.of(TENANT_ID), EQ, ConstantExpression.of(tenantId));
+    return RelationalExpression.of(
+        IdentifierExpression.of(TENANT_ID), EQ, ConstantExpression.of(tenantId));
   }
 
   private RelationalExpression getEntityTypeFilter(final EntityQueryRequest entityQueryRequest) {
     final String entityType = entityQueryRequest.getEntityType();
-    return RelationalExpression.of(IdentifierExpression.of(ENTITY_ID), EQ, ConstantExpression.of(entityType));
+    return RelationalExpression.of(
+        IdentifierExpression.of(ENTITY_ID), EQ, ConstantExpression.of(entityType));
   }
 }

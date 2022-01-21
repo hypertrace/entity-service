@@ -24,7 +24,8 @@ public class FilterConverter implements Converter<EntityQueryRequest, Filter> {
     final Converter<org.hypertrace.entity.query.service.v1.Filter, ? extends FilteringExpression>
         filterConverter = filterConverterFactory.getFilterConverter(filter.getOperator());
     final FilteringExpression filteringExpression = filterConverter.convert(filter, requestContext);
-    final FilteringExpression allFilters = extraFiltersApplier.addExtraFilters(filteringExpression, request, requestContext);
+    final FilteringExpression allFilters =
+        extraFiltersApplier.addExtraFilters(filteringExpression, request, requestContext);
 
     return Filter.builder().expression(allFilters).build();
   }
