@@ -10,7 +10,6 @@ import org.hypertrace.core.documentstore.query.Query;
 import org.hypertrace.core.documentstore.query.Sort;
 import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.accessor.AccessorModule;
-import org.hypertrace.entity.query.service.converter.aggregation.AggregationModule;
 import org.hypertrace.entity.query.service.converter.filter.FilterModule;
 import org.hypertrace.entity.query.service.converter.identifier.IdentifierModule;
 import org.hypertrace.entity.query.service.converter.selection.SelectionConverterModule;
@@ -25,7 +24,6 @@ public class ConverterModule extends AbstractModule {
   @Override
   protected void configure() {
     install(new AccessorModule());
-    install(new AggregationModule());
     install(new FilterModule());
     install(new IdentifierModule());
     install(new SelectionConverterModule());
