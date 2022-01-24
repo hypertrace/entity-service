@@ -32,32 +32,52 @@ class LogicalExpressionConverterTest {
 
   private final Filter childFilter1 = Filter.newBuilder().setOperator(Operator.AND).build();
   private final Filter childFilter2 = Filter.newBuilder().setOperator(Operator.OR).build();
-  private final Filter filter = Filter.newBuilder().setOperator(Operator.AND).addChildFilter(childFilter1).addChildFilter(childFilter2).build();
+  private final Filter filter =
+      Filter.newBuilder()
+          .setOperator(Operator.AND)
+          .addChildFilter(childFilter1)
+          .addChildFilter(childFilter2)
+          .build();
   private final RequestContext requestContext = RequestContext.forTenantId("Martian");
 
-  private LogicalExpressionConverter logicalExpressionConverter;
+  private Converter<Filter, LogicalExpression> logicalExpressionConverter;
 
   @BeforeEach
   void setup() throws ConversionException {
     logicalExpressionConverter = new LogicalExpressionConverter(filterConverterFactory);
 
     doReturn(relationalExpressionConverter)
-        .when(filterConverterFactory).getFilterConverter(any(Operator.class));
+        .when(filterConverterFactory)
+        .getFilterConverter(any(Operator.class));
     doReturn(filteringExpression1)
-        .when(relationalExpressionConverter).convert(childFilter1, requestContext);
+        .when(relationalExpressionConverter)
+        .convert(childFilter1, requestContext);
     doReturn(filteringExpression2)
-        .when(relationalExpressionConverter).convert(childFilter2, requestContext);
+        .when(relationalExpressionConverter)
+        .convert(childFilter2, requestContext);
   }
 
   @Test
   void testConvert() throws ConversionException {
-    LogicalExpression expected = LogicalExpression.builder().operator(AND).operand(filteringExpression1).operand(filteringExpression2).build();
+    LogicalExpression expected =
+        LogicalExpression.builder()
+            .operator(AND)
+            .operand(filteringExpression1)
+            .operand(filteringExpression2)
+            .build();
     assertEquals(expected, logicalExpressionConverter.convert(filter, requestContext));
   }
 
   @Test
   void testConvertInvalidOperator() {
-    Filter filter = Filter.newBuilder().setOperator(Operator.LT).addChildFilter(childFilter1).addChildFilter(childFilter2).build();
-    assertThrows(ConversionException.class, () -> logicalExpressionConverter.convert(filter, requestContext));
+    Filter filter =
+        Filter.newBuilder()
+            .setOperator(Operator.LT)
+            .addChildFilter(childFilter1)
+            .addChildFilter(childFilter2)
+            .build();
+    assertThrows(
+        ConversionException.class,
+        () -> logicalExpressionConverter.convert(filter, requestContext));
   }
 }

@@ -3,6 +3,7 @@ package org.hypertrace.entity.query.service.converter;
 import static java.util.stream.Collectors.toUnmodifiableList;
 
 import com.google.inject.Singleton;
+import com.google.protobuf.ByteString;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
@@ -34,7 +35,7 @@ public class ConstantExpressionConverter implements Converter<LiteralConstant, C
         return ConstantExpression.of(value.getDouble());
 
       case BYTES:
-        return ConstantExpression.of(value.getBytes().toString());
+        return ConstantExpression.of(new String(value.getBytes().toByteArray()));
 
       case BOOL:
         return ConstantExpression.of(value.getBoolean());
@@ -43,30 +44,65 @@ public class ConstantExpressionConverter implements Converter<LiteralConstant, C
         return ConstantExpression.of(value.getTimestamp());
 
       case STRING_ARRAY:
-        return ConstantExpression.ofStrings(value.getStringArrayList());
+        if (value.getStringArrayList().isEmpty()) {
+          return ConstantExpression.of((String) null);
+        } else {
+          return ConstantExpression.ofStrings(value.getStringArrayList());
+        }
 
       case LONG_ARRAY:
-        return ConstantExpression.ofNumbers(value.getLongArrayList());
+        if (value.getLongArrayList().isEmpty()) {
+          return ConstantExpression.of((Long) null);
+        } else {
+          return ConstantExpression.ofNumbers(value.getLongArrayList());
+        }
 
       case INT_ARRAY:
-        return ConstantExpression.ofNumbers(value.getIntArrayList());
+        if (value.getIntArrayList().isEmpty()) {
+          return ConstantExpression.of((Integer) null);
+        } else {
+          return ConstantExpression.ofNumbers(value.getIntArrayList());
+        }
 
       case FLOAT_ARRAY:
-        return ConstantExpression.ofNumbers(value.getFloatArrayList());
+        if (value.getFloatArrayList().isEmpty()) {
+          return ConstantExpression.of((Float) null);
+        } else {
+          return ConstantExpression.ofNumbers(value.getFloatArrayList());
+        }
 
       case DOUBLE_ARRAY:
-        return ConstantExpression.ofNumbers(value.getDoubleArrayList());
+        if (value.getDoubleArrayList().isEmpty()) {
+          return ConstantExpression.of((Double) null);
+        } else {
+          return ConstantExpression.ofNumbers(value.getDoubleArrayList());
+        }
 
       case BYTES_ARRAY:
-        return ConstantExpression.ofStrings(
-            value.getBytesArrayList().stream().map(Object::toString).collect(toUnmodifiableList()));
+        if (value.getBytesArrayList().isEmpty()) {
+          return ConstantExpression.of((String) null);
+        } else {
+          return ConstantExpression.ofStrings(
+              value.getBytesArrayList().stream()
+                  .map(ByteString::toByteArray)
+                  .map(String::new)
+                  .collect(toUnmodifiableList()));
+        }
 
       case BOOLEAN_ARRAY:
-        return ConstantExpression.ofBooleans(value.getBooleanArrayList());
+        if (value.getBooleanArrayList().isEmpty()) {
+          return ConstantExpression.of((Boolean) null);
+        } else {
+          return ConstantExpression.ofBooleans(value.getBooleanArrayList());
+        }
 
       case STRING_MAP:
         // TODO: See how this can be handled better
-        return ConstantExpression.of(value.getStringMapMap().toString());
+        if (value.getStringMapMap().isEmpty()) {
+          return ConstantExpression.of((String) null);
+        } else {
+          return ConstantExpression.of(value.getStringMapMap().toString());
+        }
 
       case UNRECOGNIZED:
       default:

@@ -36,14 +36,16 @@ class FilterConverterFactoryImplTest {
 
   @BeforeEach
   void setup() {
-    filterConverterFactory = new FilterConverterFactoryImpl(relationalExpressionConverter, logicalExpressionConverter);
+    filterConverterFactory =
+        new FilterConverterFactoryImpl(relationalExpressionConverter, logicalExpressionConverter);
   }
 
   @ParameterizedTest
   @EnumSource(Operator.class)
   void testOperatorCoverage(final Operator operator) throws ConversionException {
     if (operator == UNRECOGNIZED) {
-      assertThrows(ConversionException.class, () -> filterConverterFactory.getFilterConverter(operator));
+      assertThrows(
+          ConversionException.class, () -> filterConverterFactory.getFilterConverter(operator));
     } else {
       assertNotNull(filterConverterFactory.getFilterConverter(operator));
     }

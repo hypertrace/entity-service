@@ -31,23 +31,28 @@ class FilterConverterTest {
   @Mock private Converter<Filter, LogicalExpression> logicalFilterConverter;
   @Mock private Converter<Filter, RelationalExpression> relationalExpressionConverter;
 
-  private final RelationalExpression relationalExpression = RelationalExpression.of(IdentifierExpression.of("planet"), RelationalOperator.EQ, ConstantExpression.of("Mars"));
+  private final RelationalExpression relationalExpression =
+      RelationalExpression.of(
+          IdentifierExpression.of("planet"), RelationalOperator.EQ, ConstantExpression.of("Mars"));
   private final Filter filter = Filter.newBuilder().setOperator(Operator.EQ).build();
-  private final EntityQueryRequest request = EntityQueryRequest.newBuilder().setFilter(filter).build();
+  private final EntityQueryRequest request =
+      EntityQueryRequest.newBuilder().setFilter(filter).build();
   private final EntityQueryRequest emptyRequest = EntityQueryRequest.getDefaultInstance();
   private final RequestContext requestContext = RequestContext.forTenantId("some-tenant-from-Mars");
 
   private FilterConverter filterConverter;
-  private FilterConverterFactory filterConverterFactory;
 
   @BeforeEach
   void setup() throws ConversionException {
-    filterConverterFactory = new FilterConverterFactoryImpl(relationalExpressionConverter, logicalFilterConverter);
+    FilterConverterFactory filterConverterFactory =
+        new FilterConverterFactoryImpl(relationalExpressionConverter, logicalFilterConverter);
     filterConverter = new FilterConverter(filterConverterFactory, extraFiltersApplier);
 
     when(extraFiltersApplier.getExtraFilters(emptyRequest, requestContext)).thenReturn(allFilters);
-    when(relationalExpressionConverter.convert(filter, requestContext)).thenReturn(relationalExpression);
-    when(extraFiltersApplier.addExtraFilters(relationalExpression, request, requestContext)).thenReturn(allFilters);
+    when(relationalExpressionConverter.convert(filter, requestContext))
+        .thenReturn(relationalExpression);
+    when(extraFiltersApplier.addExtraFilters(relationalExpression, request, requestContext))
+        .thenReturn(allFilters);
   }
 
   @Test
