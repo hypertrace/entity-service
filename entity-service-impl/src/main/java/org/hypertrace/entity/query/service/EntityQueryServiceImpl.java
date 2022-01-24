@@ -7,6 +7,8 @@ import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FI
 import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
+import com.google.inject.Guice;
+import com.google.inject.TypeLiteral;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
@@ -37,6 +39,9 @@ import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.query.service.converter.ConversionException;
+import org.hypertrace.entity.query.service.converter.Converter;
+import org.hypertrace.entity.query.service.converter.ConverterModule;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
@@ -117,18 +122,25 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
-    // TODO: Optimize this later. For now converting to EDS Query and then again to DocStore Query.
-    Query query = entityQueryConverter.convertToEDSQuery(requestContext, request);
-    /**
-     * {@link EntityQueryRequest} selections need to treated differently, since they don't transform
-     * one to one to {@link org.hypertrace.entity.data.service.v1.EntityDataRequest} selections
-     */
-    List<String> docStoreSelections =
-        entityQueryConverter.convertSelectionsToDocStoreSelections(
-            requestContext, request.getSelectionList());
-    Iterator<Document> documentIterator =
-        entitiesCollection.search(
-            DocStoreConverter.transform(tenantId.get(), query, docStoreSelections));
+    final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
+        queryConverter =
+            Guice.createInjector(new ConverterModule(entityAttributeMapping))
+                .getInstance(
+                    com.google.inject.Key.get(
+                        new TypeLiteral<
+                            Converter<
+                                EntityQueryRequest,
+                                org.hypertrace.core.documentstore.query.Query>>() {}));
+    final org.hypertrace.core.documentstore.query.Query query;
+
+    try {
+      query = queryConverter.convert(request, requestContext);
+    } catch (final ConversionException e) {
+      responseObserver.onError(new ServiceException(e));
+      return;
+    }
+
+    final Iterator<Document> documentIterator = entitiesCollection.aggregate(query);
 
     ResultSetMetadata resultSetMetadata =
         this.buildMetadataForSelections(request.getSelectionList());
