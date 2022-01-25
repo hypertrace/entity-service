@@ -5,9 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.google.protobuf.ByteString;
 import java.util.List;
-import java.util.Map;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.query.service.converter.accessor.ValueOneOfAccessor;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -18,7 +18,7 @@ import org.junit.jupiter.params.provider.EnumSource.Mode;
 
 class ConstantExpressionConverterTest {
   private final Converter<LiteralConstant, ConstantExpression> constantExpressionConverter =
-      new ConstantExpressionConverter();
+      new ConstantExpressionConverter(new ValueHelper(new ValueOneOfAccessor()));
   private final RequestContext requestContext = RequestContext.forTenantId("Martian");
 
   @Test
@@ -173,21 +173,13 @@ class ConstantExpressionConverterTest {
                         .addBooleanArray(false))
                 .build(),
             requestContext));
-
-    assertEquals(
-        ConstantExpression.of(Map.of("planet", "Mars").toString()),
-        constantExpressionConverter.convert(
-            LiteralConstant.newBuilder()
-                .setValue(
-                    Value.newBuilder()
-                        .setValueType(ValueType.STRING_MAP)
-                        .putStringMap("planet", "Mars"))
-                .build(),
-            requestContext));
   }
 
   @ParameterizedTest
-  @EnumSource(value = ValueType.class, names = "UNRECOGNIZED", mode = Mode.EXCLUDE)
+  @EnumSource(
+      value = ValueType.class,
+      names = {"UNRECOGNIZED", "STRING_MAP"},
+      mode = Mode.EXCLUDE)
   void testConvertCoverage(final ValueType valueType) throws ConversionException {
     assertNotNull(
         constantExpressionConverter.convert(

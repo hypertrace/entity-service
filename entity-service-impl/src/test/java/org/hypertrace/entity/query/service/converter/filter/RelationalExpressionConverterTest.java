@@ -9,11 +9,14 @@ import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
+import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
+import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.converter.accessor.ExpressionOneOfAccessor;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
+import org.hypertrace.entity.query.service.converter.accessor.ValueOneOfAccessor;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
@@ -48,7 +51,7 @@ class RelationalExpressionConverterTest {
   private final IdentifierExpression identifierExpression = IdentifierExpression.of("planet");
   private final ConstantExpression constantExpression = ConstantExpression.of("Pluto");
 
-  private Converter<Filter, RelationalExpression> relationalExpressionConverter;
+  private Converter<Filter, FilteringExpression> relationalExpressionConverter;
 
   @BeforeEach
   void setup() throws ConversionException {
@@ -56,7 +59,10 @@ class RelationalExpressionConverterTest {
 
     relationalExpressionConverter =
         new RelationalExpressionConverter(
-            expressionAccessor, identifierExpressionConverter, constantExpressionConverter);
+            expressionAccessor,
+            identifierExpressionConverter,
+            constantExpressionConverter,
+            new ValueHelper(new ValueOneOfAccessor()));
 
     doReturn(identifierExpression)
         .when(identifierExpressionConverter)

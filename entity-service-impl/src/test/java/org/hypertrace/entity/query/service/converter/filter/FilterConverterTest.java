@@ -29,7 +29,7 @@ class FilterConverterTest {
   @Mock private ExtraFiltersApplier extraFiltersApplier;
   @Mock private FilteringExpression allFilters;
   @Mock private Converter<Filter, LogicalExpression> logicalFilterConverter;
-  @Mock private Converter<Filter, RelationalExpression> relationalExpressionConverter;
+  @Mock private Converter<Filter, FilteringExpression> relationalExpressionConverter;
 
   private final RelationalExpression relationalExpression =
       RelationalExpression.of(
