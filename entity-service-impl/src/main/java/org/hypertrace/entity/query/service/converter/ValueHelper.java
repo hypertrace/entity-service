@@ -1,5 +1,7 @@
 package org.hypertrace.entity.query.service.converter;
 
+import static com.google.common.base.Suppliers.memoize;
+import static java.util.Collections.unmodifiableMap;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.entity.query.service.v1.ValueType.BOOL;
 import static org.hypertrace.entity.query.service.v1.ValueType.BOOLEAN_ARRAY;
@@ -16,11 +18,15 @@ import static org.hypertrace.entity.query.service.v1.ValueType.LONG_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
+import static org.hypertrace.entity.query.service.v1.ValueType.TIMESTAMP;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.protobuf.ByteString;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
@@ -45,6 +51,9 @@ public class ValueHelper {
           BOOLEAN_ARRAY);
 
   private static final Set<ValueType> MAP_TYPES = Set.of(STRING_MAP);
+
+  private static final Supplier<Map<ValueType, String>> TYPE_MAP =
+      memoize(ValueHelper::getSuffixMap);
 
   private final OneOfAccessor<Value, ValueType> valueAccessor;
 
@@ -154,5 +163,43 @@ public class ValueHelper {
       default:
         throw new ConversionException(String.format("Not a map type: %s", value.getValueType()));
     }
+  }
+
+  public String getStringValue(final ValueType valueType) throws ConversionException {
+    final String type = TYPE_MAP.get().get(valueType);
+
+    if (type == null) {
+      throw new ConversionException(String.format("A suitable type not found for %s", valueType));
+    }
+
+    return type;
+  }
+
+  private static Map<ValueType, String> getSuffixMap() {
+    final Map<ValueType, String> map = new EnumMap<>(ValueType.class);
+
+    // Primitives
+    map.put(STRING, "string");
+    map.put(LONG, "long");
+    map.put(INT, "int");
+    map.put(FLOAT, "float");
+    map.put(DOUBLE, "double");
+    map.put(BYTES, "bytes");
+    map.put(BOOL, "boolean");
+    map.put(TIMESTAMP, "timestamp");
+
+    // Arrays
+    map.put(STRING_ARRAY, "string");
+    map.put(LONG_ARRAY, "long");
+    map.put(INT_ARRAY, "int");
+    map.put(FLOAT_ARRAY, "float");
+    map.put(DOUBLE_ARRAY, "double");
+    map.put(BYTES_ARRAY, "bytes");
+    map.put(BOOLEAN_ARRAY, "boolean");
+
+    // Maps
+    map.put(STRING_MAP, "string");
+
+    return unmodifiableMap(map);
   }
 }
