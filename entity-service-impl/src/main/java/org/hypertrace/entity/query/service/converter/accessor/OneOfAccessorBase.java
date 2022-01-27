@@ -2,6 +2,7 @@ package org.hypertrace.entity.query.service.converter.accessor;
 
 import static com.google.common.base.Suppliers.memoize;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -32,6 +33,20 @@ public abstract class OneOfAccessorBase<T, U extends Enum<U>> implements OneOfAc
     }
 
     return access(proto, valueCaseEnum);
+  }
+
+  @Override
+  public <V> V accessListElement(final T proto, final U valueCaseEnum, final int index)
+      throws ConversionException {
+    final List<V> list = access(proto, valueCaseEnum);
+    return list.get(index);
+  }
+
+  @Override
+  public <K, V> V accessMapValue(final T proto, final U valueCaseEnum, final K key)
+      throws ConversionException {
+    final Map<K, V> map = access(proto, valueCaseEnum);
+    return map.get(key);
   }
 
   protected abstract Map<U, Function<T, ?>> populate();

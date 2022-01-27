@@ -1,8 +1,9 @@
 package org.hypertrace.entity.query.service.converter.identifier;
 
+import static org.hypertrace.entity.query.service.converter.identifier.IdentifierConverter.getSubDocPathById;
+
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import java.util.Optional;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -21,13 +22,8 @@ public class IdentifierExpressionConverter
   public IdentifierExpression convert(
       final ColumnIdentifier identifier, final RequestContext requestContext)
       throws ConversionException {
-    final Optional<String> maybeSubDocPath =
-        attributeMapping.getDocStorePathByAttributeId(requestContext, identifier.getColumnName());
-
-    if (maybeSubDocPath.isEmpty()) {
-      throw new ConversionException(String.format("Unable to get sub-doc-path for %s", identifier));
-    }
-
-    return IdentifierExpression.of(maybeSubDocPath.get());
+    final String subDocPath =
+        getSubDocPathById(attributeMapping, identifier.getColumnName(), requestContext);
+    return IdentifierExpression.of(subDocPath);
   }
 }

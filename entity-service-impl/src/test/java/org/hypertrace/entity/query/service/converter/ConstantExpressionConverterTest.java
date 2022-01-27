@@ -178,7 +178,17 @@ class ConstantExpressionConverterTest {
   @ParameterizedTest
   @EnumSource(
       value = ValueType.class,
-      names = {"UNRECOGNIZED", "STRING_MAP"},
+      names = {
+        "UNRECOGNIZED",
+        "STRING_ARRAY",
+        "LONG_ARRAY",
+        "INT_ARRAY",
+        "FLOAT_ARRAY",
+        "DOUBLE_ARRAY",
+        "BYTES_ARRAY",
+        "BOOLEAN_ARRAY",
+        "STRING_MAP"
+      },
       mode = Mode.EXCLUDE)
   void testConvertCoverage(final ValueType valueType) throws ConversionException {
     assertNotNull(

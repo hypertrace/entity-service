@@ -21,5 +21,7 @@ public class FilterModule extends AbstractModule {
             Converter<org.hypertrace.entity.query.service.v1.Filter, FilteringExpression>>() {})
         .to(RelationalExpressionConverter.class);
     bind(ExtraFiltersApplier.class).to(ExtraFiltersApplierImpl.class);
+    bind(FilteringExpressionConverterFactory.class)
+        .to(FilteringExpressionConverterFactoryImpl.class);
   }
 }

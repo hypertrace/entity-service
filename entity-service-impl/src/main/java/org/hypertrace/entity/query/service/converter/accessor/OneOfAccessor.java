@@ -8,4 +8,10 @@ public interface OneOfAccessor<T, U extends Enum<U>> {
 
   <V> V access(final T proto, final U valueCaseEnum, final Set<U> allowedValueCases)
       throws ConversionException;
+
+  <V> V accessListElement(final T proto, final U valueCaseEnum, final int index)
+      throws ConversionException;
+
+  <K, V> V accessMapValue(final T proto, final U valueCaseEnum, final K key)
+      throws ConversionException;
 }

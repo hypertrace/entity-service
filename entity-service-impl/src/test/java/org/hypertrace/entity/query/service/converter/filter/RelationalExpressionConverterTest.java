@@ -1,8 +1,9 @@
 package org.hypertrace.entity.query.service.converter.filter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 import static org.mockito.quality.Strictness.LENIENT;
 
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
@@ -13,10 +14,8 @@ import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
-import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.converter.accessor.ExpressionOneOfAccessor;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
-import org.hypertrace.entity.query.service.converter.accessor.ValueOneOfAccessor;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
@@ -24,6 +23,7 @@ import org.hypertrace.entity.query.service.v1.Filter;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.Value;
+import org.hypertrace.entity.query.service.v1.ValueType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +36,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 class RelationalExpressionConverterTest {
   @Mock private Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
   @Mock private Converter<LiteralConstant, ConstantExpression> constantExpressionConverter;
+  @Mock private FilteringExpressionConverterFactory filteringExpressionConverterFactory;
+  @Mock private FilteringExpressionConverter filteringExpressionConverter;
 
   private final ColumnIdentifier columnIdentifier =
       ColumnIdentifier.newBuilder().setColumnName("planet").build();
@@ -58,11 +60,7 @@ class RelationalExpressionConverterTest {
     OneOfAccessor<Expression, ValueCase> expressionAccessor = new ExpressionOneOfAccessor();
 
     relationalExpressionConverter =
-        new RelationalExpressionConverter(
-            expressionAccessor,
-            identifierExpressionConverter,
-            constantExpressionConverter,
-            new ValueHelper(new ValueOneOfAccessor()));
+        new RelationalExpressionConverter(expressionAccessor, filteringExpressionConverterFactory);
 
     doReturn(identifierExpression)
         .when(identifierExpressionConverter)
@@ -70,6 +68,8 @@ class RelationalExpressionConverterTest {
     doReturn(constantExpression)
         .when(constantExpressionConverter)
         .convert(literalConstant, requestContext);
+    when(filteringExpressionConverterFactory.getConverter(any(ValueType.class)))
+        .thenReturn(filteringExpressionConverter);
   }
 
   @Test
@@ -77,14 +77,9 @@ class RelationalExpressionConverterTest {
     RelationalExpression expected =
         RelationalExpression.of(
             identifierExpression, RelationalOperator.NOT_IN, constantExpression);
+    when(filteringExpressionConverter.convert(
+            columnIdentifier, Operator.NOT_IN, literalConstant, requestContext))
+        .thenReturn(expected);
     assertEquals(expected, relationalExpressionConverter.convert(filter, requestContext));
-  }
-
-  @Test
-  void testConvertInvalidOperator() {
-    Filter filter = Filter.newBuilder().setOperator(Operator.AND).build();
-    assertThrows(
-        ConversionException.class,
-        () -> relationalExpressionConverter.convert(filter, requestContext));
   }
 }

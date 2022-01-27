@@ -14,5 +14,6 @@ public class IdentifierModule extends AbstractModule {
     bind(new TypeLiteral<Converter<ColumnIdentifier, IdentifierExpression>>() {})
         .to(IdentifierExpressionConverter.class);
     bind(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {}).to(IdentifierAliasProvider.class);
+    bind(IdentifierConverterFactory.class).to(IdentifierConverterFactoryImpl.class);
   }
 }
