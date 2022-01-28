@@ -1,6 +1,10 @@
 package org.hypertrace.entity.service.service;
 
-import static com.github.stefanbirkner.systemlambda.SystemLambda.withEnvironmentVariable;
+import static java.util.stream.Collectors.toUnmodifiableMap;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
+import static org.hypertrace.entity.service.client.config.EntityServiceTestConfig.getServiceConfig;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENTITY_TYPES_COLLECTION;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -23,9 +27,15 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.hypertrace.core.attribute.service.client.AttributeServiceClient;
+import org.hypertrace.core.attribute.service.v1.AttributeCreateRequest;
+import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
+import org.hypertrace.core.attribute.service.v1.AttributeScope;
+import org.hypertrace.core.attribute.service.v1.AttributeSource;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.DatastoreProvider;
 import org.hypertrace.core.grpcutils.client.GrpcClientRequestContextUtil;
@@ -37,6 +47,7 @@ import org.hypertrace.entity.constants.v1.ServiceAttribute;
 import org.hypertrace.entity.data.service.client.EntityDataServiceClient;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
+import org.hypertrace.entity.data.service.v1.AttributeValueMap;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
@@ -70,18 +81,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.DockerImageName;
 
 /** Test for {@link org.hypertrace.entity.query.service.client.EntityQueryServiceClient} */
 public class EntityQueryServiceTest {
-
-  private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceTest.class);
-  private static final Slf4jLogConsumer logConsumer = new Slf4jLogConsumer(LOG);
 
   private static EntityQueryServiceBlockingStub entityQueryServiceClient;
   // needed to create entities
@@ -103,26 +105,20 @@ public class EntityQueryServiceTest {
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
   private static final String API_LABELS_ATTR = "API.labels";
-  private static final int CONTAINER_STARTUP_ATTEMPTS = 5;
-  private static GenericContainer<?> mongo;
+  private static final String API_HTTP_URL_ATTR = "API.httpUrl";
+
+  private static final String ATTRIBUTE_SERVICE_HOST_KEY = "attribute.service.config.host";
+  private static final String ATTRIBUTE_SERVICE_PORT_KEY = "attribute.service.config.port";
+
+  private static final String MONGO_HOST_KEY = "entity.service.config.entity-service.mongo.host";
+  private static final String MONGO_PORT_KEY = "entity.service.config.entity-service.mongo.port";
+
+  private static final Config config = getServiceConfig();
 
   @BeforeAll
-  public static void setUp() throws Exception {
-    mongo =
-        new GenericContainer<>(DockerImageName.parse("mongo:4.4.0"))
-            .withExposedPorts(27017)
-            .withStartupAttempts(CONTAINER_STARTUP_ATTEMPTS)
-            .waitingFor(Wait.forListeningPort())
-            .withLogConsumer(logConsumer);
-    mongo.start();
-
-    withEnvironmentVariable("MONGO_HOST", mongo.getHost())
-        .and("MONGO_PORT", mongo.getMappedPort(27017).toString())
-        .execute(
-            () -> {
-              ConfigFactory.invalidateCaches();
-              IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
-            });
+  public static void setUp() {
+    ConfigFactory.invalidateCaches();
+    IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
 
     EntityServiceClientConfig entityServiceTestConfig = EntityServiceTestConfig.getClientConfig();
     channel =
@@ -135,6 +131,15 @@ public class EntityQueryServiceTest {
             .withCallCredentials(
                 RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
     entityDataServiceClient = new EntityDataServiceClient(channel);
+
+    Channel attributeChannel =
+        ManagedChannelBuilder.forAddress(
+                config.getString(ATTRIBUTE_SERVICE_HOST_KEY),
+                config.getInt(ATTRIBUTE_SERVICE_PORT_KEY))
+            .usePlaintext()
+            .build();
+
+    setUpAttributes(attributeChannel);
 
     datastore = getDatastore();
 
@@ -158,7 +163,6 @@ public class EntityQueryServiceTest {
   public static void teardown() {
     channel.shutdown();
     IntegrationTestServerUtil.shutdownServices();
-    mongo.stop();
   }
 
   private static void setupEntityTypes(Channel channel) {
@@ -196,6 +200,44 @@ public class EntityQueryServiceTest {
                     .setIdentifyingAttribute(true)
                     .build())
             .build());
+  }
+
+  private static void setUpAttributes(Channel channel) {
+    AttributeMetadata labelsAttribute =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("Endpoint labels")
+            .addSources(AttributeSource.EDS)
+            .setFqn(API_LABELS_ATTR)
+            .setGroupable(false)
+            .setId(API_LABELS_ATTR)
+            .setKey("labels")
+            .setScopeString("API")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY)
+            .setScope(AttributeScope.API)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
+
+    AttributeMetadata httpUrlAttribute =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("HTTP URL object")
+            .addSources(AttributeSource.EDS)
+            .setFqn(API_HTTP_URL_ATTR)
+            .setGroupable(false)
+            .setId(API_HTTP_URL_ATTR)
+            .setKey("http_url")
+            .setScopeString("API")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP)
+            .setScope(AttributeScope.API)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
+
+    AttributeCreateRequest request =
+        AttributeCreateRequest.newBuilder()
+            .addAttributes(labelsAttribute)
+            .addAttributes(httpUrlAttribute)
+            .build();
+    AttributeServiceClient attributeServiceClient = new AttributeServiceClient(channel);
+    attributeServiceClient.create(TENANT_ID, request);
   }
 
   @Test
@@ -350,6 +392,193 @@ public class EntityQueryServiceTest {
   }
 
   @Test
+  void testExecuteWithCompositeAttributeFilters() {
+    // create and upsert some entities
+    List<String> filterValue1 = List.of(generateRandomUUID(), generateRandomUUID());
+    AttributeValueList.Builder attributeValueListBuilder = AttributeValueList.newBuilder();
+
+    filterValue1.stream()
+        .map(this::generateAttrValue)
+        .forEach(attributeValueListBuilder::addValues);
+
+    Entity entity1 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 1")
+            .putAttributes(
+                "labels",
+                AttributeValue.newBuilder().setValueList(attributeValueListBuilder).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1);
+    assertFalse(createdEntity1.getEntityId().trim().isEmpty());
+
+    String filterValue2 = "DISCOVERED";
+    Entity entity2 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 2")
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute(filterValue2))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2);
+    assertFalse(createdEntity2.getEntityId().trim().isEmpty());
+
+    Map<String, String> filterValue3 = Map.of("uuid", generateRandomUUID());
+    Map<String, AttributeValue> attributeValueMap =
+        filterValue3.entrySet().stream()
+            .collect(toUnmodifiableMap(Entry::getKey, e -> generateAttrValue(e.getValue())));
+
+    AttributeValueMap attributeMap =
+        AttributeValueMap.newBuilder().putAllValues(attributeValueMap).build();
+
+    Entity entity3 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 3")
+            .putAttributes(
+                "http_url", AttributeValue.newBuilder().setValueMap(attributeMap).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity3 = entityDataServiceClient.upsert(entity3);
+    assertNotNull(createdEntity3);
+    assertFalse(createdEntity3.getEntityId().trim().isEmpty());
+
+    Entity entity4 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 4")
+            .putAttributes("http_url", generateRandomUUIDAttrValue())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity4 = entityDataServiceClient.upsert(entity4);
+    assertNotNull(createdEntity4);
+    assertFalse(createdEntity4.getEntityId().trim().isEmpty());
+
+    Entity entity5 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 5")
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), generateRandomUUIDAttrValue())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity5 = entityDataServiceClient.upsert(entity5);
+    assertNotNull(createdEntity5);
+    assertFalse(createdEntity5.getEntityId().trim().isEmpty());
+
+    EntityQueryRequest queryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(EntityType.SERVICE.name())
+            .setFilter(
+                Filter.newBuilder()
+                    .setOperator(Operator.OR)
+                    .addChildFilter(
+                        Filter.newBuilder()
+                            .setOperator(Operator.IN)
+                            .setLhs(
+                                Expression.newBuilder()
+                                    .setColumnIdentifier(
+                                        ColumnIdentifier.newBuilder()
+                                            .setColumnName(API_LABELS_ATTR)))
+                            .setRhs(
+                                Expression.newBuilder()
+                                    .setLiteral(
+                                        LiteralConstant.newBuilder()
+                                            .setValue(
+                                                org.hypertrace.entity.query.service.v1.Value
+                                                    .newBuilder()
+                                                    .setValueType(STRING_ARRAY)
+                                                    .addAllStringArray(filterValue1)))))
+                    .addChildFilter(
+                        Filter.newBuilder()
+                            .setOperator(Operator.EQ)
+                            .setLhs(
+                                Expression.newBuilder()
+                                    .setColumnIdentifier(
+                                        ColumnIdentifier.newBuilder()
+                                            .setColumnName(API_DISCOVERY_STATE_ATTR)))
+                            .setRhs(
+                                Expression.newBuilder()
+                                    .setLiteral(
+                                        LiteralConstant.newBuilder()
+                                            .setValue(
+                                                org.hypertrace.entity.query.service.v1.Value
+                                                    .newBuilder()
+                                                    .setValueType(STRING)
+                                                    .setString(filterValue2)))))
+                    .addChildFilter(
+                        Filter.newBuilder()
+                            .setOperator(Operator.EQ)
+                            .setLhs(
+                                Expression.newBuilder()
+                                    .setColumnIdentifier(
+                                        ColumnIdentifier.newBuilder()
+                                            .setColumnName(API_HTTP_URL_ATTR)))
+                            .setRhs(
+                                Expression.newBuilder()
+                                    .setLiteral(
+                                        LiteralConstant.newBuilder()
+                                            .setValue(
+                                                org.hypertrace.entity.query.service.v1.Value
+                                                    .newBuilder()
+                                                    .setValueType(STRING_MAP)
+                                                    .putAllStringMap(filterValue3)))))
+                    .build())
+            .addSelection(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder().setColumnName("API.id").build())
+                    .build())
+            .addSelection(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder().setColumnName("API.name").build())
+                    .build())
+            .build();
+
+    Iterator<ResultSetChunk> resultSetChunkIterator =
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            HEADERS, () -> entityQueryServiceClient.execute(queryRequest));
+    List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
+    assertEquals(2, list.size());
+    assertEquals(2, list.get(0).getRowCount());
+    assertEquals(0, list.get(0).getChunkId());
+    assertFalse(list.get(0).getIsLastChunk());
+    assertEquals(1, list.get(1).getRowCount());
+    assertEquals(1, list.get(1).getChunkId());
+    assertTrue(list.get(1).getIsLastChunk());
+
+    assertEquals(createdEntity1.getEntityId(), list.get(0).getRow(0).getColumn(0).getString());
+    assertEquals(createdEntity1.getEntityName(), list.get(0).getRow(0).getColumn(1).getString());
+    assertEquals(createdEntity2.getEntityId(), list.get(0).getRow(1).getColumn(0).getString());
+    assertEquals(createdEntity2.getEntityName(), list.get(0).getRow(1).getColumn(1).getString());
+    assertEquals(createdEntity3.getEntityId(), list.get(1).getRow(0).getColumn(0).getString());
+    assertEquals(createdEntity3.getEntityName(), list.get(1).getRow(0).getColumn(1).getString());
+
+    assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
+    assertTrue(list.get(1).getResultSetMetadata().getColumnMetadataCount() > 0);
+  }
+
+  @Test
   public void testExecute_EmptyResponse() {
     EntityQueryRequest queryRequestNoResult =
         EntityQueryRequest.newBuilder()
@@ -400,11 +629,14 @@ public class EntityQueryServiceTest {
   }
 
   private AttributeValue generateRandomUUIDAttrValue() {
-    return AttributeValue.newBuilder()
-        .setValue(Value.newBuilder().setString(UUID.randomUUID().toString()).build())
-        .build();
+    return generateAttrValue(UUID.randomUUID().toString());
   }
 
+  private AttributeValue generateAttrValue(final String str) {
+    return AttributeValue.newBuilder().setValue(Value.newBuilder().setString(str).build()).build();
+  }
+
+  @Test
   public void testCreateAndGetEntity() {
     // creating an api entity with attributes
     Entity.Builder apiEntityBuilder = createApiEntity(SERVICE_ID, API_NAME, API_TYPE);
@@ -487,7 +719,7 @@ public class EntityQueryServiceTest {
   }
 
   @Test
-  public void testBulkUpdate() {
+  public void testBulkUpdate() throws InterruptedException {
     Entity.Builder apiEntityBuilder1 =
         Entity.newBuilder()
             .setTenantId(TENANT_ID)
@@ -567,6 +799,9 @@ public class EntityQueryServiceTest {
     GrpcClientRequestContextUtil.executeWithHeadersContext(
         HEADERS, () -> entityQueryServiceClient.bulkUpdate(bulkUpdateRequest));
 
+    // Add a small delay for the update to reflect
+    Thread.sleep(500);
+
     EntityQueryRequest entityQueryRequest =
         EntityQueryRequest.newBuilder()
             .setEntityType(EntityType.API.name())
@@ -628,7 +863,7 @@ public class EntityQueryServiceTest {
                             .setValue(
                                 org.hypertrace.entity.query.service.v1.Value.newBuilder()
                                     .addAllStringArray(Collections.emptyList())
-                                    .setValueType(ValueType.STRING_ARRAY))))
+                                    .setValueType(STRING_ARRAY))))
             .build();
     EntityUpdateInfo updateInfo = EntityUpdateInfo.newBuilder().addUpdateOperation(update).build();
     BulkEntityUpdateRequest bulkUpdateRequest =
@@ -805,7 +1040,7 @@ public class EntityQueryServiceTest {
                                       .setValue(
                                           org.hypertrace.entity.query.service.v1.Value.newBuilder()
                                               .setString("DISCOVERED")
-                                              .setValueType(ValueType.STRING)
+                                              .setValueType(STRING)
                                               .build())
                                       .build())
                               .build())
@@ -863,12 +1098,12 @@ public class EntityQueryServiceTest {
   }
 
   private static Datastore getDatastore() {
-    Config config = ConfigFactory.parseResources("configs/entity-service/application.conf");
     EntityServiceConfig entityServiceConfig =
         new EntityServiceConfig(config.getConfig("entity.service.config"));
+
     Map<String, String> mongoConfig = new HashMap<>();
-    mongoConfig.putIfAbsent("host", mongo.getHost());
-    mongoConfig.putIfAbsent("port", mongo.getMappedPort(27017).toString());
+    mongoConfig.putIfAbsent("host", config.getString(MONGO_HOST_KEY));
+    mongoConfig.putIfAbsent("port", config.getString(MONGO_PORT_KEY));
     Config dataStoreConfig = ConfigFactory.parseMap(mongoConfig);
     String dataStoreType = entityServiceConfig.getDataStoreType();
     return DatastoreProvider.getDatastore(dataStoreType, dataStoreConfig);
@@ -876,7 +1111,7 @@ public class EntityQueryServiceTest {
 
   private static Map<String, Map<String, String>> getAttributesMap() {
     String attributesPrefix = "attributes.";
-    Config config = ConfigFactory.parseResources("configs/entity-service/application.conf");
+
     List<? extends Config> attributeList = config.getConfigList("entity.service.attributeMap");
     Map<String, Map<String, String>> attributesMap = new HashMap<>();
     attributeList.forEach(
