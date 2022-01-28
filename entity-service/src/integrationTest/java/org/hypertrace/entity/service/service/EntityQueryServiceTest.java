@@ -486,7 +486,7 @@ public class EntityQueryServiceTest {
                     .setOperator(Operator.OR)
                     .addChildFilter(
                         Filter.newBuilder()
-                            .setOperator(Operator.EQ)
+                            .setOperator(Operator.IN)
                             .setLhs(
                                 Expression.newBuilder()
                                     .setColumnIdentifier(
