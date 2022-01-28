@@ -230,12 +230,21 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                           .setValueType(ValueType.STRING)
                           .setString(entity.getEntityName())
                           .build());
+                } else if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_CREATED_TIME)) {
+                  result.addColumn(
+                      Value.newBuilder()
+                          .setValueType(ValueType.LONG)
+                          .setLong(entity.getCreatedTime())
+                          .build());
                 } else if (edsSubDocPath.startsWith(ENTITY_ATTRIBUTE_DOC_PREFIX)) {
                   // Convert EDS AttributeValue to Gateway Value
                   AttributeValue attributeValue =
                       entity.getAttributesMap().get(edsSubDocPath.split("\\.")[1]);
                   result.addColumn(
                       EntityQueryConverter.convertAttributeValueToQueryValue(attributeValue));
+                } else {
+                  LOG.error(
+                      "Unable to add column {} for sub doc path {}", columnName, edsSubDocPath);
                 }
               } else {
                 LOG.warn("columnName {} missing in attrNameToEDSAttrMap", columnName);

@@ -232,13 +232,11 @@ public class EntityDataServiceTest {
             .build();
     Entity firstCreatedEntity = entityDataServiceClient.upsert(firstInputEntity);
     assertNotSame(firstInputEntity, firstCreatedEntity);
-    assertEquals(firstInputEntity, firstCreatedEntity);
+    assertEntityEquals(firstInputEntity, firstCreatedEntity);
 
     Entity secondInputEntity = firstInputEntity.toBuilder().clearAttributes().build();
-
     Entity secondCreatedEntity = entityDataServiceClient.upsert(secondInputEntity);
-
-    assertEquals(firstCreatedEntity, secondCreatedEntity);
+    assertEntityEquals(firstCreatedEntity, secondCreatedEntity);
   }
 
   @Test
@@ -1100,13 +1098,13 @@ public class EntityDataServiceTest {
   @Test
   public void testCreateEntityViaUpsertAndMerge() {
     // Scope this test to its own tenant for isolation
-    String TENANT_ID = EntityDataServiceTest.TENANT_ID + "_testCreateEntityViaUpsertAndMerge";
-    EntityDataServiceBlockingStub entityDataServiceStub = buildStubForTenant(TENANT_ID);
-    setupEntityTypes(channel, TENANT_ID);
+    String tenantId = EntityDataServiceTest.TENANT_ID + "_testCreateEntityViaUpsertAndMerge";
+    EntityDataServiceBlockingStub entityDataServiceStub = buildStubForTenant(tenantId);
+    setupEntityTypes(channel, tenantId);
     // V1 entity
     Entity entityToCreate =
         Entity.newBuilder()
-            .setTenantId(TENANT_ID)
+            .setTenantId(tenantId)
             .setEntityType(EntityType.K8S_POD.name())
             .setEntityName("V1 POD")
             .putIdentifyingAttributes(
@@ -1126,13 +1124,13 @@ public class EntityDataServiceTest {
                 .setEntityType(createdEntity.getEntityType())
                 .build());
 
-    assertEquals(createdEntity, fetchedEntity);
+    assertEntityEquals(createdEntity, fetchedEntity);
 
     // V2 Entity
 
     entityToCreate =
         Entity.newBuilder()
-            .setTenantId(TENANT_ID)
+            .setTenantId(tenantId)
             .setEntityId(UUID.randomUUID().toString())
             .setEntityType(TEST_ENTITY_TYPE_V2)
             .setEntityName("V2 entity")
@@ -1143,7 +1141,7 @@ public class EntityDataServiceTest {
                 MergeAndUpsertEntityRequest.newBuilder().setEntity(entityToCreate).build())
             .getEntity();
 
-    assertEquals(entityToCreate, createdEntity);
+    assertEntityEquals(entityToCreate, createdEntity);
 
     fetchedEntity =
         entityDataServiceStub.getById(
@@ -1223,7 +1221,7 @@ public class EntityDataServiceTest {
             .putAll(createAttributes)
             .putAll(updateAttributes)
             .build();
-    assertEquals(
+    assertEntityEquals(
         entityToCreate.toBuilder().clearAttributes().putAllAttributes(combinedAttributes).build(),
         updatedEntity);
   }
@@ -1429,5 +1427,11 @@ public class EntityDataServiceTest {
 
   private AttributeValue stringValue(String value) {
     return AttributeValue.newBuilder().setValue(Value.newBuilder().setString(value)).build();
+  }
+
+  private void assertEntityEquals(Entity expected, Entity actual) {
+    assertEquals(
+        Entity.newBuilder(expected).clearCreatedTime().build(),
+        Entity.newBuilder(actual).clearCreatedTime().build());
   }
 }
