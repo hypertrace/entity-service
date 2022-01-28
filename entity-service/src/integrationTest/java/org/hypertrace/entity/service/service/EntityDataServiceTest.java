@@ -1,6 +1,5 @@
 package org.hypertrace.entity.service.service;
 
-import static com.github.stefanbirkner.systemlambda.SystemLambda.withEnvironmentVariable;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -62,43 +61,20 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.DockerImageName;
 
 /** Test case for {@link EntityDataServiceClient} */
 public class EntityDataServiceTest {
-  private static final Logger LOG = LoggerFactory.getLogger(EntityDataServiceTest.class);
-  private static final Slf4jLogConsumer logConsumer = new Slf4jLogConsumer(LOG);
-
   private static final String TENANT_ID =
       "__testTenant__" + EntityDataServiceTest.class.getSimpleName();
   private static final String TEST_ENTITY_TYPE_V2 = "TEST_ENTITY";
   private static EntityDataServiceClient entityDataServiceClient;
   private static ManagedChannel channel;
-  private static final int CONTAINER_STARTUP_ATTEMPTS = 5;
-  private static GenericContainer<?> mongo;
 
   @BeforeAll
-  public static void setUp() throws Exception {
-    mongo =
-        new GenericContainer<>(DockerImageName.parse("hypertrace/mongodb:main"))
-            .withExposedPorts(27017)
-            .withStartupAttempts(CONTAINER_STARTUP_ATTEMPTS)
-            .waitingFor(Wait.forListeningPort())
-            .withLogConsumer(logConsumer);
-    mongo.start();
+  public static void setUp() {
+    ConfigFactory.invalidateCaches();
+    IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
 
-    withEnvironmentVariable("MONGO_HOST", mongo.getHost())
-        .and("MONGO_PORT", mongo.getMappedPort(27017).toString())
-        .execute(
-            () -> {
-              ConfigFactory.invalidateCaches();
-              IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
-            });
     EntityServiceClientConfig entityServiceTestConfig = EntityServiceTestConfig.getClientConfig();
     channel =
         ManagedChannelBuilder.forAddress("localhost", entityServiceTestConfig.getPort())
@@ -113,7 +89,6 @@ public class EntityDataServiceTest {
   public static void teardown() {
     channel.shutdown();
     IntegrationTestServerUtil.shutdownServices();
-    mongo.stop();
   }
 
   private static void setupEntityTypes(Channel channel, String tenant) {
