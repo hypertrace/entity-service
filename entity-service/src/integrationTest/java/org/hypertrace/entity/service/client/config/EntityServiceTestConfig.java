@@ -10,8 +10,7 @@ import org.hypertrace.core.serviceframework.config.IntegrationTestConfigClientFa
 public class EntityServiceTestConfig {
 
   public static EntityServiceClientConfig getClientConfig() {
-    Config serviceConfig =
-        IntegrationTestConfigClientFactory.getConfigClientForService("entity-service").getConfig();
+    Config serviceConfig = getServiceConfig();
     Map<String, Object> entityServiceClientConfigMap = new HashMap<>();
     Map<String, Object> map = new HashMap<>();
     map.put("host", "localhost");
@@ -19,5 +18,9 @@ public class EntityServiceTestConfig {
     entityServiceClientConfigMap.put("entity.service.config", map);
     Config config = ConfigFactory.parseMap(entityServiceClientConfigMap);
     return EntityServiceClientConfig.from(config);
+  }
+
+  public static Config getServiceConfig() {
+    return IntegrationTestConfigClientFactory.getConfigClientForService("entity-service").getConfig();
   }
 }
