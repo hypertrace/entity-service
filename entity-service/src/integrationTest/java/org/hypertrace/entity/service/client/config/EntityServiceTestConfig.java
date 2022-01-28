@@ -21,6 +21,7 @@ public class EntityServiceTestConfig {
   }
 
   public static Config getServiceConfig() {
-    return IntegrationTestConfigClientFactory.getConfigClientForService("entity-service").getConfig();
+    return IntegrationTestConfigClientFactory.getConfigClientForService("entity-service")
+        .getConfig();
   }
 }

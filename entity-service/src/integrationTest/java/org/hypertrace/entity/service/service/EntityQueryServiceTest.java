@@ -132,8 +132,12 @@ public class EntityQueryServiceTest {
                 RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
     entityDataServiceClient = new EntityDataServiceClient(channel);
 
-    Channel attributeChannel = ManagedChannelBuilder.forAddress(config.getString(
-        ATTRIBUTE_SERVICE_HOST_KEY), config.getInt(ATTRIBUTE_SERVICE_PORT_KEY)).usePlaintext().build();
+    Channel attributeChannel =
+        ManagedChannelBuilder.forAddress(
+                config.getString(ATTRIBUTE_SERVICE_HOST_KEY),
+                config.getInt(ATTRIBUTE_SERVICE_PORT_KEY))
+            .usePlaintext()
+            .build();
 
     setUpAttributes(attributeChannel);
 
@@ -199,33 +203,33 @@ public class EntityQueryServiceTest {
   }
 
   private static void setUpAttributes(Channel channel) {
-    AttributeMetadata labelsAttribute = AttributeMetadata.newBuilder()
-        .setDisplayName("Endpoint labels")
-        .addSources(AttributeSource.EDS)
-        .setFqn(API_LABELS_ATTR)
-        .setGroupable(false)
-        .setId(API_LABELS_ATTR)
-        .setKey("labels")
-        .setScopeString("API")
-        .setValueKind(
-            org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY)
-        .setScope(AttributeScope.API)
-        .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
-        .build();
+    AttributeMetadata labelsAttribute =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("Endpoint labels")
+            .addSources(AttributeSource.EDS)
+            .setFqn(API_LABELS_ATTR)
+            .setGroupable(false)
+            .setId(API_LABELS_ATTR)
+            .setKey("labels")
+            .setScopeString("API")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY)
+            .setScope(AttributeScope.API)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
 
-    AttributeMetadata httpUrlAttribute = AttributeMetadata.newBuilder()
-        .setDisplayName("HTTP URL object")
-        .addSources(AttributeSource.EDS)
-        .setFqn(API_HTTP_URL_ATTR)
-        .setGroupable(false)
-        .setId(API_HTTP_URL_ATTR)
-        .setKey("http_url")
-        .setScopeString("API")
-        .setValueKind(
-            org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP)
-        .setScope(AttributeScope.API)
-        .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
-        .build();
+    AttributeMetadata httpUrlAttribute =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("HTTP URL object")
+            .addSources(AttributeSource.EDS)
+            .setFqn(API_HTTP_URL_ATTR)
+            .setGroupable(false)
+            .setId(API_HTTP_URL_ATTR)
+            .setKey("http_url")
+            .setScopeString("API")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP)
+            .setScope(AttributeScope.API)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
 
     AttributeCreateRequest request =
         AttributeCreateRequest.newBuilder()
@@ -419,7 +423,8 @@ public class EntityQueryServiceTest {
             .setTenantId(TENANT_ID)
             .setEntityType(EntityType.SERVICE.name())
             .setEntityName("Some Service 2")
-            .putAttributes(apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute(filterValue2))
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute(filterValue2))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
                 generateRandomUUIDAttrValue())
@@ -441,7 +446,8 @@ public class EntityQueryServiceTest {
             .setTenantId(TENANT_ID)
             .setEntityType(EntityType.SERVICE.name())
             .setEntityName("Some Service 3")
-            .putAttributes("http_url", AttributeValue.newBuilder().setValueMap(attributeMap).build())
+            .putAttributes(
+                "http_url", AttributeValue.newBuilder().setValueMap(attributeMap).build())
             .putIdentifyingAttributes(
                 EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
                 generateRandomUUIDAttrValue())
@@ -469,7 +475,8 @@ public class EntityQueryServiceTest {
             .setTenantId(TENANT_ID)
             .setEntityType(EntityType.SERVICE.name())
             .setEntityName("Some Service 5")
-            .putAttributes(apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), generateRandomUUIDAttrValue())
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), generateRandomUUIDAttrValue())
             .putIdentifyingAttributes(
                 EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
                 generateRandomUUIDAttrValue())
@@ -490,7 +497,8 @@ public class EntityQueryServiceTest {
                             .setLhs(
                                 Expression.newBuilder()
                                     .setColumnIdentifier(
-                                        ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR)))
+                                        ColumnIdentifier.newBuilder()
+                                            .setColumnName(API_LABELS_ATTR)))
                             .setRhs(
                                 Expression.newBuilder()
                                     .setLiteral(
@@ -506,7 +514,8 @@ public class EntityQueryServiceTest {
                             .setLhs(
                                 Expression.newBuilder()
                                     .setColumnIdentifier(
-                                        ColumnIdentifier.newBuilder().setColumnName(API_DISCOVERY_STATE_ATTR)))
+                                        ColumnIdentifier.newBuilder()
+                                            .setColumnName(API_DISCOVERY_STATE_ATTR)))
                             .setRhs(
                                 Expression.newBuilder()
                                     .setLiteral(
@@ -522,7 +531,8 @@ public class EntityQueryServiceTest {
                             .setLhs(
                                 Expression.newBuilder()
                                     .setColumnIdentifier(
-                                        ColumnIdentifier.newBuilder().setColumnName(API_HTTP_URL_ATTR)))
+                                        ColumnIdentifier.newBuilder()
+                                            .setColumnName(API_HTTP_URL_ATTR)))
                             .setRhs(
                                 Expression.newBuilder()
                                     .setLiteral(
