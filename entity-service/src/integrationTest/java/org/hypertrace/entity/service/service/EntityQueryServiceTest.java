@@ -719,7 +719,7 @@ public class EntityQueryServiceTest {
   }
 
   @Test
-  public void testBulkUpdate() {
+  public void testBulkUpdate() throws InterruptedException {
     Entity.Builder apiEntityBuilder1 =
         Entity.newBuilder()
             .setTenantId(TENANT_ID)
@@ -798,6 +798,9 @@ public class EntityQueryServiceTest {
 
     GrpcClientRequestContextUtil.executeWithHeadersContext(
         HEADERS, () -> entityQueryServiceClient.bulkUpdate(bulkUpdateRequest));
+
+    // Add a small delay for the update to reflect
+    Thread.sleep(500);
 
     EntityQueryRequest entityQueryRequest =
         EntityQueryRequest.newBuilder()

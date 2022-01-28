@@ -76,16 +76,6 @@ tasks.integrationTest {
   finalizedBy("stopAttributeServiceContainer")
 }
 
-tasks.register<DockerStartContainer>("startContainers") {
-  dependsOn("startMongoContainer")
-  dependsOn("startAttributeServiceContainer")
-//  targetContainerId(tasks.getByName<DockerCreateContainer>("createAttributeServiceContainer").containerId)
-}
-
-tasks.register<DockerStopContainer>("stopContainers") {
-  finalizedBy("stopMongoContainer", "stopAttributeServiceContainer")
-}
-
 tasks.register<DockerStartContainer>("startMongoContainer") {
   dependsOn("createMongoContainer")
   targetContainerId(tasks.getByName<DockerCreateContainer>("createMongoContainer").containerId)
