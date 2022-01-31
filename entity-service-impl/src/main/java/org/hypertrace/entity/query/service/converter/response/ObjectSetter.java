@@ -26,14 +26,21 @@ public class ObjectSetter {
     final Iterator<Entry<String, JsonNode>> fields = jsonNode.fields();
 
     while (fields.hasNext()) {
-      Entry<String, JsonNode> entry = fields.next();
-      JsonNode node = entry.getValue();
+      final Entry<String, JsonNode> entry = fields.next();
+      final JsonNode node = entry.getValue();
+      boolean valueSet = false;
 
       for (final ValueGetter getter : rootGetters) {
-        if (getter.matches(jsonNode)) {
+        if (getter.matches(node)) {
           final Value value = getter.getValue(node);
           addValue(value, rowBuilder);
+          valueSet = true;
+          break;
         }
+      }
+
+      if (!valueSet && node.isObject()) {
+        setValue(node, rowBuilder);
       }
     }
   }
