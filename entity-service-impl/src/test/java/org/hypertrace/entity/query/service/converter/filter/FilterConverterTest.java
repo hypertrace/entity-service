@@ -6,13 +6,11 @@ import static org.mockito.quality.Strictness.LENIENT;
 
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
 import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
-import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Filter;
 import org.hypertrace.entity.query.service.v1.Operator;
@@ -28,8 +26,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 class FilterConverterTest {
   @Mock private ExtraFiltersApplier extraFiltersApplier;
   @Mock private FilteringExpression allFilters;
-  @Mock private Converter<Filter, LogicalExpression> logicalFilterConverter;
-  @Mock private Converter<Filter, FilteringExpression> relationalExpressionConverter;
+  @Mock private LogicalExpressionConverter logicalFilterConverter;
+  @Mock private RelationalExpressionConverter relationalExpressionConverter;
 
   private final RelationalExpression relationalExpression =
       RelationalExpression.of(
