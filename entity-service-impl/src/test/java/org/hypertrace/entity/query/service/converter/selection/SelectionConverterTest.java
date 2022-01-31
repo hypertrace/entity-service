@@ -62,7 +62,7 @@ class SelectionConverterTest {
   void testConvert() throws ConversionException {
     Selection expected =
         Selection.builder()
-            .selectionSpec(SelectionSpec.of(IdentifierExpression.of("Hello_Mars")))
+            .selectionSpec(SelectionSpec.of(IdentifierExpression.of("Hello_Mars"), "Hello_Mars"))
             .build();
     assertEquals(expected, selectionConverter.convert(List.of(expression), requestContext));
   }

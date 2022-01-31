@@ -7,7 +7,10 @@ import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FI
 import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Guice;
+import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
@@ -42,6 +45,7 @@ import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.converter.ConverterModule;
+import org.hypertrace.entity.query.service.converter.response.JsonNodeConverter;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
@@ -122,15 +126,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
-    final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-        queryConverter =
-            Guice.createInjector(new ConverterModule(entityAttributeMapping))
-                .getInstance(
-                    com.google.inject.Key.get(
-                        new TypeLiteral<
-                            Converter<
-                                EntityQueryRequest,
-                                org.hypertrace.core.documentstore.query.Query>>() {}));
+    final Injector injector = Guice.createInjector(new ConverterModule(entityAttributeMapping));
+
+    final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query> queryConverter = injector.getInstance(com.google.inject.Key.get(new TypeLiteral<Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {}));
     final org.hypertrace.core.documentstore.query.Query query;
 
     try {
@@ -141,6 +139,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     final Iterator<Document> documentIterator = entitiesCollection.aggregate(query);
+    final JsonNodeConverter rowConverter = injector.getInstance(JsonNodeConverter.class);
 
     ResultSetMetadata resultSetMetadata =
         this.buildMetadataForSelections(request.getSelectionList());
@@ -158,19 +157,21 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     int chunkId = 0, rowCount = 0;
     ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
     while (documentIterator.hasNext()) {
-      Optional<Entity> entity =
-          DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
       // Set metadata for new chunk
       if (isNewChunk) {
         resultBuilder.setResultSetMetadata(resultSetMetadata);
         isNewChunk = false;
       }
-      if (entity.isPresent()) {
-        // Build data
-        resultBuilder.addRow(
-            convertToEntityQueryResult(requestContext, entity.get(), request.getSelectionList()));
+
+      try {
+        JsonNode jsonNode = new ObjectMapper().readTree(documentIterator.next().toJson());
+        resultBuilder.addRow(rowConverter.convertToRow(jsonNode));
         rowCount++;
+      } catch (final Exception e) {
+        responseObserver.onError(new ServiceException(e));
+        return;
       }
+
       // current chunk is complete
       if (rowCount >= CHUNK_SIZE || !documentIterator.hasNext()) {
         resultBuilder.setChunkId(chunkId++);

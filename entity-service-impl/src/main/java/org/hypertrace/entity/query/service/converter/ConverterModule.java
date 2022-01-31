@@ -13,6 +13,7 @@ import org.hypertrace.entity.query.service.converter.accessor.AccessorModule;
 import org.hypertrace.entity.query.service.converter.aggregation.AggregationModule;
 import org.hypertrace.entity.query.service.converter.filter.FilterModule;
 import org.hypertrace.entity.query.service.converter.identifier.IdentifierModule;
+import org.hypertrace.entity.query.service.converter.response.ResponseModule;
 import org.hypertrace.entity.query.service.converter.selection.SelectionConverterModule;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
@@ -29,6 +30,7 @@ public class ConverterModule extends AbstractModule {
     install(new FilterModule());
     install(new IdentifierModule());
     install(new SelectionConverterModule());
+    install(new ResponseModule());
 
     bind(new TypeLiteral<Converter<LiteralConstant, ConstantExpression>>() {})
         .to(ConstantExpressionConverter.class);
