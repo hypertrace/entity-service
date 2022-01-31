@@ -2,6 +2,7 @@ package org.hypertrace.entity.query.service.converter.selection;
 
 import static com.google.common.base.Suppliers.memoize;
 import static java.util.Collections.unmodifiableMap;
+import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.AGGREGATION;
 import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.COLUMNIDENTIFIER;
 
 import com.google.inject.Inject;
@@ -9,6 +10,7 @@ import com.google.inject.Singleton;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.hypertrace.core.documentstore.expression.impl.AggregateExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.type.SelectingExpression;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
@@ -19,8 +21,13 @@ import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
 
 @Singleton
 public class SelectionFactoryImpl implements SelectionFactory {
+  private final Converter<
+          org.hypertrace.entity.query.service.v1.AggregateExpression, AggregateExpression>
+      aggregateExpressionConverter;
   private final Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
 
+  private final AliasProvider<org.hypertrace.entity.query.service.v1.AggregateExpression>
+      aggregateAliasProvider;
   private final AliasProvider<ColumnIdentifier> identifierAliasProvider;
 
   private final Supplier<Map<ValueCase, Converter<?, ? extends SelectingExpression>>> converterMap;
@@ -28,10 +35,17 @@ public class SelectionFactoryImpl implements SelectionFactory {
 
   @Inject
   public SelectionFactoryImpl(
+      final Converter<
+              org.hypertrace.entity.query.service.v1.AggregateExpression, AggregateExpression>
+          aggregateExpressionConverter,
       final Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter,
+      final AliasProvider<org.hypertrace.entity.query.service.v1.AggregateExpression>
+          aggregateAliasProvider,
       final AliasProvider<ColumnIdentifier> identifierAliasProvider) {
+    this.aggregateExpressionConverter = aggregateExpressionConverter;
     this.identifierExpressionConverter = identifierExpressionConverter;
 
+    this.aggregateAliasProvider = aggregateAliasProvider;
     this.identifierAliasProvider = identifierAliasProvider;
 
     this.converterMap = memoize(this::getConverterMap);
@@ -70,6 +84,7 @@ public class SelectionFactoryImpl implements SelectionFactory {
     final Map<ValueCase, Converter<?, ? extends SelectingExpression>> map =
         new EnumMap<>(ValueCase.class);
 
+    map.put(AGGREGATION, aggregateExpressionConverter);
     map.put(COLUMNIDENTIFIER, identifierExpressionConverter);
 
     return unmodifiableMap(map);
@@ -78,6 +93,7 @@ public class SelectionFactoryImpl implements SelectionFactory {
   private Map<ValueCase, AliasProvider<?>> getAliasProviderMap() {
     final Map<ValueCase, AliasProvider<?>> map = new EnumMap<>(ValueCase.class);
 
+    map.put(AGGREGATION, aggregateAliasProvider);
     map.put(COLUMNIDENTIFIER, identifierAliasProvider);
 
     return unmodifiableMap(map);

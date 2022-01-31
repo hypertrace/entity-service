@@ -1,5 +1,6 @@
 package org.hypertrace.entity.query.service.converter.accessor;
 
+import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.AGGREGATION;
 import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.COLUMNIDENTIFIER;
 import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.FUNCTION;
 import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.LITERAL;
@@ -14,6 +15,7 @@ import com.google.inject.Key;
 import com.google.inject.TypeLiteral;
 import java.util.Set;
 import org.hypertrace.entity.query.service.converter.ConversionException;
+import org.hypertrace.entity.query.service.v1.AggregateExpression;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
@@ -50,6 +52,9 @@ class ExpressionOneOfAccessorTest {
     assertEquals(Function.getDefaultInstance(), expressionAccessor.access(expression, FUNCTION));
     assertEquals(
         OrderByExpression.getDefaultInstance(), expressionAccessor.access(expression, ORDERBY));
+    assertEquals(
+        AggregateExpression.getDefaultInstance(),
+        expressionAccessor.access(expression, AGGREGATION));
   }
 
   @Test
@@ -67,5 +72,9 @@ class ExpressionOneOfAccessorTest {
     assertThrows(
         ConversionException.class,
         () -> expressionAccessor.access(expression, ORDERBY, Set.of(COLUMNIDENTIFIER, LITERAL)));
+    assertThrows(
+        ConversionException.class,
+        () ->
+            expressionAccessor.access(expression, AGGREGATION, Set.of(COLUMNIDENTIFIER, LITERAL)));
   }
 }

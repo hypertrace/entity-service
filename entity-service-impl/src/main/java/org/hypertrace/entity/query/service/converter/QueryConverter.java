@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import java.util.List;
 import java.util.function.Function;
 import lombok.AllArgsConstructor;
+import org.hypertrace.core.documentstore.query.Aggregation;
 import org.hypertrace.core.documentstore.query.Filter;
 import org.hypertrace.core.documentstore.query.Pagination;
 import org.hypertrace.core.documentstore.query.Pagination.PaginationBuilder;
@@ -15,6 +16,7 @@ import org.hypertrace.core.documentstore.query.Sort;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
+import org.hypertrace.entity.query.service.v1.GroupByExpression;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
 
 @Singleton
@@ -22,6 +24,8 @@ import org.hypertrace.entity.query.service.v1.OrderByExpression;
 public class QueryConverter implements Converter<EntityQueryRequest, Query> {
   private final Converter<List<Expression>, Selection> selectionConverter;
   private final Converter<EntityQueryRequest, Filter> filterConverter;
+
+  private final Converter<List<GroupByExpression>, Aggregation> groupByConverter;
 
   private final Converter<List<OrderByExpression>, Sort> orderByConverter;
   private final PaginationBuilder paginationBuilder = Pagination.builder();
@@ -37,6 +41,8 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
     final Filter filter = filterConverter.convert(request, requestContext);
     builder.setFilter(filter);
 
+    setFieldIfNotEmpty(
+        request.getGroupByList(), builder::setAggregation, groupByConverter, requestContext);
     setFieldIfNotEmpty(
         request.getOrderByList(), builder::setSort, orderByConverter, requestContext);
 
