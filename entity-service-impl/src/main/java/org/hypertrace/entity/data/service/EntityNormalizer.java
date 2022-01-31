@@ -39,6 +39,9 @@ class EntityNormalizer {
       throw new RuntimeException(ErrorMessages.ENTITY_TYPE_EMPTY);
     }
 
+    // clear created time, since document-store directly adds the created time field for the entity
+    receivedEntity = Entity.newBuilder(receivedEntity).clearCreatedTime().build();
+
     if (this.requiresIdentifyingAttributes(receivedEntity)) {
       return this.normalizeEntityByIdentifyingAttributes(tenantId, receivedEntity);
     }
