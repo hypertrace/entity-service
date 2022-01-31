@@ -7,6 +7,6 @@ import org.hypertrace.entity.query.service.v1.Filter;
 import org.hypertrace.entity.query.service.v1.Operator;
 
 public interface FilterConverterFactory {
-  Converter<Filter, ? extends FilteringExpression> getFilterConverter(final Operator operator)
+  Converter<Filter, FilteringExpression> getFilterConverter(final Operator operator)
       throws ConversionException;
 }
