@@ -64,7 +64,8 @@ public class ValueHelper {
   private static final Supplier<Map<ValueType, ValueType>> PRIMITIVE_TO_ARRAY_MAP =
       memoize(ValueHelper::getPrimitiveToArrayMap);
 
-  private static final Supplier<Map<String, ValueType>> STRING_VALUE_TO_PRIMITIVE_TYPE_MAP = memoize(ValueHelper::getStringValueToPrimitiveTypeMap);
+  private static final Supplier<Map<String, ValueType>> STRING_VALUE_TO_PRIMITIVE_TYPE_MAP =
+      memoize(ValueHelper::getStringValueToPrimitiveTypeMap);
 
   private final OneOfAccessor<Value, ValueType> valueAccessor;
 
@@ -191,18 +192,19 @@ public class ValueHelper {
     final ValueType arrayType = PRIMITIVE_TO_ARRAY_MAP.get().get(primitiveValueType);
 
     if (arrayType == null) {
-      throw new ConversionException(String.format("A suitable array type not found for %s", primitiveValueType));
+      throw new ConversionException(
+          String.format("A suitable array type not found for %s", primitiveValueType));
     }
 
     return arrayType;
   }
 
-  public ValueType getPrimitiveValueType(final String primitiveType)
-      throws ConversionException {
+  public ValueType getPrimitiveValueType(final String primitiveType) throws ConversionException {
     final ValueType arrayType = STRING_VALUE_TO_PRIMITIVE_TYPE_MAP.get().get(primitiveType);
 
     if (arrayType == null) {
-      throw new ConversionException(String.format("A suitable array type not found for %s", primitiveType));
+      throw new ConversionException(
+          String.format("A suitable array type not found for %s", primitiveType));
     }
 
     return arrayType;

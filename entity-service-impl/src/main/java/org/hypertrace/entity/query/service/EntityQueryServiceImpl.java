@@ -128,7 +128,14 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     final Injector injector = Guice.createInjector(new ConverterModule(entityAttributeMapping));
 
-    final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query> queryConverter = injector.getInstance(com.google.inject.Key.get(new TypeLiteral<Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {}));
+    final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
+        queryConverter =
+            injector.getInstance(
+                com.google.inject.Key.get(
+                    new TypeLiteral<
+                        Converter<
+                            EntityQueryRequest,
+                            org.hypertrace.core.documentstore.query.Query>>() {}));
     final org.hypertrace.core.documentstore.query.Query query;
 
     try {

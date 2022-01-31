@@ -5,15 +5,17 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import java.util.List;
-import lombok.AllArgsConstructor;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.v1.Value;
 
 @Singleton
-@AllArgsConstructor(onConstructor_ = {@Inject})
 public class DirectValueGetter implements ValueGetter {
-  @Named("base_getters")
   private final List<ValueGetter> primitiveValueGetters;
+
+  @Inject
+  public DirectValueGetter(@Named("base_getters") final List<ValueGetter> primitiveValueGetters) {
+    this.primitiveValueGetters = primitiveValueGetters;
+  }
 
   @Override
   public boolean matches(final JsonNode jsonNode) {

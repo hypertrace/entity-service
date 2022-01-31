@@ -12,7 +12,15 @@ public class GetterModule extends AbstractModule {
   @Singleton
   @Inject
   @Named("base_getters")
-  List<ValueGetter> getValueGetters(final BooleanGetter booleanGetter, final BytesGetter bytesGetter, final DoubleGetter doubleGetter, final FloatGetter floatGetter, final IntegerGetter intGetter, final LongGetter longGetter, final StringGetter stringGetter) {
-    return List.of(booleanGetter, bytesGetter, intGetter, longGetter, floatGetter, doubleGetter, stringGetter);
+  List<ValueGetter> getValueGetters(
+      final BooleanGetter booleanGetter,
+      final BytesGetter bytesGetter,
+      final DoubleGetter doubleGetter,
+      final FloatGetter floatGetter,
+      final IntegerGetter intGetter,
+      final LongGetter longGetter,
+      final StringGetter stringGetter) {
+    return List.of(
+        booleanGetter, bytesGetter, intGetter, longGetter, floatGetter, doubleGetter, stringGetter);
   }
 }

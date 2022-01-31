@@ -40,7 +40,8 @@ public class PrimitiveValueGetter implements ValueGetter {
   private final LongGetter longGetter;
   private final StringGetter stringGetter;
 
-  private final Supplier<Map<ValueType, ValueGetter>> getterMap = Suppliers.memoize(this::getTypeToGetterMap);
+  private final Supplier<Map<ValueType, ValueGetter>> getterMap =
+      Suppliers.memoize(this::getTypeToGetterMap);
 
   @Override
   public boolean matches(final JsonNode jsonNode) {
@@ -58,7 +59,8 @@ public class PrimitiveValueGetter implements ValueGetter {
     final List<Entry<String, JsonNode>> fields = Lists.newArrayList(typeNode.fields());
 
     if (fields.size() != 1) {
-      throw new ConversionException(String.format("Expected exactly 1 field in node: %s", jsonNode));
+      throw new ConversionException(
+          String.format("Expected exactly 1 field in node: %s", jsonNode));
     }
 
     final String typeString = fields.get(0).getKey();
@@ -72,7 +74,8 @@ public class PrimitiveValueGetter implements ValueGetter {
     final JsonNode valueNode = fields.get(0).getValue();
 
     if (!getter.matches(valueNode)) {
-      throw new ConversionException(String.format("Getter type does not match for node: %s", valueNode));
+      throw new ConversionException(
+          String.format("Getter type does not match for node: %s", valueNode));
     }
 
     return getter.getValue(valueNode);

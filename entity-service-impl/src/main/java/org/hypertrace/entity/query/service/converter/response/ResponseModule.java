@@ -25,7 +25,11 @@ public class ResponseModule extends AbstractModule {
   @Provides
   @Inject
   @Named("root_getters")
-  List<ValueGetter> getRootGetters(final DirectValueGetter directValueGetter, final PrimitiveValueGetter primitiveValueGetter, final ListValueGetter listValueGetter, final MapValueGetter mapValueGetter) {
+  List<ValueGetter> getRootGetters(
+      final DirectValueGetter directValueGetter,
+      final PrimitiveValueGetter primitiveValueGetter,
+      final ListValueGetter listValueGetter,
+      final MapValueGetter mapValueGetter) {
     return List.of(primitiveValueGetter, listValueGetter, mapValueGetter, directValueGetter);
   }
 }

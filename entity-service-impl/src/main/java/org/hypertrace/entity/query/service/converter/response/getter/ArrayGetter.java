@@ -48,7 +48,8 @@ public class ArrayGetter implements ValueGetter {
       values.add(value);
     }
 
-    final ValueType primitiveType = values.stream().map(Value::getValueType).findFirst().orElse(STRING);
+    final ValueType primitiveType =
+        values.stream().map(Value::getValueType).findFirst().orElse(STRING);
     final ValueType type = valueHelper.getArrayValueType(primitiveType);
 
     final Value.Builder valueBuilder = Value.newBuilder().setValueType(type);

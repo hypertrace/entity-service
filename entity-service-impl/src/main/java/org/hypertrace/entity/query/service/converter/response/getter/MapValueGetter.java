@@ -30,7 +30,8 @@ public class MapValueGetter implements ValueGetter {
     final JsonNode valuesNode = jsonNode.get(VALUE_MAP_KEY);
 
     if (valuesNode == null || !valuesNode.isObject() || !valuesNode.has(VALUES_KEY)) {
-      throw new ConversionException(String.format("Unexpected node (%s) found under %s", valuesNode, VALUE_LIST_KEY));
+      throw new ConversionException(
+          String.format("Unexpected node (%s) found under %s", valuesNode, VALUE_LIST_KEY));
     }
 
     final JsonNode mapNode = valuesNode.get(VALUES_KEY);

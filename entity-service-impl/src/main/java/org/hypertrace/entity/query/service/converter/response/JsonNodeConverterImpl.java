@@ -18,5 +18,4 @@ public class JsonNodeConverterImpl implements JsonNodeConverter {
     objectSetter.setValue(jsonNode, rowBuilder);
     return rowBuilder.build();
   }
-
 }
