@@ -40,7 +40,7 @@ class LogicalExpressionConverterTest {
           .build();
   private final RequestContext requestContext = RequestContext.forTenantId("Martian");
 
-  private Converter<Filter, LogicalExpression> logicalExpressionConverter;
+  private Converter<Filter, FilteringExpression> logicalExpressionConverter;
 
   @BeforeEach
   void setup() throws ConversionException {
@@ -79,5 +79,20 @@ class LogicalExpressionConverterTest {
     assertThrows(
         ConversionException.class,
         () -> logicalExpressionConverter.convert(filter, requestContext));
+  }
+
+  @Test
+  void testEmptyChildFilters() {
+    Filter filter = Filter.newBuilder().setOperator(Operator.AND).build();
+    assertThrows(
+        ConversionException.class,
+        () -> logicalExpressionConverter.convert(filter, requestContext));
+  }
+
+  @Test
+  void testSingleChildFilter() throws ConversionException {
+    Filter filter =
+        Filter.newBuilder().setOperator(Operator.AND).addChildFilter(childFilter1).build();
+    assertEquals(filteringExpression1, logicalExpressionConverter.convert(filter, requestContext));
   }
 }

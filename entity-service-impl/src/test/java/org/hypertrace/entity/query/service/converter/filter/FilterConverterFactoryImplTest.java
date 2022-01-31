@@ -11,11 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.quality.Strictness.LENIENT;
 
-import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
-import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
 import org.hypertrace.entity.query.service.converter.ConversionException;
-import org.hypertrace.entity.query.service.converter.Converter;
-import org.hypertrace.entity.query.service.v1.Filter;
 import org.hypertrace.entity.query.service.v1.Operator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,8 +25,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
 class FilterConverterFactoryImplTest {
-  @Mock private Converter<Filter, FilteringExpression> relationalExpressionConverter;
-  @Mock private Converter<Filter, LogicalExpression> logicalExpressionConverter;
+  @Mock private RelationalExpressionConverter relationalExpressionConverter;
+  @Mock private LogicalExpressionConverter logicalExpressionConverter;
 
   private FilterConverterFactory filterConverterFactory;
 

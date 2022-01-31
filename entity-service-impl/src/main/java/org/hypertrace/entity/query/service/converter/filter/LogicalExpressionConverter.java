@@ -24,13 +24,13 @@ import org.hypertrace.entity.query.service.v1.Operator;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
-public class LogicalExpressionConverter implements Converter<Filter, LogicalExpression> {
+public class LogicalExpressionConverter implements Converter<Filter, FilteringExpression> {
   private static final Supplier<Map<Operator, LogicalOperator>> LOGICAL_OPERATOR_MAP =
       Suppliers.memoize(LogicalExpressionConverter::getLogicalOperatorMap);
   private final FilterConverterFactory filterConverterFactory;
 
   @Override
-  public LogicalExpression convert(final Filter filter, final RequestContext requestContext)
+  public FilteringExpression convert(final Filter filter, final RequestContext requestContext)
       throws ConversionException {
     final LogicalOperator operator = LOGICAL_OPERATOR_MAP.get().get(filter.getOperator());
 
@@ -39,10 +39,19 @@ public class LogicalExpressionConverter implements Converter<Filter, LogicalExpr
           String.format("No equivalent logical operator found for %s", filter.getOperator()));
     }
 
+    if (filter.getChildFilterList().isEmpty()) {
+      throw new ConversionException(
+          String.format("No child filter found with operator: %s", operator));
+    }
+
     final List<FilteringExpression> innerFilters = new ArrayList<>();
     for (final Filter innerFilter : filter.getChildFilterList()) {
       final FilteringExpression expression = convertInnerFilter(innerFilter, requestContext);
       innerFilters.add(expression);
+    }
+
+    if (innerFilters.size() == 1) {
+      return innerFilters.get(0);
     }
 
     return LogicalExpression.builder().operator(operator).operands(innerFilters).build();
