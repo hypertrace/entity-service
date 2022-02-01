@@ -49,7 +49,13 @@ public class ValueMapper {
           final Value value = getter.getValue(node);
 
           if (STRING_MAP == value.getValueType()) {
-            value.getStringMapMap().forEach((k, v) -> valueMap.put(DOT_JOINER.join(key, k), Value.newBuilder().setValueType(STRING).setString(v).build()));
+            value
+                .getStringMapMap()
+                .forEach(
+                    (k, v) ->
+                        valueMap.put(
+                            DOT_JOINER.join(key, k),
+                            Value.newBuilder().setValueType(STRING).setString(v).build()));
           } else {
             valueMap.put(key, value);
           }

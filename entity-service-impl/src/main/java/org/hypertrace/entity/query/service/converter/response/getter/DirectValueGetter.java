@@ -13,7 +13,8 @@ public class DirectValueGetter implements ValueGetter {
   private final List<ValueGetter> primitiveValueGetters;
 
   @Inject
-  public DirectValueGetter(@Named("base_getters") final List<ValueGetter> primitiveValueGetters) {
+  public DirectValueGetter(
+      @Named("primitive_getters") final List<ValueGetter> primitiveValueGetters) {
     this.primitiveValueGetters = primitiveValueGetters;
   }
 

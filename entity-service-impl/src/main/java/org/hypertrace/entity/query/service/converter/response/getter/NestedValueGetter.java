@@ -16,36 +16,58 @@ import com.google.common.base.Suppliers;
 import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Supplier;
-import lombok.AllArgsConstructor;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 
 @Singleton
-@AllArgsConstructor(onConstructor_ = {@Inject})
-public class PrimitiveValueGetter implements ValueGetter {
+public class NestedValueGetter implements ValueGetter {
+  private final ValueGetter booleanGetter;
+  private final ValueGetter bytesGetter;
+  private final ValueGetter doubleGetter;
+  private final ValueGetter floatGetter;
+  private final ValueGetter intGetter;
+  private final ValueGetter longGetter;
+  private final ValueGetter stringGetter;
+
   private final ValueHelper valueHelper;
 
-  private final BooleanGetter booleanGetter;
-  private final BytesGetter bytesGetter;
-  private final DoubleGetter doubleGetter;
-  private final FloatGetter floatGetter;
-  private final IntegerGetter intGetter;
-  private final LongGetter longGetter;
-  private final StringGetter stringGetter;
+  @Inject
+  public NestedValueGetter(
+      @Named("boolean") final ValueGetter booleanGetter,
+      @Named("bytes") final ValueGetter bytesGetter,
+      @Named("double") final ValueGetter doubleGetter,
+      @Named("float") final ValueGetter floatGetter,
+      @Named("int") final ValueGetter intGetter,
+      @Named("long") final ValueGetter longGetter,
+      @Named("string") final ValueGetter stringGetter,
+      ValueHelper valueHelper) {
+    this.booleanGetter = booleanGetter;
+    this.bytesGetter = bytesGetter;
+    this.doubleGetter = doubleGetter;
+    this.floatGetter = floatGetter;
+    this.intGetter = intGetter;
+    this.longGetter = longGetter;
+    this.stringGetter = stringGetter;
+    this.valueHelper = valueHelper;
+  }
 
   private final Supplier<Map<ValueType, ValueGetter>> getterMap =
       Suppliers.memoize(this::getTypeToGetterMap);
 
   @Override
   public boolean matches(final JsonNode jsonNode) {
-    return jsonNode != null && jsonNode.isObject() && jsonNode.has(VALUE_KEY) && jsonNode.get(VALUE_KEY).isObject();
+    return jsonNode != null
+        && jsonNode.isObject()
+        && jsonNode.has(VALUE_KEY)
+        && jsonNode.get(VALUE_KEY).isObject();
   }
 
   @Override

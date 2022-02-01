@@ -5,21 +5,30 @@ import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import lombok.AllArgsConstructor;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 
 @Singleton
-@AllArgsConstructor(onConstructor_ = {@Inject})
 public class ArrayGetter implements ValueGetter {
-  private final PrimitiveValueGetter primitiveValueGetter;
-  private final DirectValueGetter directValueGetter;
+  private final ValueGetter nestedValueGetter;
+  private final ValueGetter directValueGetter;
   private final ValueHelper valueHelper;
+
+  @Inject
+  public ArrayGetter(
+      @Named("nested_value") final ValueGetter nestedValueGetter,
+      @Named("direct_value") final ValueGetter directValueGetter,
+      final ValueHelper valueHelper) {
+    this.nestedValueGetter = nestedValueGetter;
+    this.directValueGetter = directValueGetter;
+    this.valueHelper = valueHelper;
+  }
 
   @Override
   public boolean matches(final JsonNode jsonNode) {
@@ -37,8 +46,8 @@ public class ArrayGetter implements ValueGetter {
 
       final Value value;
 
-      if (primitiveValueGetter.matches(node)) {
-        value = primitiveValueGetter.getValue(node);
+      if (nestedValueGetter.matches(node)) {
+        value = nestedValueGetter.getValue(node);
       } else if (directValueGetter.matches(node)) {
         value = directValueGetter.getValue(node);
       } else {

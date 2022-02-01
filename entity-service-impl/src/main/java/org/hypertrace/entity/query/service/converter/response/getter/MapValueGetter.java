@@ -9,20 +9,27 @@ import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import java.util.Iterator;
 import java.util.Map.Entry;
-import lombok.AllArgsConstructor;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.v1.Value;
 
 @Singleton
-@AllArgsConstructor(onConstructor_ = {@Inject})
 public class MapValueGetter implements ValueGetter {
-  private final PrimitiveValueGetter primitiveValueGetter;
+  private final ValueGetter nestedValueGetter;
+
+  @Inject
+  public MapValueGetter(@Named("nested_value") final ValueGetter nestedValueGetter) {
+    this.nestedValueGetter = nestedValueGetter;
+  }
 
   @Override
   public boolean matches(final JsonNode jsonNode) {
-    return jsonNode != null && jsonNode.isObject() && jsonNode.has(VALUE_MAP_KEY) && jsonNode.get(VALUE_MAP_KEY).isObject();
+    return jsonNode != null
+        && jsonNode.isObject()
+        && jsonNode.has(VALUE_MAP_KEY)
+        && jsonNode.get(VALUE_MAP_KEY).isObject();
   }
 
   @Override
@@ -44,12 +51,12 @@ public class MapValueGetter implements ValueGetter {
       final String key = entry.getKey();
       final JsonNode node = entry.getValue();
 
-      if (!primitiveValueGetter.matches(node)) {
+      if (!nestedValueGetter.matches(node)) {
         throw new ConversionException(
             String.format("Unexpected node (%s) found for key (%s)", node, key));
       }
 
-      final Value value = primitiveValueGetter.getValue(node);
+      final Value value = nestedValueGetter.getValue(node);
 
       if (value.getValueType() != STRING) {
         throw new ConversionException(

@@ -6,18 +6,27 @@ import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUE_LI
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import lombok.AllArgsConstructor;
+import com.google.inject.name.Named;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.v1.Value;
 
 @Singleton
-@AllArgsConstructor(onConstructor_ = {@Inject})
 public class ListValueGetter implements ValueGetter {
-  private final ArrayGetter arrayGetter;
+  private final ValueGetter arrayGetter;
+
+  @Inject
+  public ListValueGetter(@Named("array") final ValueGetter arrayGetter) {
+    this.arrayGetter = arrayGetter;
+  }
 
   @Override
   public boolean matches(JsonNode jsonNode) {
-    return jsonNode != null && jsonNode.isObject() && jsonNode.has(VALUE_LIST_KEY) && jsonNode.get(VALUE_LIST_KEY).isObject() && jsonNode.get(VALUE_LIST_KEY).has(VALUES_KEY) && jsonNode.get(VALUE_LIST_KEY).get(VALUES_KEY).isArray();
+    return jsonNode != null
+        && jsonNode.isObject()
+        && jsonNode.has(VALUE_LIST_KEY)
+        && jsonNode.get(VALUE_LIST_KEY).isObject()
+        && jsonNode.get(VALUE_LIST_KEY).has(VALUES_KEY)
+        && jsonNode.get(VALUE_LIST_KEY).get(VALUES_KEY).isArray();
   }
 
   @Override
