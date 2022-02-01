@@ -634,28 +634,27 @@ public class EntityQueryServiceImplTest {
     List<Document> docs =
         List.of(
             new JSONDocument(
-                JsonFormat.printer()
-                    .print(
-                        Entity.newBuilder()
-                            .setTenantId("tenant-1")
-                            .setEntityType(TEST_ENTITY_TYPE)
-                            .setEntityId(UUID.randomUUID().toString())
-                            .setEntityName("Test entity 1")
-                            .putAttributes(
-                                "entity_id",
-                                AttributeValue.newBuilder()
-                                    .setValue(
-                                        org.hypertrace.entity.data.service.v1.Value.newBuilder()
-                                            .setString("col1-value"))
-                                    .build())
-                            .putAttributes(
-                                "status",
-                                AttributeValue.newBuilder()
-                                    .setValue(
-                                        org.hypertrace.entity.data.service.v1.Value.newBuilder()
-                                            .setString("col2-value"))
-                                    .build())
-                            .build())));
+                "{\n"
+                    + "    \"tenantId\": \"tenant-1\",\n"
+                    + "    \"entityId\": \""
+                    + UUID.randomUUID()
+                    + "\",\n"
+                    + "    \"entityType\": \""
+                    + TEST_ENTITY_TYPE
+                    + "\",\n"
+                    + "    \"entityName\": \"Test entity 1\",\n"
+                    + "    \"col1\": \"col1-value\",\n"
+                    + "    \"Entity\": \n"
+                    + "    {\n"
+                    + "        \"status\":\n"
+                    + "        {\n"
+                    + "            \"value\":\n"
+                    + "            {\n"
+                    + "                \"string\": \"col2-value\"\n"
+                    + "            }\n"
+                    + "        }\n"
+                    + "    }\n"
+                    + "}"));
     when(mockEntitiesCollection.aggregate(any())).thenReturn(docs.iterator());
     EntityQueryRequest request =
         EntityQueryRequest.newBuilder()
@@ -672,6 +671,7 @@ public class EntityQueryServiceImplTest {
                         ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID2)))
             .build();
     StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
+
     Context.current()
         .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
         .run(
