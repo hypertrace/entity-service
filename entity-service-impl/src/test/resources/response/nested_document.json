@@ -1,0 +1,56 @@
+{
+  "tenantId": "tenant-1",
+  "entityId": "0215f3f6-55eb-4d95-a116-60f2962528ef",
+  "Entity":
+  {
+    "status":
+    {
+      "value":
+      {
+        "string": "Red Shift"
+      }
+    }
+  },
+  "attributes":
+  {
+    "something": {
+      "value": {
+        "boolean": true
+      }
+    },
+    "updated_time": {
+      "valueList": {
+        "values": [
+          {
+            "value": {
+              "timestamp": 1643702835
+            }
+          },
+          {
+            "value": {
+              "timestamp": 1643702900
+            }
+          }
+        ]
+      }
+    },
+    "address_map": {
+      "valueMap": {
+        "values": {
+          "galaxy": {
+            "value": {
+              "string": "Milky Way"
+            }
+          },
+          "planet": {
+            "value": {
+              "string": "Mars"
+            }
+          }
+        }
+      }
+    },
+    "valueMap": "The Future is Red!",
+    "valueList": 2037
+  }
+}

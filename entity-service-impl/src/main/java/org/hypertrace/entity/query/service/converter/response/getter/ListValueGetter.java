@@ -17,7 +17,7 @@ public class ListValueGetter implements ValueGetter {
 
   @Override
   public boolean matches(JsonNode jsonNode) {
-    return jsonNode != null && jsonNode.isObject() && jsonNode.has(VALUE_LIST_KEY);
+    return jsonNode != null && jsonNode.isObject() && jsonNode.has(VALUE_LIST_KEY) && jsonNode.get(VALUE_LIST_KEY).isObject() && jsonNode.get(VALUE_LIST_KEY).has(VALUES_KEY) && jsonNode.get(VALUE_LIST_KEY).get(VALUES_KEY).isArray();
   }
 
   @Override

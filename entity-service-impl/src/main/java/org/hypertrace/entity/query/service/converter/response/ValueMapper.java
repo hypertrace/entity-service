@@ -1,5 +1,8 @@
 package org.hypertrace.entity.query.service.converter.response;
 
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Joiner;
 import com.google.inject.Inject;
@@ -37,18 +40,20 @@ public class ValueMapper {
     while (fields.hasNext()) {
       final Entry<String, JsonNode> entry = fields.next();
       final JsonNode node = entry.getValue();
-      String key = entry.getKey();
-
-      if (prefix != null) {
-        key = DOT_JOINER.join(prefix, key);
-      }
+      final String key = prefix == null ? entry.getKey() : DOT_JOINER.join(prefix, entry.getKey());
 
       boolean valueSet = false;
 
       for (final ValueGetter getter : rootGetters) {
         if (getter.matches(node)) {
           final Value value = getter.getValue(node);
-          valueMap.put(key, value);
+
+          if (STRING_MAP == value.getValueType()) {
+            value.getStringMapMap().forEach((k, v) -> valueMap.put(DOT_JOINER.join(key, k), Value.newBuilder().setValueType(STRING).setString(v).build()));
+          } else {
+            valueMap.put(key, value);
+          }
+
           valueSet = true;
           break;
         }

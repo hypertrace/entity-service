@@ -11,7 +11,7 @@ public class LongGetter implements ValueGetter {
 
   @Override
   public boolean matches(final JsonNode jsonNode) {
-    return jsonNode != null && jsonNode.isLong();
+    return jsonNode != null && jsonNode.isIntegralNumber();
   }
 
   @Override

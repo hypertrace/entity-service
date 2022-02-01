@@ -22,7 +22,7 @@ public class MapValueGetter implements ValueGetter {
 
   @Override
   public boolean matches(final JsonNode jsonNode) {
-    return jsonNode != null && jsonNode.isObject() && jsonNode.has(VALUE_MAP_KEY);
+    return jsonNode != null && jsonNode.isObject() && jsonNode.has(VALUE_MAP_KEY) && jsonNode.get(VALUE_MAP_KEY).isObject();
   }
 
   @Override

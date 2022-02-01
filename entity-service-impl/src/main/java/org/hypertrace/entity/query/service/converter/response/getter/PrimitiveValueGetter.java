@@ -45,7 +45,7 @@ public class PrimitiveValueGetter implements ValueGetter {
 
   @Override
   public boolean matches(final JsonNode jsonNode) {
-    return jsonNode != null && jsonNode.isObject() && jsonNode.has(VALUE_KEY);
+    return jsonNode != null && jsonNode.isObject() && jsonNode.has(VALUE_KEY) && jsonNode.get(VALUE_KEY).isObject();
   }
 
   @Override

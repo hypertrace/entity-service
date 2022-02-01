@@ -2,6 +2,7 @@ package org.hypertrace.entity.query.service;
 
 import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
 import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
@@ -40,14 +41,17 @@ import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.converter.ConverterModule;
 import org.hypertrace.entity.query.service.converter.response.DocumentConverter;
+import org.hypertrace.entity.query.service.v1.AggregateExpression;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
+import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceImplBase;
@@ -96,6 +100,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final EntityQueryConverter entityQueryConverter;
   private final EntityAttributeMapping entityAttributeMapping;
   private final int CHUNK_SIZE;
+  private final Injector injector;
 
   public EntityQueryServiceImpl(
       Datastore datastore, Config config, GrpcChannelRegistry channelRegistry) {
@@ -113,6 +118,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     this.entityAttributeMapping = entityAttributeMapping;
     this.entityQueryConverter = new EntityQueryConverter(entityAttributeMapping);
     this.CHUNK_SIZE = chunkSize;
+    this.injector = Guice.createInjector(new ConverterModule(entityAttributeMapping));
   }
 
   @Override
@@ -124,16 +130,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
-    final Injector injector = Guice.createInjector(new ConverterModule(entityAttributeMapping));
-
     final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-        queryConverter =
-            injector.getInstance(
-                com.google.inject.Key.get(
-                    new TypeLiteral<
-                        Converter<
-                            EntityQueryRequest,
-                            org.hypertrace.core.documentstore.query.Query>>() {}));
+        queryConverter = getQueryConverter();
     final org.hypertrace.core.documentstore.query.Query query;
 
     try {
@@ -146,8 +144,14 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     final Iterator<Document> documentIterator = entitiesCollection.aggregate(query);
     final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
 
-    ResultSetMetadata resultSetMetadata =
-        this.buildMetadataForSelections(request.getSelectionList());
+    ResultSetMetadata resultSetMetadata;
+
+    try {
+      resultSetMetadata = this.buildMetadataForSelections(request.getSelectionList());
+    } catch (final ConversionException e) {
+      responseObserver.onError(new ServiceException(e));
+      return;
+    }
 
     if (!documentIterator.hasNext()) {
       ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
@@ -190,6 +194,15 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     responseObserver.onCompleted();
   }
 
+  private Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
+      getQueryConverter() {
+    return injector.getInstance(
+        com.google.inject.Key.get(
+            new TypeLiteral<
+                Converter<
+                    EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {}));
+  }
+
   private List<Entity> convertDocsToEntities(Iterator<Document> documentIterator) {
     List<Entity> entities = new ArrayList<>();
     while (documentIterator.hasNext()) {
@@ -206,7 +219,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   }
 
   private ResultSetChunk convertEntitiesToResultSetChunk(
-      RequestContext requestContext, List<Entity> entities, List<Expression> selections) {
+      RequestContext requestContext, List<Entity> entities, List<Expression> selections)
+      throws ConversionException {
 
     ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
     // Build metadata
@@ -402,7 +416,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       List<Document> subDocuments =
           request.getValuesList().stream()
               .map(this::convertToJsonDocument)
-              .collect(Collectors.toUnmodifiableList());
+              .collect(toUnmodifiableList());
       BulkArrayValueUpdateRequest bulkArrayValueUpdateRequest =
           new BulkArrayValueUpdateRequest(
               keys,
@@ -533,19 +547,42 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     responseObserver.onCompleted();
   }
 
-  private ResultSetMetadata buildMetadataForSelections(List<Expression> selections) {
-    return ResultSetMetadata.newBuilder()
-        .addAllColumnMetadata(
-            () ->
-                selections.stream()
-                    .map(Expression::getColumnIdentifier)
-                    .map(
-                        identifier ->
-                            identifier.getAlias().isEmpty()
-                                ? identifier.getColumnName()
-                                : identifier.getAlias())
-                    .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build())
-                    .iterator())
-        .build();
+  private ResultSetMetadata buildMetadataForSelections(List<Expression> selections)
+      throws ConversionException {
+    final AliasProvider<ColumnIdentifier> identifierAliasProvider = getIdentifierAliasProvider();
+    final AliasProvider<AggregateExpression> aggregateExpressionAliasProvider =
+        getAggregateExpressionAliasProvider();
+
+    final List<ColumnMetadata> list = new ArrayList<>();
+
+    for (final Expression selection : selections) {
+      final String columnName;
+
+      if (selection.hasAggregation()) {
+        columnName = aggregateExpressionAliasProvider.getAlias(selection.getAggregation());
+      } else if (selection.hasColumnIdentifier()) {
+        columnName = identifierAliasProvider.getAlias(selection.getColumnIdentifier());
+      } else {
+        throw new ConversionException(
+            String.format(
+                "Selection of non-identifier and non-aggregation is not supported. Found: %s",
+                selection));
+      }
+
+      ColumnMetadata build = ColumnMetadata.newBuilder().setColumnName(columnName).build();
+      list.add(build);
+    }
+
+    return ResultSetMetadata.newBuilder().addAllColumnMetadata(list).build();
+  }
+
+  private AliasProvider<ColumnIdentifier> getIdentifierAliasProvider() {
+    return injector.getInstance(
+        com.google.inject.Key.get(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {}));
+  }
+
+  private AliasProvider<AggregateExpression> getAggregateExpressionAliasProvider() {
+    return injector.getInstance(
+        com.google.inject.Key.get(new TypeLiteral<AliasProvider<AggregateExpression>>() {}));
   }
 }

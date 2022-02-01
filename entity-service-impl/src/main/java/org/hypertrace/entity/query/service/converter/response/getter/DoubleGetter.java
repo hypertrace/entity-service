@@ -11,7 +11,7 @@ public class DoubleGetter implements ValueGetter {
 
   @Override
   public boolean matches(final JsonNode jsonNode) {
-    return jsonNode != null && jsonNode.isDouble();
+    return jsonNode != null && jsonNode.isFloatingPointNumber();
   }
 
   @Override
