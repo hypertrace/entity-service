@@ -1,5 +1,7 @@
 package org.hypertrace.entity.query.service.converter.response;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
@@ -17,7 +19,7 @@ public class ResponseModule extends AbstractModule {
 
   @Override
   protected void configure() {
-    bind(JsonNodeConverter.class).to(JsonNodeConverterImpl.class);
+    bind(DocumentConverter.class).to(DocumentConverterImpl.class);
     install(new GetterModule());
   }
 
@@ -31,5 +33,11 @@ public class ResponseModule extends AbstractModule {
       final ListValueGetter listValueGetter,
       final MapValueGetter mapValueGetter) {
     return List.of(primitiveValueGetter, listValueGetter, mapValueGetter, directValueGetter);
+  }
+
+  @Singleton
+  @Provides
+  ObjectMapper provideObjectMapper() {
+    return new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   }
 }

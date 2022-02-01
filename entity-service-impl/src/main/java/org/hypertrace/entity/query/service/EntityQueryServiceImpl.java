@@ -7,8 +7,6 @@ import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FI
 import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
@@ -45,7 +43,7 @@ import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.converter.ConverterModule;
-import org.hypertrace.entity.query.service.converter.response.JsonNodeConverter;
+import org.hypertrace.entity.query.service.converter.response.DocumentConverter;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
@@ -146,7 +144,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     final Iterator<Document> documentIterator = entitiesCollection.aggregate(query);
-    final JsonNodeConverter rowConverter = injector.getInstance(JsonNodeConverter.class);
+    final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
 
     ResultSetMetadata resultSetMetadata =
         this.buildMetadataForSelections(request.getSelectionList());
@@ -171,8 +169,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       }
 
       try {
-        JsonNode jsonNode = new ObjectMapper().readTree(documentIterator.next().toJson());
-        resultBuilder.addRow(rowConverter.convertToRow(jsonNode));
+        final Row row = rowConverter.convertToRow(documentIterator.next(), resultSetMetadata);
+        resultBuilder.addRow(row);
         rowCount++;
       } catch (final Exception e) {
         responseObserver.onError(new ServiceException(e));
