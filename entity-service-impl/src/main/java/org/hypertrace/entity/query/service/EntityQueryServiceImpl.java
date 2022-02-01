@@ -133,15 +133,16 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
         queryConverter = getQueryConverter();
     final org.hypertrace.core.documentstore.query.Query query;
+    final Iterator<Document> documentIterator;
 
     try {
       query = queryConverter.convert(request, requestContext);
-    } catch (final ConversionException e) {
+      documentIterator = entitiesCollection.aggregate(query);
+    } catch (final Exception e) {
       responseObserver.onError(new ServiceException(e));
       return;
     }
 
-    final Iterator<Document> documentIterator = entitiesCollection.aggregate(query);
     final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
 
     ResultSetMetadata resultSetMetadata;
