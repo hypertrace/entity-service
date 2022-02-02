@@ -4,11 +4,13 @@ import static org.hypertrace.entity.query.service.v1.ValueType.BOOL;
 import static org.hypertrace.entity.query.service.v1.ValueType.INT_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.LONG_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.google.inject.Guice;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.entity.query.service.converter.ConversionException;
@@ -40,10 +42,7 @@ class DocumentConverterTest {
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("Entity.status"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.something"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.updated_time"))
-            .addColumnMetadata(
-                ColumnMetadata.newBuilder().setColumnName("attributes.address_map.galaxy"))
-            .addColumnMetadata(
-                ColumnMetadata.newBuilder().setColumnName("attributes.address_map.planet"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.address_map"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.valueMap"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.nonExisting"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.valueList"))
@@ -62,8 +61,10 @@ class DocumentConverterTest {
                 Value.newBuilder()
                     .setValueType(LONG_ARRAY)
                     .addAllLongArray(List.of(1643702835L, 1643702900L)))
-            .addColumn(Value.newBuilder().setValueType(STRING).setString("Milky Way"))
-            .addColumn(Value.newBuilder().setValueType(STRING).setString("Mars"))
+            .addColumn(
+                Value.newBuilder()
+                    .setValueType(STRING_MAP)
+                    .putAllStringMap(Map.of("galaxy", "Milky Way", "planet", "Mars")))
             .addColumn(Value.newBuilder().setValueType(STRING).setString("The Future is Red!"))
             .addColumn(Value.getDefaultInstance())
             .addColumn(
