@@ -430,7 +430,7 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection, mockMappingForAttribute1(), 1);
+                  new EntityQueryServiceImpl(mockEntitiesCollection, mockAttributeMapping, 1);
 
               eqs.execute(request, mockResponseObserver);
               return null;
@@ -511,7 +511,7 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection, mockMappingForAttribute1(), 2);
+                  new EntityQueryServiceImpl(mockEntitiesCollection, mockAttributeMapping, 2);
 
               eqs.execute(request, mockResponseObserver);
               return null;
