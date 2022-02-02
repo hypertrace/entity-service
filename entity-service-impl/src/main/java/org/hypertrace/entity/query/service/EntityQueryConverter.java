@@ -35,6 +35,7 @@ class EntityQueryConverter {
     this.attributeMapping = attributeMapping;
   }
 
+  @Deprecated(forRemoval = true)
   public Query convertToEDSQuery(RequestContext requestContext, EntityQueryRequest queryRequest) {
     Query.Builder queryBuilder = Query.newBuilder().setEntityType(queryRequest.getEntityType());
 
