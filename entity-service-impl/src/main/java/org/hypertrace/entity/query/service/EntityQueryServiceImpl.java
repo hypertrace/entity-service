@@ -8,13 +8,11 @@ import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
-import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.stub.StreamObserver;
@@ -44,10 +42,8 @@ import org.hypertrace.core.documentstore.query.Filter;
 import org.hypertrace.core.documentstore.query.Selection;
 import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
-import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
-import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.converter.ConversionException;
@@ -65,7 +61,6 @@ import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceImplBase;
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
-import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.ResultSetMetadata;
@@ -74,12 +69,9 @@ import org.hypertrace.entity.query.service.v1.SetAttribute;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
-import org.hypertrace.entity.query.service.v1.Value;
-import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.util.DocStoreConverter;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
-import org.hypertrace.entity.service.util.DocStoreJsonFormat.Parser;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat.Printer;
 import org.hypertrace.entity.service.util.StringUtils;
 import org.slf4j.Logger;
@@ -88,9 +80,7 @@ import org.slf4j.LoggerFactory;
 public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceImpl.class);
-  private static final Parser PARSER = DocStoreJsonFormat.parser().ignoringUnknownFields();
   private static final Printer PRINTER = DocStoreJsonFormat.printer().includingDefaultValueFields();
-  private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final int DEFAULT_CHUNK_SIZE = 10_000;
   private static final String ARRAY_VALUE_PATH_SUFFIX =
@@ -203,21 +193,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     responseObserver.onCompleted();
   }
 
-  private List<Entity> convertDocsToEntities(Iterator<Document> documentIterator) {
-    List<Entity> entities = new ArrayList<>();
-    while (documentIterator.hasNext()) {
-      Document next = documentIterator.next();
-      Entity.Builder builder = Entity.newBuilder();
-      try {
-        PARSER.merge(next.toJson(), builder);
-      } catch (InvalidProtocolBufferException e) {
-        LOG.error("Could not deserialize the document into an entity.", e);
-      }
-      entities.add(builder.build());
-    }
-    return entities;
-  }
-
   private ResultSetChunk convertDocumentsToResultSetChunk(
       final List<Document> documents, final List<Expression> selections)
       throws ConversionException {
@@ -234,57 +209,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     return resultBuilder.build();
-  }
-
-  Row convertToEntityQueryResult(
-      RequestContext requestContext, Entity entity, List<Expression> selections) {
-    Row.Builder result = Row.newBuilder();
-    selections.stream()
-        .filter(expression -> expression.getValueCase() == ValueCase.COLUMNIDENTIFIER)
-        .forEach(
-            expression -> {
-              String columnName = expression.getColumnIdentifier().getColumnName();
-              String edsSubDocPath =
-                  entityAttributeMapping
-                      .getDocStorePathByAttributeId(requestContext, columnName)
-                      .orElse(null);
-              if (edsSubDocPath != null) {
-                // Map the attr name to corresponding Attribute Key in EDS and get the EDS
-                // AttributeValue
-                if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_ID)) {
-                  result.addColumn(
-                      Value.newBuilder()
-                          .setValueType(ValueType.STRING)
-                          .setString(entity.getEntityId())
-                          .build());
-                } else if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_NAME)) {
-                  result.addColumn(
-                      Value.newBuilder()
-                          .setValueType(ValueType.STRING)
-                          .setString(entity.getEntityName())
-                          .build());
-                } else if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_CREATED_TIME)) {
-                  result.addColumn(
-                      Value.newBuilder()
-                          .setValueType(ValueType.LONG)
-                          .setLong(entity.getCreatedTime())
-                          .build());
-                } else if (edsSubDocPath.startsWith(ENTITY_ATTRIBUTE_DOC_PREFIX)) {
-                  // Convert EDS AttributeValue to Gateway Value
-                  AttributeValue attributeValue =
-                      entity.getAttributesMap().get(edsSubDocPath.split("\\.")[1]);
-                  result.addColumn(
-                      EntityQueryConverter.convertAttributeValueToQueryValue(attributeValue));
-                } else {
-                  LOG.error(
-                      "Unable to add column {} for sub doc path {}", columnName, edsSubDocPath);
-                }
-              } else {
-                LOG.warn("columnName {} missing in attrNameToEDSAttrMap", columnName);
-                result.addColumn(Value.getDefaultInstance());
-              }
-            });
-    return result.build();
   }
 
   @Override
@@ -487,20 +411,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     final Iterator<Document> documentIterator = entitiesCollection.find(query);
 
     return newArrayList(documentIterator);
-  }
-
-  private List<Entity> getProjectedEntities(
-      Iterable<String> entityIdsList,
-      List<Expression> selectionList,
-      RequestContext requestContext) {
-    Query entitiesQuery = Query.newBuilder().addAllEntityId(entityIdsList).build();
-    List<String> docStoreSelections =
-        entityQueryConverter.convertSelectionsToDocStoreSelections(requestContext, selectionList);
-    Iterator<Document> documentIterator =
-        entitiesCollection.search(
-            DocStoreConverter.transform(
-                requestContext.getTenantId().orElseThrow(), entitiesQuery, docStoreSelections));
-    return convertDocsToEntities(documentIterator);
   }
 
   private void doBulkUpdate(
