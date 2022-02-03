@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.Query;
@@ -170,27 +169,6 @@ public class EntityQueryConverterTest {
     assertThrows(
         UnsupportedOperationException.class,
         () -> queryConverter.convertToEDSQuery(mockRequestContext, request));
-  }
-
-  @Test
-  public void test_convertEqsSelections_DocStoreSelections() {
-    mockAttribute1();
-    mockAttribute2();
-    List<Expression> expressions =
-        List.of(
-            Expression.newBuilder()
-                .setColumnIdentifier(
-                    ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID_NAME1).build())
-                .build(),
-            Expression.newBuilder()
-                .setColumnIdentifier(
-                    ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID_NAME2).build())
-                .build());
-    List<String> docStoreSelections =
-        queryConverter.convertSelectionsToDocStoreSelections(mockRequestContext, expressions);
-    assertEquals(2, docStoreSelections.size());
-    assertEquals(EDS_COLUMN_NAME1, docStoreSelections.get(0));
-    assertEquals(EDS_COLUMN_NAME2, docStoreSelections.get(1));
   }
 
   private void mockAttribute1() {
