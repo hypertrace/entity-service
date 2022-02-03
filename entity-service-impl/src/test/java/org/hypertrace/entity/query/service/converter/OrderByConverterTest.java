@@ -2,7 +2,6 @@ package org.hypertrace.entity.query.service.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.when;
 import static org.mockito.quality.Strictness.LENIENT;
 
 import java.util.List;
@@ -13,6 +12,7 @@ import org.hypertrace.core.documentstore.query.SortingSpec;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.accessor.ExpressionOneOfAccessor;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
+import org.hypertrace.entity.query.service.converter.identifier.IdentifierAliasProvider;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
@@ -31,11 +31,11 @@ import org.mockito.junit.jupiter.MockitoSettings;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
 class OrderByConverterTest {
-  @Mock private Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
   @Mock private RequestContext requestContext;
 
   private Converter<List<OrderByExpression>, Sort> orderByConverter;
 
+  private final AliasProvider<ColumnIdentifier> aliasProvider = new IdentifierAliasProvider();
   private final ColumnIdentifier columnIdentifier =
       ColumnIdentifier.newBuilder().setColumnName("Planet_Mars").build();
   private final IdentifierExpression identifierExpression = IdentifierExpression.of("Planet_Mars");
@@ -46,12 +46,9 @@ class OrderByConverterTest {
           .build();
 
   @BeforeEach
-  void setup() throws ConversionException {
+  void setup() {
     OneOfAccessor<Expression, ValueCase> expressionAccessor = new ExpressionOneOfAccessor();
-    orderByConverter = new OrderByConverter(expressionAccessor, identifierExpressionConverter);
-
-    when(identifierExpressionConverter.convert(columnIdentifier, requestContext))
-        .thenReturn(identifierExpression);
+    orderByConverter = new OrderByConverter(expressionAccessor, aliasProvider);
   }
 
   @Test
