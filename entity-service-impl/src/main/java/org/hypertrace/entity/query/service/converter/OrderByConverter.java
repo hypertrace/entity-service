@@ -33,7 +33,7 @@ public class OrderByConverter implements Converter<List<OrderByExpression>, Sort
   private static final Supplier<Map<SortOrder, SortingOrder>> ORDER_MAP =
       memoize(OrderByConverter::getMapping);
   private final OneOfAccessor<Expression, ValueCase> expressionAccessor;
-  private final AliasProvider<ColumnIdentifier> aliasProvider;
+  private final Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
 
   @Override
   public Sort convert(final List<OrderByExpression> orders, final RequestContext requestContext)
@@ -41,21 +41,22 @@ public class OrderByConverter implements Converter<List<OrderByExpression>, Sort
     final List<SortingSpec> specs = new ArrayList<>();
 
     for (final OrderByExpression orderBy : orders) {
-      final SortingSpec spec = convert(orderBy);
+      final SortingSpec spec = convert(orderBy, requestContext);
       specs.add(spec);
     }
 
     return Sort.builder().sortingSpecs(specs).build();
   }
 
-  private SortingSpec convert(final OrderByExpression orderBy) throws ConversionException {
+  private SortingSpec convert(final OrderByExpression orderBy, final RequestContext requestContext)
+      throws ConversionException {
     final Expression innerExpression = orderBy.getExpression();
 
     final ColumnIdentifier identifier =
         expressionAccessor.access(
             innerExpression, innerExpression.getValueCase(), Set.of(COLUMNIDENTIFIER));
-    final String alias = aliasProvider.getAlias(identifier);
-    final IdentifierExpression identifierExpression = IdentifierExpression.of(alias);
+    final IdentifierExpression identifierExpression =
+        identifierExpressionConverter.convert(identifier, requestContext);
 
     final SortingOrder order = ORDER_MAP.get().get(orderBy.getOrder());
 

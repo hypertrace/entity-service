@@ -52,6 +52,7 @@ public class SelectionConverter implements Converter<List<Expression>, Selection
         converter.convert(innerExpression, requestContext);
     final String alias = aliasProvider.getAlias(innerExpression);
 
-    return SelectionSpec.of(selectingExpression, alias);
+    // TODO: Set alias once the response converter is implemented
+    return SelectionSpec.of(selectingExpression);
   }
 }

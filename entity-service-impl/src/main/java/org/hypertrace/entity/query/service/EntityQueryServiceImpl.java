@@ -1,18 +1,15 @@
 package org.hypertrace.entity.query.service;
 
-import static com.google.common.collect.Lists.newArrayList;
-import static java.util.Collections.emptyList;
 import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toUnmodifiableList;
-import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
+import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
 import com.google.inject.Guice;
-import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.stub.StreamObserver;
@@ -35,32 +32,26 @@ import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.Key;
 import org.hypertrace.core.documentstore.SingleValueKey;
-import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
-import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
-import org.hypertrace.core.documentstore.query.Filter;
-import org.hypertrace.core.documentstore.query.Selection;
 import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
+import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
-import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.converter.ConverterModule;
-import org.hypertrace.entity.query.service.converter.response.DocumentConverter;
-import org.hypertrace.entity.query.service.v1.AggregateExpression;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
-import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceImplBase;
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
+import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.ResultSetMetadata;
@@ -69,9 +60,12 @@ import org.hypertrace.entity.query.service.v1.SetAttribute;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
+import org.hypertrace.entity.query.service.v1.Value;
+import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.util.DocStoreConverter;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
+import org.hypertrace.entity.service.util.DocStoreJsonFormat.Parser;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat.Printer;
 import org.hypertrace.entity.service.util.StringUtils;
 import org.slf4j.Logger;
@@ -80,7 +74,9 @@ import org.slf4j.LoggerFactory;
 public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceImpl.class);
+  private static final Parser PARSER = DocStoreJsonFormat.parser().ignoringUnknownFields();
   private static final Printer PRINTER = DocStoreJsonFormat.printer().includingDefaultValueFields();
+  private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final int DEFAULT_CHUNK_SIZE = 10_000;
   private static final String ARRAY_VALUE_PATH_SUFFIX =
@@ -98,7 +94,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final EntityQueryConverter entityQueryConverter;
   private final EntityAttributeMapping entityAttributeMapping;
   private final int CHUNK_SIZE;
-  private final Injector injector;
 
   public EntityQueryServiceImpl(
       Datastore datastore, Config config, GrpcChannelRegistry channelRegistry) {
@@ -116,7 +111,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     this.entityAttributeMapping = entityAttributeMapping;
     this.entityQueryConverter = new EntityQueryConverter(entityAttributeMapping);
     this.CHUNK_SIZE = chunkSize;
-    this.injector = Guice.createInjector(new ConverterModule(entityAttributeMapping));
   }
 
   @Override
@@ -129,28 +123,27 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-        queryConverter = getQueryConverter();
+        queryConverter =
+            Guice.createInjector(new ConverterModule(entityAttributeMapping))
+                .getInstance(
+                    com.google.inject.Key.get(
+                        new TypeLiteral<
+                            Converter<
+                                EntityQueryRequest,
+                                org.hypertrace.core.documentstore.query.Query>>() {}));
     final org.hypertrace.core.documentstore.query.Query query;
-    final Iterator<Document> documentIterator;
 
     try {
       query = queryConverter.convert(request, requestContext);
-      documentIterator = entitiesCollection.aggregate(query);
-    } catch (final Exception e) {
-      responseObserver.onError(new ServiceException(e));
-      return;
-    }
-
-    final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
-
-    ResultSetMetadata resultSetMetadata;
-
-    try {
-      resultSetMetadata = this.buildMetadataForSelections(request.getSelectionList());
     } catch (final ConversionException e) {
       responseObserver.onError(new ServiceException(e));
       return;
     }
+
+    final Iterator<Document> documentIterator = entitiesCollection.aggregate(query);
+
+    ResultSetMetadata resultSetMetadata =
+        this.buildMetadataForSelections(request.getSelectionList());
 
     if (!documentIterator.hasNext()) {
       ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
@@ -165,21 +158,19 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     int chunkId = 0, rowCount = 0;
     ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
     while (documentIterator.hasNext()) {
+      Optional<Entity> entity =
+          DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
       // Set metadata for new chunk
       if (isNewChunk) {
         resultBuilder.setResultSetMetadata(resultSetMetadata);
         isNewChunk = false;
       }
-
-      try {
-        final Row row = rowConverter.convertToRow(documentIterator.next(), resultSetMetadata);
-        resultBuilder.addRow(row);
+      if (entity.isPresent()) {
+        // Build data
+        resultBuilder.addRow(
+            convertToEntityQueryResult(requestContext, entity.get(), request.getSelectionList()));
         rowCount++;
-      } catch (final Exception e) {
-        responseObserver.onError(new ServiceException(e));
-        return;
       }
-
       // current chunk is complete
       if (rowCount >= CHUNK_SIZE || !documentIterator.hasNext()) {
         resultBuilder.setChunkId(chunkId++);
@@ -193,22 +184,86 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     responseObserver.onCompleted();
   }
 
-  private ResultSetChunk convertDocumentsToResultSetChunk(
-      final List<Document> documents, final List<Expression> selections)
-      throws ConversionException {
-    final DocumentConverter documentConverter = injector.getInstance(DocumentConverter.class);
-    final ResultSetMetadata resultSetMetadata = this.buildMetadataForSelections(selections);
+  private List<Entity> convertDocsToEntities(Iterator<Document> documentIterator) {
+    List<Entity> entities = new ArrayList<>();
+    while (documentIterator.hasNext()) {
+      Document next = documentIterator.next();
+      Entity.Builder builder = Entity.newBuilder();
+      try {
+        PARSER.merge(next.toJson(), builder);
+      } catch (InvalidProtocolBufferException e) {
+        LOG.error("Could not deserialize the document into an entity.", e);
+      }
+      entities.add(builder.build());
+    }
+    return entities;
+  }
+
+  private ResultSetChunk convertEntitiesToResultSetChunk(
+      RequestContext requestContext, List<Entity> entities, List<Expression> selections) {
 
     ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
     // Build metadata
-    resultBuilder.setResultSetMetadata(resultSetMetadata);
+    resultBuilder.setResultSetMetadata(this.buildMetadataForSelections(selections));
     // Build data
-    for (final Document document : documents) {
-      final Row row = documentConverter.convertToRow(document, resultSetMetadata);
-      resultBuilder.addRow(row);
-    }
+    resultBuilder.addAllRow(
+        () ->
+            entities.stream()
+                .map(entity -> convertToEntityQueryResult(requestContext, entity, selections))
+                .iterator());
 
     return resultBuilder.build();
+  }
+
+  Row convertToEntityQueryResult(
+      RequestContext requestContext, Entity entity, List<Expression> selections) {
+    Row.Builder result = Row.newBuilder();
+    selections.stream()
+        .filter(expression -> expression.getValueCase() == ValueCase.COLUMNIDENTIFIER)
+        .forEach(
+            expression -> {
+              String columnName = expression.getColumnIdentifier().getColumnName();
+              String edsSubDocPath =
+                  entityAttributeMapping
+                      .getDocStorePathByAttributeId(requestContext, columnName)
+                      .orElse(null);
+              if (edsSubDocPath != null) {
+                // Map the attr name to corresponding Attribute Key in EDS and get the EDS
+                // AttributeValue
+                if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_ID)) {
+                  result.addColumn(
+                      Value.newBuilder()
+                          .setValueType(ValueType.STRING)
+                          .setString(entity.getEntityId())
+                          .build());
+                } else if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_NAME)) {
+                  result.addColumn(
+                      Value.newBuilder()
+                          .setValueType(ValueType.STRING)
+                          .setString(entity.getEntityName())
+                          .build());
+                } else if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_CREATED_TIME)) {
+                  result.addColumn(
+                      Value.newBuilder()
+                          .setValueType(ValueType.LONG)
+                          .setLong(entity.getCreatedTime())
+                          .build());
+                } else if (edsSubDocPath.startsWith(ENTITY_ATTRIBUTE_DOC_PREFIX)) {
+                  // Convert EDS AttributeValue to Gateway Value
+                  AttributeValue attributeValue =
+                      entity.getAttributesMap().get(edsSubDocPath.split("\\.")[1]);
+                  result.addColumn(
+                      EntityQueryConverter.convertAttributeValueToQueryValue(attributeValue));
+                } else {
+                  LOG.error(
+                      "Unable to add column {} for sub doc path {}", columnName, edsSubDocPath);
+                }
+              } else {
+                LOG.warn("columnName {} missing in attrNameToEDSAttrMap", columnName);
+                result.addColumn(Value.getDefaultInstance());
+              }
+            });
+    return result.build();
   }
 
   @Override
@@ -235,13 +290,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       // Execute the update
       doUpdate(requestContext, request);
 
-      // Finally, return the selections
-      List<Document> documents =
-          getProjectedDocuments(
+      // Finally return the selections
+      List<Entity> entities =
+          getProjectedEntities(
               request.getEntityIdsList(), request.getSelectionList(), requestContext);
-
       responseObserver.onNext(
-          convertDocumentsToResultSetChunk(documents, request.getSelectionList()));
+          convertEntitiesToResultSetChunk(requestContext, entities, request.getSelectionList()));
       responseObserver.onCompleted();
     } catch (Exception e) {
       responseObserver.onError(
@@ -342,7 +396,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       List<Document> subDocuments =
           request.getValuesList().stream()
               .map(this::convertToJsonDocument)
-              .collect(toUnmodifiableList());
+              .collect(Collectors.toUnmodifiableList());
       BulkArrayValueUpdateRequest bulkArrayValueUpdateRequest =
           new BulkArrayValueUpdateRequest(
               keys,
@@ -381,36 +435,18 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return new JSONDocument(jsonValue);
   }
 
-  private List<Document> getProjectedDocuments(
-      final Iterable<String> entityIds,
-      final List<Expression> selectionList,
-      final RequestContext requestContext)
-      throws ConversionException {
-    final List<String> entityIdList = newArrayList(entityIds);
-
-    if (entityIdList.isEmpty()) {
-      return emptyList();
-    }
-
-    final Converter<List<Expression>, Selection> selectionConverter = getSelectionConverter();
-    final Selection selection = selectionConverter.convert(selectionList, requestContext);
-    final Filter filter =
-        Filter.builder()
-            .expression(
-                RelationalExpression.of(
-                    IdentifierExpression.of(EntityServiceConstants.ENTITY_ID),
-                    IN,
-                    ConstantExpression.ofStrings(entityIdList)))
-            .build();
-
-    final org.hypertrace.core.documentstore.query.Query query =
-        org.hypertrace.core.documentstore.query.Query.builder()
-            .setSelection(selection)
-            .setFilter(filter)
-            .build();
-    final Iterator<Document> documentIterator = entitiesCollection.find(query);
-
-    return newArrayList(documentIterator);
+  private List<Entity> getProjectedEntities(
+      Iterable<String> entityIdsList,
+      List<Expression> selectionList,
+      RequestContext requestContext) {
+    Query entitiesQuery = Query.newBuilder().addAllEntityId(entityIdsList).build();
+    List<String> docStoreSelections =
+        entityQueryConverter.convertSelectionsToDocStoreSelections(requestContext, selectionList);
+    Iterator<Document> documentIterator =
+        entitiesCollection.search(
+            DocStoreConverter.transform(
+                requestContext.getTenantId().orElseThrow(), entitiesQuery, docStoreSelections));
+    return convertDocsToEntities(documentIterator);
   }
 
   private void doBulkUpdate(
@@ -484,64 +520,26 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     // converting entity query request to entity data service query
     Query query = entityQueryConverter.convertToEDSQuery(requestContext, entityQueryRequest);
-
-    // TODO: Replace to use the new org.hypertrace.core.documentstore.query.Query DTO
     long total =
-        entitiesCollection.total(DocStoreConverter.transform(tenantId.get(), query, emptyList()));
+        entitiesCollection.total(
+            DocStoreConverter.transform(tenantId.get(), query, Collections.emptyList()));
     responseObserver.onNext(TotalEntitiesResponse.newBuilder().setTotal(total).build());
     responseObserver.onCompleted();
   }
 
-  private ResultSetMetadata buildMetadataForSelections(List<Expression> selections)
-      throws ConversionException {
-    final AliasProvider<ColumnIdentifier> identifierAliasProvider = getIdentifierAliasProvider();
-    final AliasProvider<AggregateExpression> aggregateExpressionAliasProvider =
-        getAggregateExpressionAliasProvider();
-
-    final List<ColumnMetadata> list = new ArrayList<>();
-
-    for (final Expression selection : selections) {
-      final String columnName;
-
-      if (selection.hasAggregation()) {
-        columnName = aggregateExpressionAliasProvider.getAlias(selection.getAggregation());
-      } else if (selection.hasColumnIdentifier()) {
-        columnName = identifierAliasProvider.getAlias(selection.getColumnIdentifier());
-      } else {
-        throw new ConversionException(
-            String.format(
-                "Selection of non-identifier and non-aggregation is not supported. Found: %s",
-                selection));
-      }
-
-      ColumnMetadata build = ColumnMetadata.newBuilder().setColumnName(columnName).build();
-      list.add(build);
-    }
-
-    return ResultSetMetadata.newBuilder().addAllColumnMetadata(list).build();
-  }
-
-  private AliasProvider<ColumnIdentifier> getIdentifierAliasProvider() {
-    return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {}));
-  }
-
-  private AliasProvider<AggregateExpression> getAggregateExpressionAliasProvider() {
-    return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<AliasProvider<AggregateExpression>>() {}));
-  }
-
-  private Converter<List<Expression>, Selection> getSelectionConverter() {
-    return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<Converter<List<Expression>, Selection>>() {}));
-  }
-
-  private Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-      getQueryConverter() {
-    return injector.getInstance(
-        com.google.inject.Key.get(
-            new TypeLiteral<
-                Converter<
-                    EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {}));
+  private ResultSetMetadata buildMetadataForSelections(List<Expression> selections) {
+    return ResultSetMetadata.newBuilder()
+        .addAllColumnMetadata(
+            () ->
+                selections.stream()
+                    .map(Expression::getColumnIdentifier)
+                    .map(
+                        identifier ->
+                            identifier.getAlias().isEmpty()
+                                ? identifier.getColumnName()
+                                : identifier.getAlias())
+                    .map(s -> ColumnMetadata.newBuilder().setColumnName(s).build())
+                    .iterator())
+        .build();
   }
 }

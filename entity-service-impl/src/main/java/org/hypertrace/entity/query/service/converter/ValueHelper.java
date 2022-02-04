@@ -24,7 +24,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.protobuf.ByteString;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -37,14 +36,9 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class ValueHelper {
-  public static final String VALUES_KEY = "values";
-
-  public static final String VALUE_KEY = "value";
-  public static final String VALUE_LIST_KEY = "valueList";
-  public static final String VALUE_MAP_KEY = "valueMap";
 
   private static final Set<ValueType> PRIMITIVE_TYPES =
-      Set.of(STRING, LONG, INT, FLOAT, DOUBLE, BYTES, BOOL, TIMESTAMP);
+      Set.of(STRING, LONG, INT, FLOAT, DOUBLE, BYTES, BOOL);
 
   private static final Set<ValueType> ARRAY_TYPES =
       Set.of(
@@ -58,14 +52,8 @@ public class ValueHelper {
 
   private static final Set<ValueType> MAP_TYPES = Set.of(STRING_MAP);
 
-  private static final Supplier<Map<ValueType, String>> TYPE_TO_STRING_VALUE_MAP =
-      memoize(ValueHelper::getTypeToStringValueMap);
-
-  private static final Supplier<Map<ValueType, ValueType>> PRIMITIVE_TO_ARRAY_MAP =
-      memoize(ValueHelper::getPrimitiveToArrayMap);
-
-  private static final Supplier<Map<String, ValueType>> STRING_VALUE_TO_PRIMITIVE_TYPE_MAP =
-      memoize(ValueHelper::getStringValueToPrimitiveTypeMap);
+  private static final Supplier<Map<ValueType, String>> TYPE_MAP =
+      memoize(ValueHelper::getSuffixMap);
 
   private final OneOfAccessor<Value, ValueType> valueAccessor;
 
@@ -178,7 +166,7 @@ public class ValueHelper {
   }
 
   public String getStringValue(final ValueType valueType) throws ConversionException {
-    final String type = TYPE_TO_STRING_VALUE_MAP.get().get(valueType);
+    final String type = TYPE_MAP.get().get(valueType);
 
     if (type == null) {
       throw new ConversionException(String.format("A suitable type not found for %s", valueType));
@@ -187,30 +175,7 @@ public class ValueHelper {
     return type;
   }
 
-  public ValueType getArrayValueType(final ValueType primitiveValueType)
-      throws ConversionException {
-    final ValueType arrayType = PRIMITIVE_TO_ARRAY_MAP.get().get(primitiveValueType);
-
-    if (arrayType == null) {
-      throw new ConversionException(
-          String.format("A suitable array type not found for %s", primitiveValueType));
-    }
-
-    return arrayType;
-  }
-
-  public ValueType getPrimitiveValueType(final String primitiveType) throws ConversionException {
-    final ValueType arrayType = STRING_VALUE_TO_PRIMITIVE_TYPE_MAP.get().get(primitiveType);
-
-    if (arrayType == null) {
-      throw new ConversionException(
-          String.format("A suitable array type not found for %s", primitiveType));
-    }
-
-    return arrayType;
-  }
-
-  private static Map<ValueType, String> getTypeToStringValueMap() {
+  private static Map<ValueType, String> getSuffixMap() {
     final Map<ValueType, String> map = new EnumMap<>(ValueType.class);
 
     // Primitives
@@ -234,36 +199,6 @@ public class ValueHelper {
 
     // Maps
     map.put(STRING_MAP, "string");
-
-    return unmodifiableMap(map);
-  }
-
-  private static Map<ValueType, ValueType> getPrimitiveToArrayMap() {
-    final Map<ValueType, ValueType> map = new EnumMap<>(ValueType.class);
-
-    map.put(STRING, STRING_ARRAY);
-    map.put(LONG, LONG_ARRAY);
-    map.put(INT, INT_ARRAY);
-    map.put(FLOAT, FLOAT_ARRAY);
-    map.put(DOUBLE, DOUBLE_ARRAY);
-    map.put(BYTES, BYTES_ARRAY);
-    map.put(BOOL, BOOLEAN_ARRAY);
-    map.put(TIMESTAMP, LONG_ARRAY);
-
-    return unmodifiableMap(map);
-  }
-
-  private static Map<String, ValueType> getStringValueToPrimitiveTypeMap() {
-    final Map<String, ValueType> map = new HashMap<>();
-
-    map.put("string", STRING);
-    map.put("long", LONG);
-    map.put("int", INT);
-    map.put("float", FLOAT);
-    map.put("double", DOUBLE);
-    map.put("bytes", BYTES);
-    map.put("boolean", BOOL);
-    map.put("timestamp", TIMESTAMP);
 
     return unmodifiableMap(map);
   }
