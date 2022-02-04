@@ -1,7 +1,7 @@
 package org.hypertrace.entity.query.service.converter.response.getter;
 
+import static java.util.Collections.emptyIterator;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUES_KEY;
-import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUE_LIST_KEY;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUE_MAP_KEY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 
@@ -41,13 +41,14 @@ public class MapValueGetter implements ValueGetter {
   public Value getValue(final JsonNode jsonNode) throws ConversionException {
     final JsonNode valuesNode = jsonNode.get(VALUE_MAP_KEY);
 
-    if (valuesNode == null || !valuesNode.isObject() || !valuesNode.has(VALUES_KEY)) {
+    if (valuesNode == null || !valuesNode.isObject()) {
       throw new ConversionException(
-          String.format("Unexpected node (%s) found under %s", valuesNode, VALUE_LIST_KEY));
+          String.format("Unexpected node (%s) found under %s", valuesNode, VALUE_MAP_KEY));
     }
 
     final JsonNode mapNode = valuesNode.get(VALUES_KEY);
-    final Iterator<Entry<String, JsonNode>> fields = mapNode.fields();
+    final Iterator<Entry<String, JsonNode>> fields =
+        mapNode == null ? emptyIterator() : mapNode.fields();
     final Value.Builder valueBuilder = Value.newBuilder().setValueType(STRING_MAP);
 
     while (fields.hasNext()) {

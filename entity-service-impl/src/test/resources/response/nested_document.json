@@ -51,6 +51,22 @@
       }
     },
     "valueMap": "The Future is Red!",
-    "valueList": [2016, 2037, 2122]
+    "valueList": [2016, 2037, 2122],
+    "emptyMap": {
+      "valueMap": {}
+    },
+    "emptyMapNested": {
+      "valueMap": {
+        "values": {}
+      }
+    },
+    "emptyList": {
+      "valueList": {}
+    },
+    "emptyListNested": {
+      "valueList": {
+        "values": []
+      }
+    }
   }
 }

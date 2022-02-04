@@ -4,6 +4,7 @@ import static org.hypertrace.entity.query.service.v1.ValueType.BOOL;
 import static org.hypertrace.entity.query.service.v1.ValueType.INT_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.LONG_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -46,6 +47,12 @@ class DocumentConverterTest {
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.valueMap"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.nonExisting"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.valueList"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.emptyMap"))
+            .addColumnMetadata(
+                ColumnMetadata.newBuilder().setColumnName("attributes.emptyMapNested"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.emptyList"))
+            .addColumnMetadata(
+                ColumnMetadata.newBuilder().setColumnName("attributes.emptyListNested"))
             .build();
 
     final Row expectedRow =
@@ -71,6 +78,10 @@ class DocumentConverterTest {
                 Value.newBuilder()
                     .setValueType(INT_ARRAY)
                     .addAllIntArray(List.of(2016, 2037, 2122)))
+            .addColumn(Value.newBuilder().setValueType(STRING_MAP).build())
+            .addColumn(Value.newBuilder().setValueType(STRING_MAP).build())
+            .addColumn(Value.newBuilder().setValueType(STRING_ARRAY).build())
+            .addColumn(Value.newBuilder().setValueType(STRING_ARRAY).build())
             .build();
 
     final Row actualRow = documentConverter.convertToRow(document, resultSetMetadata);
