@@ -48,9 +48,11 @@ class DocumentConverterTest {
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.nonExisting"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.valueList"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.emptyMap"))
-            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.emptyMapNested"))
+            .addColumnMetadata(
+                ColumnMetadata.newBuilder().setColumnName("attributes.emptyMapNested"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.emptyList"))
-            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.emptyListNested"))
+            .addColumnMetadata(
+                ColumnMetadata.newBuilder().setColumnName("attributes.emptyListNested"))
             .build();
 
     final Row expectedRow =

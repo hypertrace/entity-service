@@ -47,7 +47,8 @@ public class MapValueGetter implements ValueGetter {
     }
 
     final JsonNode mapNode = valuesNode.get(VALUES_KEY);
-    final Iterator<Entry<String, JsonNode>> fields = mapNode == null ? emptyIterator() : mapNode.fields();
+    final Iterator<Entry<String, JsonNode>> fields =
+        mapNode == null ? emptyIterator() : mapNode.fields();
     final Value.Builder valueBuilder = Value.newBuilder().setValueType(STRING_MAP);
 
     while (fields.hasNext()) {
