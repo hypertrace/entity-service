@@ -17,6 +17,8 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
   private final DefaultIdentifierConverter defaultIdentifierConverter;
   private final PrimitiveSuffixAddingIdentifierConverter primitiveSuffixAddingIdentifierConverter;
   private final ArraySuffixAddingIdentifierConverter arraySuffixAddingIdentifierConverter;
+  private final ArrayElementSuffixAddingIdentifierConverter
+      arrayElementSuffixAddingIdentifierConverter;
   private final MapSuffixAddingIdentifierConverter mapSuffixAddingIdentifierConverter;
   private final ValueHelper valueHelper;
 
@@ -33,20 +35,20 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
       return defaultIdentifierConverter;
     }
 
+    if (attributeMapping.isMultiValued(requestContext, columnId)) {
+      if (valueHelper.isArray(valueType)) {
+        return arrayElementSuffixAddingIdentifierConverter;
+      } else {
+        return arraySuffixAddingIdentifierConverter;
+      }
+    }
+
     if (valueHelper.isPrimitive(valueType)) {
       return primitiveSuffixAddingIdentifierConverter;
     }
 
     if (valueHelper.isMap(valueType)) {
       return mapSuffixAddingIdentifierConverter;
-    }
-
-    if (valueHelper.isArray(valueType)) {
-      if (attributeMapping.isMultiValued(requestContext, columnId)) {
-        return arraySuffixAddingIdentifierConverter;
-      } else {
-        return primitiveSuffixAddingIdentifierConverter;
-      }
     }
 
     throw new ConversionException(

@@ -16,12 +16,15 @@ import static org.hypertrace.entity.query.service.v1.Operator.NOT_IN;
 
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.v1.Operator;
 
 public abstract class FilteringExpressionConverterBase implements FilteringExpressionConverter {
+  public static final Set<Operator> ARRAY_OPERATORS = Set.of(IN, NOT_IN);
+
   private static final Supplier<Map<Operator, RelationalOperator>> RELATIONAL_OPERATOR_MAP =
       memoize(FilteringExpressionConverterBase::getRelationalOperatorMap);
 
