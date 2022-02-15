@@ -8,6 +8,11 @@ import com.google.inject.Singleton;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.Operator;
 
+/**
+ * Adds suffix .valueList.values.%d.value.&lt;type&gt; for element-by-element comparison.
+ *
+ * <p>The placeholder '%d' needs to be replaced with array index by the calling method
+ */
 @Singleton
 public class ArrayElementSuffixAddingIdentifierConverter extends SuffixAddingIdentifierConverter {
   private static final String ARRAY_ELEMENT_SUFFIX = "." + VALUE_LIST_KEY + ".values.%d.value.";
@@ -24,6 +29,7 @@ public class ArrayElementSuffixAddingIdentifierConverter extends SuffixAddingIde
   @Override
   protected String getSuffix(final Operator operator) {
     if (ARRAY_OPERATORS.contains(operator)) {
+      // If the operator is an array operator, fall-back to array suffix
       return arraySuffixAddingIdentifierConverter.getSuffix(operator);
     }
 

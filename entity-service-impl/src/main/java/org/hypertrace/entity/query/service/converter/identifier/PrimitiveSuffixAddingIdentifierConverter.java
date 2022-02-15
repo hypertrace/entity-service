@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.Operator;
 
+/** Adds suffix value.&lt;type&gt; for direct comparison. */
 @Singleton
 public class PrimitiveSuffixAddingIdentifierConverter extends SuffixAddingIdentifierConverter {
   private static final String SUFFIX = ".value.";
