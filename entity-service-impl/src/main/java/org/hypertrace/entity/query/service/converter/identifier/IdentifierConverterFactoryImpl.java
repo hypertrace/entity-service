@@ -46,16 +46,12 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
       }
     }
 
-    if (isFilterValuePrimitive(valueType)) {
+    if (isFilterValuePrimitive(valueType) || isFilterValueArray(valueType)) {
       return primitiveSuffixAddingIdentifierConverter;
     }
 
     if (isFilterValueMap(valueType)) {
       return mapSuffixAddingIdentifierConverter;
-    }
-
-    if (isFilterValueArray(valueType)) {
-      return arraySuffixAddingIdentifierConverter;
     }
 
     throw new ConversionException(
