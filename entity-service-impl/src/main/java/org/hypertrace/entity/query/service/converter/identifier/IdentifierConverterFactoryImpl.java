@@ -54,6 +54,10 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
       return mapSuffixAddingIdentifierConverter;
     }
 
+    if (isFilterValueArray(valueType)) {
+      return arraySuffixAddingIdentifierConverter;
+    }
+
     throw new ConversionException(
         String.format(
             "Couldn't determine IdentifierConverter for column: %s, type: %s",
