@@ -17,6 +17,8 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
   private final DefaultIdentifierConverter defaultIdentifierConverter;
   private final PrimitiveSuffixAddingIdentifierConverter primitiveSuffixAddingIdentifierConverter;
   private final ArraySuffixAddingIdentifierConverter arraySuffixAddingIdentifierConverter;
+  private final ArrayElementSuffixAddingIdentifierConverter
+      arrayElementSuffixAddingIdentifierConverter;
   private final MapSuffixAddingIdentifierConverter mapSuffixAddingIdentifierConverter;
   private final ValueHelper valueHelper;
 
@@ -33,26 +35,46 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
       return defaultIdentifierConverter;
     }
 
-    if (valueHelper.isPrimitive(valueType)) {
+    if (isFilteringFieldArray(requestContext, columnId)) {
+      // LHS is an array
+      if (isFilterValueArray(valueType)) {
+        // If the RHS is an array, do element by element comparison
+        return arrayElementSuffixAddingIdentifierConverter;
+      } else {
+        // If the RHS is not an array, do direct comparison
+        return arraySuffixAddingIdentifierConverter;
+      }
+    }
+
+    if (isFilterValuePrimitive(valueType)) {
       return primitiveSuffixAddingIdentifierConverter;
     }
 
-    if (valueHelper.isMap(valueType)) {
+    if (isFilterValueMap(valueType)) {
       return mapSuffixAddingIdentifierConverter;
-    }
-
-    if (valueHelper.isArray(valueType)) {
-      if (attributeMapping.isMultiValued(requestContext, columnId)) {
-        return arraySuffixAddingIdentifierConverter;
-      } else {
-        return primitiveSuffixAddingIdentifierConverter;
-      }
     }
 
     throw new ConversionException(
         String.format(
             "Couldn't determine IdentifierConverter for column: %s, type: %s",
             columnId, valueType));
+  }
+
+  private boolean isFilteringFieldArray(
+      final RequestContext requestContext, final String columnId) {
+    return attributeMapping.isMultiValued(requestContext, columnId);
+  }
+
+  private boolean isFilterValueArray(final ValueType valueType) {
+    return valueHelper.isArray(valueType);
+  }
+
+  private boolean isFilterValueMap(final ValueType valueType) {
+    return valueHelper.isMap(valueType);
+  }
+
+  private boolean isFilterValuePrimitive(final ValueType valueType) {
+    return valueHelper.isPrimitive(valueType);
   }
 
   private static boolean isPartOfAttributeMap(final String subDocPath) {

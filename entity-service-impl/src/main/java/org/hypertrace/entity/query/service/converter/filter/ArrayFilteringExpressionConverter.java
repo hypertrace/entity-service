@@ -1,14 +1,11 @@
 package org.hypertrace.entity.query.service.converter.filter;
 
 import static org.hypertrace.entity.query.service.converter.identifier.IdentifierConverter.getSubDocPathById;
-import static org.hypertrace.entity.query.service.v1.Operator.IN;
-import static org.hypertrace.entity.query.service.v1.Operator.NOT_IN;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
@@ -34,7 +31,6 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class ArrayFilteringExpressionConverter extends FilteringExpressionConverterBase {
-  private static final Set<Operator> IN_OPERATORS = Set.of(IN, NOT_IN);
 
   private final EntityAttributeMapping entityAttributeMapping;
   private final IdentifierConverterFactory identifierConverterFactory;
@@ -50,7 +46,7 @@ public class ArrayFilteringExpressionConverter extends FilteringExpressionConver
       final RequestContext requestContext)
       throws ConversionException {
 
-    if (IN_OPERATORS.contains(operator)) {
+    if (ARRAY_OPERATORS.contains(operator)) {
       return primitiveFilteringExpressionConverter.convert(
           columnIdentifier, operator, constant, requestContext);
     }

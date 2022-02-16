@@ -37,6 +37,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.hypertrace.core.attribute.service.client.AttributeServiceClient;
 import org.hypertrace.core.attribute.service.v1.AttributeCreateRequest;
 import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
@@ -595,6 +596,261 @@ public class EntityQueryServiceTest {
 
     assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
     assertTrue(list.get(1).getResultSetMetadata().getColumnMetadataCount() > 0);
+  }
+
+  @Test
+  void testExecuteWithEqualsArrayFilter() {
+    String filterValue1 = generateRandomUUID();
+    String filterValue2 = generateRandomUUID();
+    String filterValue3 = generateRandomUUID();
+
+    AttributeValueList.Builder attributeValueListBuilder = AttributeValueList.newBuilder();
+
+    attributeValueListBuilder.clear();
+    Stream.of(filterValue1, filterValue2)
+        .map(this::generateAttrValue)
+        .forEach(attributeValueListBuilder::addValues);
+
+    Entity entity1 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 1")
+            .putAttributes(
+                "labels",
+                AttributeValue.newBuilder().setValueList(attributeValueListBuilder).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1);
+    assertFalse(createdEntity1.getEntityId().trim().isEmpty());
+
+    attributeValueListBuilder.clear();
+    Stream.of(filterValue2, filterValue3)
+        .map(this::generateAttrValue)
+        .forEach(attributeValueListBuilder::addValues);
+
+    Entity entity2 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 2")
+            .putAttributes(
+                "labels",
+                AttributeValue.newBuilder().setValueList(attributeValueListBuilder).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2);
+    assertFalse(createdEntity2.getEntityId().trim().isEmpty());
+
+    attributeValueListBuilder.clear();
+    Stream.of(filterValue3, filterValue1, generateRandomUUID())
+        .map(this::generateAttrValue)
+        .forEach(attributeValueListBuilder::addValues);
+
+    Entity entity3 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 3")
+            .putAttributes(
+                "labels",
+                AttributeValue.newBuilder().setValueList(attributeValueListBuilder).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity3 = entityDataServiceClient.upsert(entity3);
+    assertNotNull(createdEntity3);
+    assertFalse(createdEntity3.getEntityId().trim().isEmpty());
+
+    Entity entity4 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 4")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity4 = entityDataServiceClient.upsert(entity4);
+    assertNotNull(createdEntity4);
+    assertFalse(createdEntity4.getEntityId().trim().isEmpty());
+
+    attributeValueListBuilder.clear();
+    Stream.of(generateRandomUUID(), generateRandomUUID())
+        .map(this::generateAttrValue)
+        .forEach(attributeValueListBuilder::addValues);
+
+    Entity entity5 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 5")
+            .putAttributes(
+                "labels",
+                AttributeValue.newBuilder().setValueList(attributeValueListBuilder).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity5 = entityDataServiceClient.upsert(entity5);
+    assertNotNull(createdEntity5);
+    assertFalse(createdEntity5.getEntityId().trim().isEmpty());
+
+    // Filtering for a single value in an array with EQUALS should fetch all rows having the VALUE
+    // AS ONE OF THE ARRAY ELEMENTS
+    {
+      EntityQueryRequest queryRequest =
+          EntityQueryRequest.newBuilder()
+              .setEntityType(EntityType.SERVICE.name())
+              .setFilter(
+                  Filter.newBuilder()
+                      .setOperator(Operator.EQ)
+                      .setLhs(
+                          Expression.newBuilder()
+                              .setColumnIdentifier(
+                                  ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR)))
+                      .setRhs(
+                          Expression.newBuilder()
+                              .setLiteral(
+                                  LiteralConstant.newBuilder()
+                                      .setValue(
+                                          org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                              .setValueType(STRING)
+                                              .setString(filterValue1))))
+                      .build())
+              .addSelection(
+                  Expression.newBuilder()
+                      .setColumnIdentifier(
+                          ColumnIdentifier.newBuilder().setColumnName("API.id").build())
+                      .build())
+              .addSelection(
+                  Expression.newBuilder()
+                      .setColumnIdentifier(
+                          ColumnIdentifier.newBuilder().setColumnName("API.name").build())
+                      .build())
+              .build();
+
+      Iterator<ResultSetChunk> resultSetChunkIterator =
+          GrpcClientRequestContextUtil.executeWithHeadersContext(
+              HEADERS, () -> entityQueryServiceClient.execute(queryRequest));
+      List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
+      assertEquals(1, list.size());
+      assertEquals(2, list.get(0).getRowCount());
+      assertEquals(0, list.get(0).getChunkId());
+      assertTrue(list.get(0).getIsLastChunk());
+
+      assertEquals(createdEntity1.getEntityId(), list.get(0).getRow(0).getColumn(0).getString());
+      assertEquals(createdEntity1.getEntityName(), list.get(0).getRow(0).getColumn(1).getString());
+      assertEquals(createdEntity3.getEntityId(), list.get(0).getRow(1).getColumn(0).getString());
+      assertEquals(createdEntity3.getEntityName(), list.get(0).getRow(1).getColumn(1).getString());
+
+      assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
+    }
+
+    // Filtering for a list of values in an array with EQUALS should fetch only rows EXACTLY
+    // MATCHING the array
+    {
+      EntityQueryRequest queryRequest =
+          EntityQueryRequest.newBuilder()
+              .setEntityType(EntityType.SERVICE.name())
+              .setFilter(
+                  Filter.newBuilder()
+                      .setOperator(Operator.EQ)
+                      .setLhs(
+                          Expression.newBuilder()
+                              .setColumnIdentifier(
+                                  ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR)))
+                      .setRhs(
+                          Expression.newBuilder()
+                              .setLiteral(
+                                  LiteralConstant.newBuilder()
+                                      .setValue(
+                                          org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                              .setValueType(STRING_ARRAY)
+                                              .addStringArray(filterValue1)
+                                              .addStringArray(filterValue2))))
+                      .build())
+              .addSelection(
+                  Expression.newBuilder()
+                      .setColumnIdentifier(
+                          ColumnIdentifier.newBuilder().setColumnName("API.id").build())
+                      .build())
+              .addSelection(
+                  Expression.newBuilder()
+                      .setColumnIdentifier(
+                          ColumnIdentifier.newBuilder().setColumnName("API.name").build())
+                      .build())
+              .build();
+
+      Iterator<ResultSetChunk> resultSetChunkIterator =
+          GrpcClientRequestContextUtil.executeWithHeadersContext(
+              HEADERS, () -> entityQueryServiceClient.execute(queryRequest));
+      List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
+      assertEquals(1, list.size());
+      assertEquals(1, list.get(0).getRowCount());
+      assertEquals(0, list.get(0).getChunkId());
+      assertTrue(list.get(0).getIsLastChunk());
+
+      assertEquals(createdEntity1.getEntityId(), list.get(0).getRow(0).getColumn(0).getString());
+      assertEquals(createdEntity1.getEntityName(), list.get(0).getRow(0).getColumn(1).getString());
+
+      assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
+    }
+
+    // Filtering for a list of (order-changed) values in an array with EQUALS should fetch EMPTY
+    // RESULT-SET
+    {
+      EntityQueryRequest queryRequest =
+          EntityQueryRequest.newBuilder()
+              .setEntityType(EntityType.SERVICE.name())
+              .setFilter(
+                  Filter.newBuilder()
+                      .setOperator(Operator.EQ)
+                      .setLhs(
+                          Expression.newBuilder()
+                              .setColumnIdentifier(
+                                  ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR)))
+                      .setRhs(
+                          Expression.newBuilder()
+                              .setLiteral(
+                                  LiteralConstant.newBuilder()
+                                      .setValue(
+                                          org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                              .setValueType(STRING_ARRAY)
+                                              .addStringArray(filterValue2)
+                                              .addStringArray(filterValue1))))
+                      .build())
+              .addSelection(
+                  Expression.newBuilder()
+                      .setColumnIdentifier(
+                          ColumnIdentifier.newBuilder().setColumnName("API.id").build())
+                      .build())
+              .addSelection(
+                  Expression.newBuilder()
+                      .setColumnIdentifier(
+                          ColumnIdentifier.newBuilder().setColumnName("API.name").build())
+                      .build())
+              .build();
+
+      Iterator<ResultSetChunk> resultSetChunkIterator =
+          GrpcClientRequestContextUtil.executeWithHeadersContext(
+              HEADERS, () -> entityQueryServiceClient.execute(queryRequest));
+      List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
+
+      assertEquals(1, list.size());
+      assertEquals(0, list.get(0).getRowCount());
+      assertEquals(0, list.get(0).getChunkId());
+      assertTrue(list.get(0).getIsLastChunk());
+
+      assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
+    }
   }
 
   @Test
