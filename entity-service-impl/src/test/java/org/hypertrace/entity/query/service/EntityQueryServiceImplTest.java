@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.quality.Strictness.LENIENT;
 
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
@@ -52,6 +53,7 @@ import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -61,8 +63,10 @@ import org.mockito.ArgumentMatcher;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = LENIENT)
 public class EntityQueryServiceImplTest {
 
   private static final String TEST_ENTITY_TYPE = "TEST_ENTITY";
@@ -410,6 +414,7 @@ public class EntityQueryServiceImplTest {
             // this doc will result in parsing error
             new JSONDocument("{\"entityId\": [1, 2]}"));
     when(mockEntitiesCollection.aggregate(any())).thenReturn(docs.iterator());
+    when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
     EntityQueryRequest request =
         EntityQueryRequest.newBuilder()
             .setEntityType(TEST_ENTITY_TYPE)
@@ -428,13 +433,15 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection, mockAttributeMapping, 1);
+                  new EntityQueryServiceImpl(
+                      mockEntitiesCollection, mockMappingForAttributes1And2(), 1);
 
               eqs.execute(request, mockResponseObserver);
               return null;
             });
 
-    verify(mockEntitiesCollection, times(1)).aggregate(any());
+    verify(mockEntitiesCollection, times(0)).aggregate(any());
+    verify(mockEntitiesCollection, times(1)).search(any());
     verify(mockResponseObserver, times(3)).onNext(any());
     verify(mockResponseObserver, times(1)).onCompleted();
   }
@@ -491,6 +498,8 @@ public class EntityQueryServiceImplTest {
             // this doc will result in parsing error
             new JSONDocument("{\"entityId\": [1, 2]}"));
     when(mockEntitiesCollection.aggregate(any())).thenReturn(docs.iterator());
+    when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
+
     EntityQueryRequest request =
         EntityQueryRequest.newBuilder()
             .setEntityType(TEST_ENTITY_TYPE)
@@ -509,13 +518,15 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(mockEntitiesCollection, mockAttributeMapping, 2);
+                  new EntityQueryServiceImpl(
+                      mockEntitiesCollection, mockMappingForAttributes1And2(), 2);
 
               eqs.execute(request, mockResponseObserver);
               return null;
             });
 
-    verify(mockEntitiesCollection, times(1)).aggregate(any());
+    verify(mockEntitiesCollection, times(0)).aggregate(any());
+    verify(mockEntitiesCollection, times(1)).search(any());
     verify(mockResponseObserver, times(2)).onNext(any());
     verify(mockResponseObserver, times(1)).onCompleted();
   }
@@ -578,6 +589,7 @@ public class EntityQueryServiceImplTest {
   }
 
   @Test
+  @Disabled("Disabled until we enable querying based on the new Query DTO")
   public void testExecute_withAliases() throws Exception {
     Collection mockEntitiesCollection = mock(Collection.class);
     List<Document> docs =
@@ -605,6 +617,8 @@ public class EntityQueryServiceImplTest {
                     + "    }\n"
                     + "}"));
     when(mockEntitiesCollection.aggregate(any())).thenReturn(docs.iterator());
+    when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
+
     EntityQueryRequest request =
         EntityQueryRequest.newBuilder()
             .setEntityType(TEST_ENTITY_TYPE)
