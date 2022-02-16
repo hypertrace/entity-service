@@ -46,7 +46,7 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
       }
     }
 
-    if (isFilterValuePrimitive(valueType)) {
+    if (isFilterValuePrimitive(valueType) || isFilterValueArray(valueType)) {
       return primitiveSuffixAddingIdentifierConverter;
     }
 
