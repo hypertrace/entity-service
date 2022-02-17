@@ -11,6 +11,7 @@ import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FI
 import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
@@ -122,7 +123,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             && config.getBoolean(QUERY_AGGREGATION_ENABLED_CONFIG));
   }
 
-  public EntityQueryServiceImpl(
+  @VisibleForTesting
+  EntityQueryServiceImpl(
       Collection entitiesCollection,
       EntityAttributeMapping entityAttributeMapping,
       int chunkSize,
@@ -541,7 +543,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     responseObserver.onCompleted();
   }
 
-  Row convertToEntityQueryResult(
+  @Deprecated(
+      since =
+          "Will be removed when Collection.find() and Collection.aggregate() are implemented for Postgres and the 'queryAggregationEnabled' helm-value is enabled",
+      forRemoval = true)
+  private Row convertToEntityQueryResult(
       RequestContext requestContext, Entity entity, List<Expression> selections) {
     Row.Builder result = Row.newBuilder();
     selections.stream()

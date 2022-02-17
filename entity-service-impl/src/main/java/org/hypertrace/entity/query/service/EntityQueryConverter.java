@@ -52,6 +52,10 @@ class EntityQueryConverter {
     return queryBuilder.build();
   }
 
+  @Deprecated(
+      since =
+          "Will be removed when Collection.find() and Collection.aggregate() are implemented for Postgres and the 'queryAggregationEnabled' helm-value is enabled",
+      forRemoval = true)
   public static org.hypertrace.entity.query.service.v1.Value convertAttributeValueToQueryValue(
       AttributeValue attributeValue) {
     if (attributeValue == null) {
@@ -86,6 +90,10 @@ class EntityQueryConverter {
     }
   }
 
+  @Deprecated(
+      since =
+          "Will be removed when Collection.find() and Collection.aggregate() are implemented for Postgres and the 'queryAggregationEnabled' helm-value is enabled",
+      forRemoval = true)
   public List<String> convertSelectionsToDocStoreSelections(
       RequestContext requestContext, List<Expression> expressions) {
     if (expressions.isEmpty()) {
@@ -108,6 +116,10 @@ class EntityQueryConverter {
     return result;
   }
 
+  @Deprecated(
+      since =
+          "Will be removed when Collection.find() and Collection.aggregate() are implemented for Postgres and the 'queryAggregationEnabled' helm-value is enabled",
+      forRemoval = true)
   private static org.hypertrace.entity.query.service.v1.Value convertValueToQueryValue(
       org.hypertrace.entity.data.service.v1.Value value) {
     switch (value.getTypeCase()) {
@@ -376,6 +388,10 @@ class EntityQueryConverter {
    * Method to return the String representation of the given attribute without including any type
    * information.
    */
+  @Deprecated(
+      since =
+          "Will be removed when Collection.find() and Collection.aggregate() are implemented for Postgres and the 'queryAggregationEnabled' helm-value is enabled",
+      forRemoval = true)
   private static String toStringWithoutTypeInfo(AttributeValue value) {
     switch (value.getTypeCase()) {
       case VALUE:

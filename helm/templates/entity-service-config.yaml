@@ -19,6 +19,7 @@ data:
         }
       }
       publish.change.events = {{ .Values.entityServiceConfig.publishChangeEvents }}
+      query.aggregation.enabled = {{ .Values.entityServiceConfig.queryAggregationEnabled }}
     }
     attribute.service.config = {
       host = {{ .Values.entityServiceConfig.attributeService.host }}
