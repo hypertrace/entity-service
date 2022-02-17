@@ -89,6 +89,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final Printer PRINTER = DocStoreJsonFormat.printer().includingDefaultValueFields();
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
+  private static final String QUERY_AGGREGATION_ENABLED_CONFIG =
+      "entity.service.config.query.aggregation.enabled";
   private static final int DEFAULT_CHUNK_SIZE = 10_000;
   private static final String ARRAY_VALUE_PATH_SUFFIX =
       Stream.of(
@@ -106,7 +108,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final EntityAttributeMapping entityAttributeMapping;
   private final int CHUNK_SIZE;
   private final Injector injector;
-  private final boolean isNewQueryAvailable = false;
+  private final boolean queryAggregationEnabled;
 
   public EntityQueryServiceImpl(
       Datastore datastore, Config config, GrpcChannelRegistry channelRegistry) {
@@ -115,16 +117,22 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         new EntityAttributeMapping(config, channelRegistry),
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
-            : config.getInt(CHUNK_SIZE_CONFIG));
+            : config.getInt(CHUNK_SIZE_CONFIG),
+        config.hasPath(QUERY_AGGREGATION_ENABLED_CONFIG)
+            && config.getBoolean(QUERY_AGGREGATION_ENABLED_CONFIG));
   }
 
   public EntityQueryServiceImpl(
-      Collection entitiesCollection, EntityAttributeMapping entityAttributeMapping, int chunkSize) {
+      Collection entitiesCollection,
+      EntityAttributeMapping entityAttributeMapping,
+      int chunkSize,
+      boolean queryAggregationEnabled) {
     this.entitiesCollection = entitiesCollection;
     this.entityAttributeMapping = entityAttributeMapping;
     this.entityQueryConverter = new EntityQueryConverter(entityAttributeMapping);
     this.CHUNK_SIZE = chunkSize;
     this.injector = Guice.createInjector(new ConverterModule(entityAttributeMapping));
+    this.queryAggregationEnabled = queryAggregationEnabled;
   }
 
   @Override
@@ -138,7 +146,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     final Iterator<Document> documentIterator;
 
-    if (isNewQueryAvailable) {
+    if (queryAggregationEnabled) {
       final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
           queryConverter = getQueryConverter();
       final org.hypertrace.core.documentstore.query.Query query;
@@ -199,7 +207,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
       try {
         final Row row;
-        if (isNewQueryAvailable) {
+        if (queryAggregationEnabled) {
           row = rowConverter.convertToRow(documentIterator.next(), resultSetMetadata);
           resultBuilder.addRow(row);
           rowCount++;
