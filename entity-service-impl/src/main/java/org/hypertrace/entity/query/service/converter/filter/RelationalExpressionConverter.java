@@ -7,7 +7,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.Set;
 import lombok.AllArgsConstructor;
-import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
@@ -21,12 +21,12 @@ import org.hypertrace.entity.query.service.v1.Operator;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
-public class RelationalExpressionConverter implements Converter<Filter, FilteringExpression> {
+public class RelationalExpressionConverter implements Converter<Filter, FilterTypeExpression> {
   private final OneOfAccessor<Expression, ValueCase> expressionAccessor;
   private final FilteringExpressionConverterFactory filteringExpressionConverterFactory;
 
   @Override
-  public FilteringExpression convert(final Filter filter, final RequestContext requestContext)
+  public FilterTypeExpression convert(final Filter filter, final RequestContext requestContext)
       throws ConversionException {
     final Expression lhs = filter.getLhs();
     final Operator operator = filter.getOperator();

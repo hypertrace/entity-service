@@ -3,7 +3,7 @@ package org.hypertrace.entity.query.service.converter.filter;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.AllArgsConstructor;
-import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.v1.Filter;
@@ -16,7 +16,7 @@ public class FilterConverterFactoryImpl implements FilterConverterFactory {
   private final LogicalExpressionConverter logicalExpressionConverter;
 
   @Override
-  public Converter<Filter, FilteringExpression> getFilterConverter(final Operator operator)
+  public Converter<Filter, FilterTypeExpression> getFilterConverter(final Operator operator)
       throws ConversionException {
     switch (operator) {
       case AND:

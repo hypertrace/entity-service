@@ -10,7 +10,7 @@ import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
-import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 
@@ -19,7 +19,7 @@ public class ExtraFiltersApplierImpl implements ExtraFiltersApplier {
 
   @Override
   public LogicalExpression addExtraFilters(
-      final FilteringExpression filters,
+      final FilterTypeExpression filters,
       final EntityQueryRequest entityQueryRequest,
       final RequestContext context) {
     final RelationalExpression tenantIdFilter = getTenantIdFilter(context);

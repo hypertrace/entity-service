@@ -5,7 +5,7 @@ import com.google.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
-import org.hypertrace.core.documentstore.expression.type.SelectingExpression;
+import org.hypertrace.core.documentstore.expression.type.SelectTypeExpression;
 import org.hypertrace.core.documentstore.query.Selection;
 import org.hypertrace.core.documentstore.query.SelectionSpec;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -44,14 +44,14 @@ public class SelectionConverter implements Converter<List<Expression>, Selection
   private <T> SelectionSpec getSpec(
       final ValueCase valueCase, final T innerExpression, final RequestContext requestContext)
       throws ConversionException {
-    final Converter<T, ? extends SelectingExpression> converter =
+    final Converter<T, ? extends SelectTypeExpression> converter =
         selectionFactory.getConverter(valueCase);
     final AliasProvider<T> aliasProvider = selectionFactory.getAliasProvider(valueCase);
 
-    final SelectingExpression selectingExpression =
+    final SelectTypeExpression selectTypeExpression =
         converter.convert(innerExpression, requestContext);
     final String alias = aliasProvider.getAlias(innerExpression);
 
-    return SelectionSpec.of(selectingExpression, alias);
+    return SelectionSpec.of(selectTypeExpression, alias);
   }
 }

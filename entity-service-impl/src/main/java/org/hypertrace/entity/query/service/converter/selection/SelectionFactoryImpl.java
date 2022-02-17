@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.hypertrace.core.documentstore.expression.impl.AggregateExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.type.SelectingExpression;
+import org.hypertrace.core.documentstore.expression.type.SelectTypeExpression;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
@@ -30,7 +30,7 @@ public class SelectionFactoryImpl implements SelectionFactory {
       aggregateAliasProvider;
   private final AliasProvider<ColumnIdentifier> identifierAliasProvider;
 
-  private final Supplier<Map<ValueCase, Converter<?, ? extends SelectingExpression>>> converterMap;
+  private final Supplier<Map<ValueCase, Converter<?, ? extends SelectTypeExpression>>> converterMap;
   private final Supplier<Map<ValueCase, AliasProvider<?>>> aliasProviderMap;
 
   @Inject
@@ -54,16 +54,17 @@ public class SelectionFactoryImpl implements SelectionFactory {
 
   @SuppressWarnings("unchecked")
   @Override
-  public <T> Converter<T, ? extends SelectingExpression> getConverter(final ValueCase valueCase)
+  public <T> Converter<T, ? extends SelectTypeExpression> getConverter(final ValueCase valueCase)
       throws ConversionException {
-    final Converter<?, ? extends SelectingExpression> converter = converterMap.get().get(valueCase);
+    final Converter<?, ? extends SelectTypeExpression> converter =
+        converterMap.get().get(valueCase);
 
     if (converter == null) {
       throw new ConversionException(
           String.format("Converter not found for %s", valueCase.toString().toLowerCase()));
     }
 
-    return (Converter<T, ? extends SelectingExpression>) converter;
+    return (Converter<T, ? extends SelectTypeExpression>) converter;
   }
 
   @SuppressWarnings("unchecked")
@@ -80,8 +81,8 @@ public class SelectionFactoryImpl implements SelectionFactory {
     return (AliasProvider<T>) aliasProvider;
   }
 
-  private Map<ValueCase, Converter<?, ? extends SelectingExpression>> getConverterMap() {
-    final Map<ValueCase, Converter<?, ? extends SelectingExpression>> map =
+  private Map<ValueCase, Converter<?, ? extends SelectTypeExpression>> getConverterMap() {
+    final Map<ValueCase, Converter<?, ? extends SelectTypeExpression>> map =
         new EnumMap<>(ValueCase.class);
 
     map.put(AGGREGATION, aggregateExpressionConverter);

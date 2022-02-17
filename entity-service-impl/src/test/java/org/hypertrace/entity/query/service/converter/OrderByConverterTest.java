@@ -6,7 +6,7 @@ import static org.mockito.quality.Strictness.LENIENT;
 
 import java.util.List;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.operators.SortingOrder;
+import org.hypertrace.core.documentstore.expression.operators.SortOrder;
 import org.hypertrace.core.documentstore.query.Sort;
 import org.hypertrace.core.documentstore.query.SortingSpec;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -17,7 +17,6 @@ import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
-import org.hypertrace.entity.query.service.v1.SortOrder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +41,7 @@ class OrderByConverterTest {
   private final OrderByExpression orderByExpression =
       OrderByExpression.newBuilder()
           .setExpression(Expression.newBuilder().setColumnIdentifier(columnIdentifier))
-          .setOrder(SortOrder.ASC)
+          .setOrder(org.hypertrace.entity.query.service.v1.SortOrder.ASC)
           .build();
 
   @BeforeEach
@@ -54,13 +53,17 @@ class OrderByConverterTest {
   @Test
   void testConvert() throws ConversionException {
     Sort expected =
-        Sort.builder().sortingSpec(SortingSpec.of(identifierExpression, SortingOrder.ASC)).build();
+        Sort.builder().sortingSpec(SortingSpec.of(identifierExpression, SortOrder.ASC)).build();
     assertEquals(expected, orderByConverter.convert(List.of(orderByExpression), requestContext));
   }
 
   @ParameterizedTest
-  @EnumSource(value = SortOrder.class, mode = Mode.EXCLUDE, names = "UNRECOGNIZED")
-  void testConvertCoverage(final SortOrder sortOrder) throws ConversionException {
+  @EnumSource(
+      value = org.hypertrace.entity.query.service.v1.SortOrder.class,
+      mode = Mode.EXCLUDE,
+      names = "UNRECOGNIZED")
+  void testConvertCoverage(final org.hypertrace.entity.query.service.v1.SortOrder sortOrder)
+      throws ConversionException {
     OrderByExpression orderByExpression =
         OrderByExpression.newBuilder()
             .setExpression(Expression.newBuilder().setColumnIdentifier(columnIdentifier))

@@ -9,7 +9,7 @@ import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
-import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
@@ -31,7 +31,7 @@ public class PrimitiveFilteringExpressionConverter extends FilteringExpressionCo
   private final Converter<LiteralConstant, ConstantExpression> constantExpressionConverter;
 
   @Override
-  public FilteringExpression convert(
+  public FilterTypeExpression convert(
       final ColumnIdentifier columnIdentifier,
       final Operator operator,
       final LiteralConstant constant,
