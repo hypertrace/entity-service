@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Set;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.type.GroupingExpression;
+import org.hypertrace.core.documentstore.expression.type.GroupTypeExpression;
 import org.hypertrace.core.documentstore.query.Aggregation;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
@@ -30,17 +30,17 @@ public class GroupByConverter implements Converter<List<GroupByExpression>, Aggr
   public Aggregation convert(
       final List<GroupByExpression> groupByExpressions, final RequestContext requestContext)
       throws ConversionException {
-    final List<GroupingExpression> groupingExpressions = new ArrayList<>();
+    final List<GroupTypeExpression> groupTypeExpressions = new ArrayList<>();
 
     for (final GroupByExpression groupBy : groupByExpressions) {
-      final GroupingExpression groupingExpression = convert(groupBy, requestContext);
-      groupingExpressions.add(groupingExpression);
+      final GroupTypeExpression groupTypeExpression = convert(groupBy, requestContext);
+      groupTypeExpressions.add(groupTypeExpression);
     }
 
-    return Aggregation.builder().expressions(groupingExpressions).build();
+    return Aggregation.builder().expressions(groupTypeExpressions).build();
   }
 
-  private GroupingExpression convert(
+  private GroupTypeExpression convert(
       final GroupByExpression groupBy, final RequestContext requestContext)
       throws ConversionException {
     final Expression innerExpression = groupBy.getExpression();

@@ -1,15 +1,15 @@
 package org.hypertrace.entity.query.service.converter.filter;
 
-import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 
 public interface ExtraFiltersApplier {
-  FilteringExpression addExtraFilters(
-      final FilteringExpression filters,
+  FilterTypeExpression addExtraFilters(
+      final FilterTypeExpression filters,
       final EntityQueryRequest entityQueryRequest,
       final RequestContext context);
 
-  FilteringExpression getExtraFilters(
+  FilterTypeExpression getExtraFilters(
       final EntityQueryRequest entityQueryRequest, final RequestContext context);
 }

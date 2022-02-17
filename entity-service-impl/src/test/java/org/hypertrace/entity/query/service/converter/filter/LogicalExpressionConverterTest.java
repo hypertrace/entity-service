@@ -9,7 +9,7 @@ import static org.mockito.quality.Strictness.LENIENT;
 
 import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
-import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
@@ -27,8 +27,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 class LogicalExpressionConverterTest {
   @Mock private FilterConverterFactory filterConverterFactory;
   @Mock private Converter<Filter, RelationalExpression> relationalExpressionConverter;
-  @Mock private FilteringExpression filteringExpression1;
-  @Mock private FilteringExpression filteringExpression2;
+  @Mock private FilterTypeExpression filteringExpression1;
+  @Mock private FilterTypeExpression filteringExpression2;
 
   private final Filter childFilter1 = Filter.newBuilder().setOperator(Operator.AND).build();
   private final Filter childFilter2 = Filter.newBuilder().setOperator(Operator.OR).build();
@@ -40,7 +40,7 @@ class LogicalExpressionConverterTest {
           .build();
   private final RequestContext requestContext = RequestContext.forTenantId("Martian");
 
-  private Converter<Filter, FilteringExpression> logicalExpressionConverter;
+  private Converter<Filter, FilterTypeExpression> logicalExpressionConverter;
 
   @BeforeEach
   void setup() throws ConversionException {

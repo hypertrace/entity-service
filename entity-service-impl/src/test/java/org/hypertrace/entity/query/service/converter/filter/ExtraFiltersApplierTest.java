@@ -11,7 +11,7 @@ import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
-import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 public class ExtraFiltersApplierTest {
   private final ExtraFiltersApplier extraFiltersApplier = new ExtraFiltersApplierImpl();
 
-  @Mock private FilteringExpression filter;
+  @Mock private FilterTypeExpression filter;
 
   private final String tenantId = "Mars-man";
   private final String entityType = "SERVICE";

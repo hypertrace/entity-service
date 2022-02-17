@@ -17,7 +17,7 @@ import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.expression.operators.LogicalOperator;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
-import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
@@ -43,7 +43,7 @@ public class MapFilteringExpressionConverter extends FilteringExpressionConverte
   private final ValueHelper valueHelper;
 
   @Override
-  public FilteringExpression convert(
+  public FilterTypeExpression convert(
       final ColumnIdentifier columnIdentifier,
       final Operator operator,
       final LiteralConstant constant,

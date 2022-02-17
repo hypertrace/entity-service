@@ -16,7 +16,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.operators.SortingOrder;
+import org.hypertrace.core.documentstore.expression.operators.SortOrder;
 import org.hypertrace.core.documentstore.query.Sort;
 import org.hypertrace.core.documentstore.query.SortingSpec;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -25,13 +25,12 @@ import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
-import org.hypertrace.entity.query.service.v1.SortOrder;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class OrderByConverter implements Converter<List<OrderByExpression>, Sort> {
-  private static final Supplier<Map<SortOrder, SortingOrder>> ORDER_MAP =
-      memoize(OrderByConverter::getMapping);
+  private static final Supplier<Map<org.hypertrace.entity.query.service.v1.SortOrder, SortOrder>>
+      ORDER_MAP = memoize(OrderByConverter::getMapping);
   private final OneOfAccessor<Expression, ValueCase> expressionAccessor;
   private final AliasProvider<ColumnIdentifier> aliasProvider;
 
@@ -57,7 +56,7 @@ public class OrderByConverter implements Converter<List<OrderByExpression>, Sort
     final String alias = aliasProvider.getAlias(identifier);
     final IdentifierExpression identifierExpression = IdentifierExpression.of(alias);
 
-    final SortingOrder order = ORDER_MAP.get().get(orderBy.getOrder());
+    final SortOrder order = ORDER_MAP.get().get(orderBy.getOrder());
 
     if (order == null) {
       throw new ConversionException(
@@ -67,11 +66,12 @@ public class OrderByConverter implements Converter<List<OrderByExpression>, Sort
     return SortingSpec.of(identifierExpression, order);
   }
 
-  private static Map<SortOrder, SortingOrder> getMapping() {
-    final Map<SortOrder, SortingOrder> map = new EnumMap<>(SortOrder.class);
+  private static Map<org.hypertrace.entity.query.service.v1.SortOrder, SortOrder> getMapping() {
+    final Map<org.hypertrace.entity.query.service.v1.SortOrder, SortOrder> map =
+        new EnumMap<>(org.hypertrace.entity.query.service.v1.SortOrder.class);
 
-    map.put(ASC, SortingOrder.ASC);
-    map.put(DESC, SortingOrder.DESC);
+    map.put(ASC, SortOrder.ASC);
+    map.put(DESC, SortOrder.DESC);
 
     return unmodifiableMap(map);
   }

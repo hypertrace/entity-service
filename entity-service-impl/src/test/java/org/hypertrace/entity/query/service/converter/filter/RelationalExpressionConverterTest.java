@@ -10,7 +10,7 @@ import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
-import org.hypertrace.core.documentstore.expression.type.FilteringExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
@@ -53,7 +53,7 @@ class RelationalExpressionConverterTest {
   private final IdentifierExpression identifierExpression = IdentifierExpression.of("planet");
   private final ConstantExpression constantExpression = ConstantExpression.of("Pluto");
 
-  private Converter<Filter, FilteringExpression> relationalExpressionConverter;
+  private Converter<Filter, FilterTypeExpression> relationalExpressionConverter;
 
   @BeforeEach
   void setup() throws ConversionException {
