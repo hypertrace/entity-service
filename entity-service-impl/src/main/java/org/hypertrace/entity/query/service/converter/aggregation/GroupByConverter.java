@@ -18,21 +18,20 @@ import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
-import org.hypertrace.entity.query.service.v1.GroupByExpression;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
-public class GroupByConverter implements Converter<List<GroupByExpression>, Aggregation> {
+public class GroupByConverter implements Converter<List<Expression>, Aggregation> {
   private final OneOfAccessor<Expression, ValueCase> expressionAccessor;
   private final Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
 
   @Override
   public Aggregation convert(
-      final List<GroupByExpression> groupByExpressions, final RequestContext requestContext)
+      final List<Expression> Expressions, final RequestContext requestContext)
       throws ConversionException {
     final List<GroupTypeExpression> groupTypeExpressions = new ArrayList<>();
 
-    for (final GroupByExpression groupBy : groupByExpressions) {
+    for (final Expression groupBy : Expressions) {
       final GroupTypeExpression groupTypeExpression = convert(groupBy, requestContext);
       groupTypeExpressions.add(groupTypeExpression);
     }
@@ -40,14 +39,10 @@ public class GroupByConverter implements Converter<List<GroupByExpression>, Aggr
     return Aggregation.builder().expressions(groupTypeExpressions).build();
   }
 
-  private GroupTypeExpression convert(
-      final GroupByExpression groupBy, final RequestContext requestContext)
+  private GroupTypeExpression convert(final Expression groupBy, final RequestContext requestContext)
       throws ConversionException {
-    final Expression innerExpression = groupBy.getExpression();
-
     final ColumnIdentifier identifier =
-        expressionAccessor.access(
-            innerExpression, innerExpression.getValueCase(), Set.of(COLUMNIDENTIFIER));
+        expressionAccessor.access(groupBy, groupBy.getValueCase(), Set.of(COLUMNIDENTIFIER));
 
     return identifierExpressionConverter.convert(identifier, requestContext);
   }

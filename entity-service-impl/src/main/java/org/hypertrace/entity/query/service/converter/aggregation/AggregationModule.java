@@ -7,8 +7,8 @@ import org.hypertrace.core.documentstore.expression.impl.AggregateExpression;
 import org.hypertrace.core.documentstore.query.Aggregation;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.converter.Converter;
+import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Function;
-import org.hypertrace.entity.query.service.v1.GroupByExpression;
 
 public class AggregationModule extends AbstractModule {
 
@@ -17,7 +17,6 @@ public class AggregationModule extends AbstractModule {
     bind(new TypeLiteral<Converter<Function, AggregateExpression>>() {})
         .to(AggregateExpressionConverter.class);
     bind(new TypeLiteral<AliasProvider<Function>>() {}).to(AggregationAliasProvider.class);
-    bind(new TypeLiteral<Converter<List<GroupByExpression>, Aggregation>>() {})
-        .to(GroupByConverter.class);
+    bind(new TypeLiteral<Converter<List<Expression>, Aggregation>>() {}).to(GroupByConverter.class);
   }
 }

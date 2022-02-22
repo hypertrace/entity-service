@@ -16,7 +16,6 @@ import org.hypertrace.core.documentstore.query.Sort;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
-import org.hypertrace.entity.query.service.v1.GroupByExpression;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
 
 @Singleton
@@ -25,7 +24,7 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
   private final Converter<List<Expression>, Selection> selectionConverter;
   private final Converter<EntityQueryRequest, Filter> filterConverter;
 
-  private final Converter<List<GroupByExpression>, Aggregation> groupByConverter;
+  private final Converter<List<Expression>, Aggregation> groupByConverter;
 
   private final Converter<List<OrderByExpression>, Sort> orderByConverter;
   private final PaginationBuilder paginationBuilder = Pagination.builder();
