@@ -609,7 +609,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     for (final Expression selection : selections) {
       final String columnName;
 
-      if (selection.hasAggregation()) {
+      if (selection.hasFunction()) {
         columnName = aggregateExpressionAliasProvider.getAlias(selection.getFunction());
       } else if (selection.hasColumnIdentifier()) {
         columnName = identifierAliasProvider.getAlias(selection.getColumnIdentifier());

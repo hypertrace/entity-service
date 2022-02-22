@@ -15,7 +15,6 @@ import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
-import org.hypertrace.entity.query.service.v1.GroupByExpression;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,15 +28,13 @@ class GroupByConverterTest {
   @Mock private Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
   @Mock private RequestContext requestContext;
 
-  private Converter<List<GroupByExpression>, Aggregation> groupByConverter;
+  private Converter<List<Expression>, Aggregation> groupByConverter;
 
   private final ColumnIdentifier columnIdentifier =
       ColumnIdentifier.newBuilder().setColumnName("Planet_Mars").build();
   private final IdentifierExpression identifierExpression = IdentifierExpression.of("Planet_Mars");
-  private final GroupByExpression groupByExpression =
-      GroupByExpression.newBuilder()
-          .setExpression(Expression.newBuilder().setColumnIdentifier(columnIdentifier))
-          .build();
+  private final Expression expression =
+      Expression.newBuilder().setColumnIdentifier(columnIdentifier).build();
 
   @BeforeEach
   void setup() throws ConversionException {
@@ -51,6 +48,6 @@ class GroupByConverterTest {
   @Test
   void testConvert() throws ConversionException {
     Aggregation expected = Aggregation.builder().expression(identifierExpression).build();
-    assertEquals(expected, groupByConverter.convert(List.of(groupByExpression), requestContext));
+    assertEquals(expected, groupByConverter.convert(List.of(expression), requestContext));
   }
 }
