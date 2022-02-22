@@ -58,7 +58,6 @@ import org.hypertrace.entity.data.service.v1.AttributeValueMap;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
-import org.hypertrace.entity.query.service.v1.AggregateExpression;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
@@ -69,6 +68,7 @@ import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceBlockingStub;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Filter;
+import org.hypertrace.entity.query.service.v1.Function;
 import org.hypertrace.entity.query.service.v1.GroupByExpression;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Operator;
@@ -1019,10 +1019,10 @@ public class EntityQueryServiceTest {
                     .build())
             .addSelection(
                 Expression.newBuilder()
-                    .setAggregation(
-                        AggregateExpression.newBuilder()
-                            .setOperator(AGGREGATION_OPERATOR_COUNT)
-                            .setExpression(
+                    .setFunction(
+                        Function.newBuilder()
+                            .setFunctionName("COUNT")
+                            .addArguments(
                                 Expression.newBuilder()
                                     .setColumnIdentifier(
                                         ColumnIdentifier.newBuilder()

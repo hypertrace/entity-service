@@ -54,7 +54,6 @@ import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.converter.ConverterModule;
 import org.hypertrace.entity.query.service.converter.response.DocumentConverter;
-import org.hypertrace.entity.query.service.v1.AggregateExpression;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
@@ -66,6 +65,7 @@ import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQuery
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
+import org.hypertrace.entity.query.service.v1.Function;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.ResultSetMetadata;
@@ -601,7 +601,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private ResultSetMetadata buildMetadataForSelections(List<Expression> selections)
       throws ConversionException {
     final AliasProvider<ColumnIdentifier> identifierAliasProvider = getIdentifierAliasProvider();
-    final AliasProvider<AggregateExpression> aggregateExpressionAliasProvider =
+    final AliasProvider<Function> aggregateExpressionAliasProvider =
         getAggregateExpressionAliasProvider();
 
     final List<ColumnMetadata> list = new ArrayList<>();
@@ -610,7 +610,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       final String columnName;
 
       if (selection.hasAggregation()) {
-        columnName = aggregateExpressionAliasProvider.getAlias(selection.getAggregation());
+        columnName = aggregateExpressionAliasProvider.getAlias(selection.getFunction());
       } else if (selection.hasColumnIdentifier()) {
         columnName = identifierAliasProvider.getAlias(selection.getColumnIdentifier());
       } else {
@@ -632,9 +632,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         com.google.inject.Key.get(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {}));
   }
 
-  private AliasProvider<AggregateExpression> getAggregateExpressionAliasProvider() {
+  private AliasProvider<Function> getAggregateExpressionAliasProvider() {
     return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<AliasProvider<AggregateExpression>>() {}));
+        com.google.inject.Key.get(new TypeLiteral<AliasProvider<Function>>() {}));
   }
 
   private Converter<List<Expression>, Selection> getSelectionConverter() {
