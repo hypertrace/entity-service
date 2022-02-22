@@ -6,4 +6,8 @@ ignore:
     - '*':
         reason: None Given
         expires: 2022-03-31T00:00:00.000Z
+  SNYK-JAVA-ORGJETBRAINSKOTLIN-2393744:
+    - '*':
+        reason: None Given
+        expires: 2022-12-31T00:00:00.000Z
 patch: {}
