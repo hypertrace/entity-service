@@ -2,8 +2,8 @@ package org.hypertrace.entity.query.service.converter.selection;
 
 import static com.google.common.base.Suppliers.memoize;
 import static java.util.Collections.unmodifiableMap;
-import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.AGGREGATION;
 import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.COLUMNIDENTIFIER;
+import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.FUNCTION;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -18,16 +18,14 @@ import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
+import org.hypertrace.entity.query.service.v1.Function;
 
 @Singleton
 public class SelectionFactoryImpl implements SelectionFactory {
-  private final Converter<
-          org.hypertrace.entity.query.service.v1.AggregateExpression, AggregateExpression>
-      aggregateExpressionConverter;
+  private final Converter<Function, AggregateExpression> aggregateExpressionConverter;
   private final Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter;
 
-  private final AliasProvider<org.hypertrace.entity.query.service.v1.AggregateExpression>
-      aggregateAliasProvider;
+  private final AliasProvider<Function> aggregateAliasProvider;
   private final AliasProvider<ColumnIdentifier> identifierAliasProvider;
 
   private final Supplier<Map<ValueCase, Converter<?, ? extends SelectTypeExpression>>> converterMap;
@@ -35,12 +33,9 @@ public class SelectionFactoryImpl implements SelectionFactory {
 
   @Inject
   public SelectionFactoryImpl(
-      final Converter<
-              org.hypertrace.entity.query.service.v1.AggregateExpression, AggregateExpression>
-          aggregateExpressionConverter,
+      final Converter<Function, AggregateExpression> aggregateExpressionConverter,
       final Converter<ColumnIdentifier, IdentifierExpression> identifierExpressionConverter,
-      final AliasProvider<org.hypertrace.entity.query.service.v1.AggregateExpression>
-          aggregateAliasProvider,
+      final AliasProvider<Function> aggregateAliasProvider,
       final AliasProvider<ColumnIdentifier> identifierAliasProvider) {
     this.aggregateExpressionConverter = aggregateExpressionConverter;
     this.identifierExpressionConverter = identifierExpressionConverter;
@@ -85,7 +80,7 @@ public class SelectionFactoryImpl implements SelectionFactory {
     final Map<ValueCase, Converter<?, ? extends SelectTypeExpression>> map =
         new EnumMap<>(ValueCase.class);
 
-    map.put(AGGREGATION, aggregateExpressionConverter);
+    map.put(FUNCTION, aggregateExpressionConverter);
     map.put(COLUMNIDENTIFIER, identifierExpressionConverter);
 
     return unmodifiableMap(map);
@@ -94,7 +89,7 @@ public class SelectionFactoryImpl implements SelectionFactory {
   private Map<ValueCase, AliasProvider<?>> getAliasProviderMap() {
     final Map<ValueCase, AliasProvider<?>> map = new EnumMap<>(ValueCase.class);
 
-    map.put(AGGREGATION, aggregateAliasProvider);
+    map.put(FUNCTION, aggregateAliasProvider);
     map.put(COLUMNIDENTIFIER, identifierAliasProvider);
 
     return unmodifiableMap(map);

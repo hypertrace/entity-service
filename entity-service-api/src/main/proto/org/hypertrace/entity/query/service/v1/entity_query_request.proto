@@ -15,7 +15,7 @@ message EntityQueryRequest {
   repeated OrderByExpression orderBy = 7;
   int32 limit = 5;
   int32 offset = 6;
-  repeated GroupByExpression groupBy = 8;
+  repeated Expression groupBy = 8;
 }
 
 message EntityUpdateRequest {
