@@ -49,9 +49,9 @@ public class EntityQueryServiceClient {
         headers, () -> blockingStub.total(request));
   }
 
-  public Iterator<ResultSetChunk> bulkUpdate(BulkEntityUpdateRequest request,
-                                             Map<String, String> headers) {
+  public Iterator<ResultSetChunk> bulkUpdate(
+      BulkEntityUpdateRequest request, Map<String, String> headers) {
     return GrpcClientRequestContextUtil.executeWithHeadersContext(
-      headers, () -> blockingStub.bulkUpdate(request));
+        headers, () -> blockingStub.bulkUpdate(request));
   }
 }
