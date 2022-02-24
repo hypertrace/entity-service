@@ -2,7 +2,6 @@ package org.hypertrace.entity.service.service;
 
 import static java.util.stream.Collectors.toUnmodifiableMap;
 import static org.hypertrace.entity.constants.v1.ServiceAttribute.SERVICE_ATTRIBUTE_SERVICE_TYPE;
-import static org.hypertrace.entity.query.service.v1.AggregationOperator.AGGREGATION_OPERATOR_COUNT;
 import static org.hypertrace.entity.query.service.v1.SortOrder.ASC;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
@@ -58,7 +57,6 @@ import org.hypertrace.entity.data.service.v1.AttributeValueMap;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
-import org.hypertrace.entity.query.service.v1.AggregateExpression;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
@@ -69,7 +67,7 @@ import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceBlockingStub;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Filter;
-import org.hypertrace.entity.query.service.v1.GroupByExpression;
+import org.hypertrace.entity.query.service.v1.Function;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
@@ -1019,20 +1017,18 @@ public class EntityQueryServiceTest {
                     .build())
             .addSelection(
                 Expression.newBuilder()
-                    .setAggregation(
-                        AggregateExpression.newBuilder()
-                            .setOperator(AGGREGATION_OPERATOR_COUNT)
-                            .setExpression(
+                    .setFunction(
+                        Function.newBuilder()
+                            .setFunctionName("COUNT")
+                            .addArguments(
                                 Expression.newBuilder()
                                     .setColumnIdentifier(
                                         ColumnIdentifier.newBuilder()
                                             .setColumnName(SERVICE_ID_ATTR)))))
             .addGroupBy(
-                GroupByExpression.newBuilder()
-                    .setExpression(
-                        Expression.newBuilder()
-                            .setColumnIdentifier(
-                                ColumnIdentifier.newBuilder().setColumnName(SERVICE_TYPE_ATTR))))
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder().setColumnName(SERVICE_TYPE_ATTR)))
             .addOrderBy(
                 OrderByExpression.newBuilder()
                     .setOrder(ASC)
@@ -1085,9 +1081,7 @@ public class EntityQueryServiceTest {
         ResultSetMetadata.newBuilder()
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName(SERVICE_TYPE_ATTR).build())
             .addColumnMetadata(
-                ColumnMetadata.newBuilder()
-                    .setColumnName(AGGREGATION_OPERATOR_COUNT.name() + "_" + SERVICE_ID_ATTR)
-                    .build())
+                ColumnMetadata.newBuilder().setColumnName("COUNT_" + SERVICE_ID_ATTR).build())
             .build();
 
     // verify metadata sent for each chunk
