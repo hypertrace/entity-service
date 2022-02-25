@@ -250,6 +250,10 @@ class EntityQueryConverter {
         builder.setValue(
             org.hypertrace.entity.data.service.v1.Value.newBuilder().setString(value.getString()));
         break;
+      case INT: // Adding int conversion for backward compatibility.
+        builder.setValue(
+            org.hypertrace.entity.data.service.v1.Value.newBuilder().setInt(value.getInt()));
+        break;
       case LONG:
         builder.setValue(
             org.hypertrace.entity.data.service.v1.Value.newBuilder().setLong(value.getLong()));
