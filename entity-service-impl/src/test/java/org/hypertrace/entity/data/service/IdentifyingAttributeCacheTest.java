@@ -1,6 +1,7 @@
 package org.hypertrace.entity.data.service;
 
 import static java.util.Collections.emptyList;
+import static org.hypertrace.entity.TestUtils.convertToCloseableIterator;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENTITY_TYPES_COLLECTION;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -57,12 +58,13 @@ class IdentifyingAttributeCacheTest {
                 (Query query) ->
                     query.getFilter().getValue().equals(TenantUtils.getTenantHierarchy("tenant")))))
         .thenReturn(
-            this.buildEntityTypeResponse(
-                Map.of(
-                    "first-type",
-                    List.of("first-attr", "second-attr"),
-                    "second-type",
-                    List.of("third-attr", "fourth-attr"))));
+            convertToCloseableIterator(
+                this.buildEntityTypeResponse(
+                    Map.of(
+                        "first-type",
+                        List.of("first-attr", "second-attr"),
+                        "second-type",
+                        List.of("third-attr", "fourth-attr")))));
     assertEquals(
         List.of(this.buildIdAttrType("first-attr"), this.buildIdAttrType("second-attr")),
         this.cache.getIdentifyingAttributes("tenant", "first-type"));
@@ -77,8 +79,9 @@ class IdentifyingAttributeCacheTest {
   void multipleConcurrentTenants() {
     // Flip around mocks because of mockito ordering issues with custom matchers
     doReturn(
-            this.buildEntityTypeResponse(
-                Map.of("first-type", List.of("first-attr", "second-attr"))))
+            convertToCloseableIterator(
+                this.buildEntityTypeResponse(
+                    Map.of("first-type", List.of("first-attr", "second-attr")))))
         .when(this.mockCollection)
         .search(
             argThat(
@@ -88,8 +91,9 @@ class IdentifyingAttributeCacheTest {
                         .getValue()
                         .equals(TenantUtils.getTenantHierarchy("tenant-1"))));
     doReturn(
-            this.buildEntityTypeResponse(
-                Map.of("first-type", List.of("third-attr", "fourth-attr"))))
+            convertToCloseableIterator(
+                this.buildEntityTypeResponse(
+                    Map.of("first-type", List.of("third-attr", "fourth-attr")))))
         .when(this.mockCollection)
         .search(
             argThat(
@@ -118,8 +122,9 @@ class IdentifyingAttributeCacheTest {
         () -> this.cache.getIdentifyingAttributes("tenant", "first-type"));
 
     doReturn(
-            this.buildEntityTypeResponse(
-                Map.of("first-type", List.of("first-attr", "second-attr"))))
+            convertToCloseableIterator(
+                this.buildEntityTypeResponse(
+                    Map.of("first-type", List.of("first-attr", "second-attr")))))
         .when(this.mockCollection)
         .search(any());
 
@@ -131,8 +136,9 @@ class IdentifyingAttributeCacheTest {
   @Test
   void returnsEmptyListForUnknownEntityType() {
     doReturn(
-            this.buildEntityTypeResponse(
-                Map.of("first-type", List.of("first-attr", "second-attr"))))
+            convertToCloseableIterator(
+                this.buildEntityTypeResponse(
+                    Map.of("first-type", List.of("first-attr", "second-attr")))))
         .when(this.mockCollection)
         .search(any());
 

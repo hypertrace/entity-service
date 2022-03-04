@@ -26,7 +26,7 @@ dependencies {
   implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.7.0")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.0")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.28")
-  implementation("org.hypertrace.core.documentstore:document-store:0.6.8")
+  implementation("org.hypertrace.core.documentstore:document-store:0.6.12")
 
   runtimeOnly("io.grpc:grpc-netty:1.43.1")
 
