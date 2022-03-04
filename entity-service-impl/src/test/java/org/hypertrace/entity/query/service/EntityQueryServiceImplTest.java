@@ -1,5 +1,6 @@
 package org.hypertrace.entity.query.service;
 
+import static org.hypertrace.entity.TestUtils.convertToCloseableIterator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -413,8 +414,10 @@ public class EntityQueryServiceImplTest {
             new JSONDocument(JsonFormat.printer().print(entity2)),
             // this doc will result in parsing error
             new JSONDocument("{\"entityId\": [1, 2]}"));
-    when(mockEntitiesCollection.aggregate(any())).thenReturn(docs.iterator());
-    when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
+    when(mockEntitiesCollection.aggregate(any()))
+        .thenReturn(convertToCloseableIterator(docs.iterator()));
+    when(mockEntitiesCollection.search(any()))
+        .thenReturn(convertToCloseableIterator(docs.iterator()));
     EntityQueryRequest request =
         EntityQueryRequest.newBuilder()
             .setEntityType(TEST_ENTITY_TYPE)
@@ -497,8 +500,10 @@ public class EntityQueryServiceImplTest {
             new JSONDocument(JsonFormat.printer().print(entity3)),
             // this doc will result in parsing error
             new JSONDocument("{\"entityId\": [1, 2]}"));
-    when(mockEntitiesCollection.aggregate(any())).thenReturn(docs.iterator());
-    when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
+    when(mockEntitiesCollection.aggregate(any()))
+        .thenReturn(convertToCloseableIterator(docs.iterator()));
+    when(mockEntitiesCollection.search(any()))
+        .thenReturn(convertToCloseableIterator(docs.iterator()));
 
     EntityQueryRequest request =
         EntityQueryRequest.newBuilder()
@@ -616,8 +621,10 @@ public class EntityQueryServiceImplTest {
                     + "        }\n"
                     + "    }\n"
                     + "}"));
-    when(mockEntitiesCollection.aggregate(any())).thenReturn(docs.iterator());
-    when(mockEntitiesCollection.search(any())).thenReturn(docs.iterator());
+    when(mockEntitiesCollection.aggregate(any()))
+        .thenReturn(convertToCloseableIterator(docs.iterator()));
+    when(mockEntitiesCollection.search(any()))
+        .thenReturn(convertToCloseableIterator(docs.iterator()));
 
     EntityQueryRequest request =
         EntityQueryRequest.newBuilder()
