@@ -12,7 +12,6 @@ import org.hypertrace.core.documentstore.expression.type.FromTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.accessor.ExpressionOneOfAccessor;
-import org.hypertrace.entity.query.service.converter.aggregation.AggregationColumnProvider;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Function;
@@ -35,10 +34,7 @@ class FromClauseConverterTest {
     final ExpressionOneOfAccessor expressionOneOfAccessor = new ExpressionOneOfAccessor();
     fromClauseConverter =
         new FromClauseConverter(
-            expressionOneOfAccessor,
-            mockIdentifierExpressionConverter,
-            mockEntityAttributeMapping,
-            new AggregationColumnProvider(expressionOneOfAccessor));
+            expressionOneOfAccessor, mockIdentifierExpressionConverter, mockEntityAttributeMapping);
   }
 
   @Test
@@ -50,11 +46,7 @@ class FromClauseConverterTest {
     final List<Expression> expressions =
         List.of(
             Expression.newBuilder().setColumnIdentifier(col1).build(),
-            Expression.newBuilder()
-                .setFunction(
-                    Function.newBuilder()
-                        .addArguments(Expression.newBuilder().setColumnIdentifier(col2)))
-                .build());
+            Expression.newBuilder().setColumnIdentifier(col2).build());
 
     final RequestContext requestContext = new RequestContext();
     when(mockEntityAttributeMapping.isMultiValued(eq(requestContext), eq("col1")))
@@ -72,9 +64,8 @@ class FromClauseConverterTest {
   }
 
   @Test
-  void testConvert1_ConverterThrowsConversionException() throws Exception {
+  void testConvert1_ConverterThrowsConversionException() {
     final ColumnIdentifier col1 = ColumnIdentifier.newBuilder().setColumnName("col1").build();
-
     final ColumnIdentifier col2 = ColumnIdentifier.newBuilder().setColumnName("col2").build();
 
     final List<Expression> expressions =
@@ -87,11 +78,6 @@ class FromClauseConverterTest {
                 .build());
 
     final RequestContext requestContext = new RequestContext();
-    when(mockEntityAttributeMapping.isMultiValued(eq(requestContext), eq("col1")))
-        .thenReturn(false);
-    when(mockEntityAttributeMapping.isMultiValued(eq(requestContext), eq("col2"))).thenReturn(true);
-    when(mockIdentifierExpressionConverter.convert(col2, requestContext))
-        .thenThrow(ConversionException.class);
 
     assertThrows(
         ConversionException.class, () -> fromClauseConverter.convert(expressions, requestContext));

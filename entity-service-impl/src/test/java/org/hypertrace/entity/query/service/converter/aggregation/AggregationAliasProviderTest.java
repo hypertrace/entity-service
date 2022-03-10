@@ -36,7 +36,7 @@ class AggregationAliasProviderTest {
 
     aggregationAliasProvider =
         new AggregationAliasProvider(
-            identifierAliasProvider, new AggregationColumnProvider(expressionAccessor));
+            identifierAliasProvider, new AggregationColumnProvider(), expressionAccessor);
     aggregateExpressionBuilder =
         Function.newBuilder()
             .addArguments(Expression.newBuilder().setColumnIdentifier(columnIdentifierBuilder));

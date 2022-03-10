@@ -1,10 +1,10 @@
 package org.hypertrace.entity.query.service.converter;
 
-import static com.google.common.collect.Iterables.concat;
-import static com.google.common.collect.Lists.newArrayList;
+import static java.util.Collections.unmodifiableList;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import lombok.AllArgsConstructor;
@@ -18,6 +18,7 @@ import org.hypertrace.core.documentstore.query.Query.QueryBuilder;
 import org.hypertrace.core.documentstore.query.Selection;
 import org.hypertrace.core.documentstore.query.Sort;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.query.service.converter.aggregation.AggregationColumnProvider;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
@@ -28,6 +29,7 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
   private final Converter<List<Expression>, Selection> selectionConverter;
   private final Converter<EntityQueryRequest, Filter> filterConverter;
 
+  private final AggregationColumnProvider aggregationColumnProvider;
   private final Converter<List<Expression>, List<FromTypeExpression>> fromClauseConverter;
   private final Converter<List<Expression>, Aggregation> groupByConverter;
 
@@ -46,7 +48,7 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
     builder.setFilter(filter);
 
     setFieldIfNotEmpty(
-        newArrayList(concat(request.getGroupByList(), request.getSelectionList())),
+        getExpressionsForFromClause(request),
         builder::addFromClauses,
         fromClauseConverter,
         requestContext);
@@ -77,5 +79,21 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
 
     final T converted = converter.convert(list, requestContext);
     setter.apply(converted);
+  }
+
+  private List<Expression> getExpressionsForFromClause(final EntityQueryRequest request)
+      throws ConversionException {
+    final List<Expression> list = new ArrayList<>(request.getGroupByList());
+
+    for (Expression expression : request.getSelectionList()) {
+      if (expression.hasFunction()) {
+        org.hypertrace.entity.query.service.v1.Function function = expression.getFunction();
+        final Expression aggregationColumn =
+            aggregationColumnProvider.getAggregationColumn(function);
+        list.add(aggregationColumn);
+      }
+    }
+
+    return unmodifiableList(list);
   }
 }

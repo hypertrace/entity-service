@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.hypertrace.entity.query.service.converter.ConversionException;
-import org.hypertrace.entity.query.service.converter.accessor.ExpressionOneOfAccessor;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Function;
@@ -17,22 +16,22 @@ class AggregationColumnProviderTest {
 
   @BeforeEach
   void setUp() {
-    aggregationColumnProvider = new AggregationColumnProvider(new ExpressionOneOfAccessor());
+    aggregationColumnProvider = new AggregationColumnProvider();
   }
 
   @Test
   void testGetColumnIdentifier() throws Exception {
-    final ColumnIdentifier col1 = ColumnIdentifier.newBuilder().setColumnName("col1").build();
-
-    final Function function =
-        Function.newBuilder()
-            .setFunctionName("DISTINCT")
-            .addArguments(Expression.newBuilder().setColumnIdentifier(col1).build())
+    final Expression exp1 =
+        Expression.newBuilder()
+            .setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName("col1"))
             .build();
 
-    final ColumnIdentifier result = aggregationColumnProvider.getColumnIdentifier(function);
+    final Function function =
+        Function.newBuilder().setFunctionName("DISTINCT").addArguments(exp1).build();
 
-    assertEquals(col1, result);
+    final Expression result = aggregationColumnProvider.getAggregationColumn(function);
+
+    assertEquals(exp1, result);
   }
 
   @Test
@@ -48,6 +47,6 @@ class AggregationColumnProviderTest {
             .build();
 
     assertThrows(
-        ConversionException.class, () -> aggregationColumnProvider.getColumnIdentifier(function));
+        ConversionException.class, () -> aggregationColumnProvider.getAggregationColumn(function));
   }
 }
