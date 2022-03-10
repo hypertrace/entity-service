@@ -1,5 +1,8 @@
 package org.hypertrace.entity.query.service.converter;
 
+import static com.google.common.collect.Iterables.concat;
+import static com.google.common.collect.Lists.newArrayList;
+
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.List;
@@ -43,8 +46,13 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
     builder.setFilter(filter);
 
     setFieldIfNotEmpty(
+        newArrayList(concat(request.getGroupByList(), request.getSelectionList())),
+        builder::addFromClauses,
+        fromClauseConverter,
+        requestContext);
+
+    setFieldIfNotEmpty(
         request.getGroupByList(), builder::setAggregation, groupByConverter, requestContext);
-    setFieldIfNotEmpty(request.getGroupByList(), builder::addFromClauses, fromClauseConverter, requestContext);
     setFieldIfNotEmpty(
         request.getOrderByList(), builder::setSort, orderByConverter, requestContext);
 

@@ -11,6 +11,8 @@ import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
+import org.hypertrace.entity.query.service.converter.ValueHelper;
+import org.hypertrace.entity.query.service.converter.accessor.ValueOneOfAccessor;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +25,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 @MockitoSettings(strictness = LENIENT)
 class IdentifierExpressionConverterTest {
   private final RequestContext requestContext = RequestContext.forTenantId("Martian");
+  private final ArrayPathSuffixAddingIdentifierConverter arrayPathSuffixAddingIdentifierConverter =
+      new ArrayPathSuffixAddingIdentifierConverter(new ValueHelper(new ValueOneOfAccessor()));
 
   @Mock private EntityAttributeMapping attributeMapping;
 
@@ -32,7 +36,9 @@ class IdentifierExpressionConverterTest {
 
   @BeforeEach
   void setup() {
-    identifierExpressionConverter = new IdentifierExpressionConverter(attributeMapping);
+    identifierExpressionConverter =
+        new IdentifierExpressionConverter(
+            attributeMapping, arrayPathSuffixAddingIdentifierConverter);
   }
 
   @Test
@@ -51,6 +57,18 @@ class IdentifierExpressionConverterTest {
             requestContext, columnIdentifier.getColumnName()))
         .thenReturn(Optional.of("attributes.entity_name"));
     IdentifierExpression expected = IdentifierExpression.of("attributes.entity_name");
+    assertEquals(expected, identifierExpressionConverter.convert(columnIdentifier, requestContext));
+  }
+
+  @Test
+  void testConvertArray() throws ConversionException {
+    when(attributeMapping.getDocStorePathByAttributeId(
+            requestContext, columnIdentifier.getColumnName()))
+        .thenReturn(Optional.of("attributes.entity_name"));
+    when(attributeMapping.isMultiValued(requestContext, columnIdentifier.getColumnName()))
+        .thenReturn(true);
+    IdentifierExpression expected =
+        IdentifierExpression.of("attributes.entity_name.valueList.values");
     assertEquals(expected, identifierExpressionConverter.convert(columnIdentifier, requestContext));
   }
 }

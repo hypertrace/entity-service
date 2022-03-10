@@ -38,7 +38,8 @@ public class ConverterModule extends AbstractModule {
         .to(ConstantExpressionConverter.class);
     bind(new TypeLiteral<Converter<List<OrderByExpression>, Sort>>() {}).to(OrderByConverter.class);
     bind(new TypeLiteral<Converter<EntityQueryRequest, Query>>() {}).to(QueryConverter.class);
-    bind(new TypeLiteral<Converter<List<Expression>, List<FromTypeExpression>>>() {}).to(FromClauseConverter.class);
+    bind(new TypeLiteral<Converter<List<Expression>, List<FromTypeExpression>>>() {})
+        .to(FromClauseConverter.class);
   }
 
   @Provides

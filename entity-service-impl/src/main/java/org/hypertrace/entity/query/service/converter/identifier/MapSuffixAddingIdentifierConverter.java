@@ -1,11 +1,13 @@
 package org.hypertrace.entity.query.service.converter.identifier;
 
+import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUES_KEY;
+import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUE_KEY;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUE_MAP_KEY;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
-import org.hypertrace.entity.query.service.v1.Operator;
 
 /**
  * Adds suffix .valueMap.values.%s.value.&lt;type&gt; for element-by-element comparison.
@@ -14,7 +16,8 @@ import org.hypertrace.entity.query.service.v1.Operator;
  */
 @Singleton
 public class MapSuffixAddingIdentifierConverter extends SuffixAddingIdentifierConverter {
-  private static final String SUFFIX = "." + VALUE_MAP_KEY + ".values.%s.value.";
+  private static final String SUFFIX =
+      "." + VALUE_MAP_KEY + "." + VALUES_KEY + ".%s." + VALUE_KEY + ".";
 
   @Inject
   public MapSuffixAddingIdentifierConverter(final ValueHelper valueHelper) {
@@ -22,7 +25,8 @@ public class MapSuffixAddingIdentifierConverter extends SuffixAddingIdentifierCo
   }
 
   @Override
-  protected String getSuffix(final Operator operator) {
-    return SUFFIX;
+  protected String getSuffix(final IdentifierConversionMetadata metadata)
+      throws ConversionException {
+    return SUFFIX + getTypeName(metadata);
   }
 }

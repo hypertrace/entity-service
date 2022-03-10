@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
-import org.hypertrace.entity.query.service.v1.Operator;
 
 @AllArgsConstructor
 public abstract class SuffixAddingIdentifierConverter extends IdentifierConverter {
@@ -15,11 +14,16 @@ public abstract class SuffixAddingIdentifierConverter extends IdentifierConverte
       final IdentifierConversionMetadata metadata, final RequestContext requestContext)
       throws ConversionException {
     final String subDocPath = metadata.getSubDocPath();
-    final String suffix = getSuffix(metadata.getOperator());
-    final String typeSuffix = valueHelper.getStringValue(metadata.getValueType());
+    final String suffix = getSuffix(metadata);
 
-    return subDocPath + suffix + typeSuffix;
+    return subDocPath + suffix;
   }
 
-  protected abstract String getSuffix(final Operator operator);
+  protected final String getTypeName(final IdentifierConversionMetadata metadata)
+      throws ConversionException {
+    return valueHelper.getStringValue(metadata.getValueType());
+  }
+
+  protected abstract String getSuffix(final IdentifierConversionMetadata metadata)
+      throws ConversionException;
 }
