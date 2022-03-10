@@ -35,7 +35,8 @@ class AggregationAliasProviderTest {
     columnIdentifierBuilder = ColumnIdentifier.newBuilder().setColumnName("Welcome_Mars");
 
     aggregationAliasProvider =
-        new AggregationAliasProvider(identifierAliasProvider, expressionAccessor);
+        new AggregationAliasProvider(
+            identifierAliasProvider, new AggregationColumnProvider(), expressionAccessor);
     aggregateExpressionBuilder =
         Function.newBuilder()
             .addArguments(Expression.newBuilder().setColumnIdentifier(columnIdentifierBuilder));

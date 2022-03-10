@@ -4,7 +4,6 @@ import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.COLUMN
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import java.util.List;
 import java.util.Set;
 import lombok.AllArgsConstructor;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
@@ -20,20 +19,15 @@ import org.hypertrace.entity.service.util.StringUtils;
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class AggregationAliasProvider implements AliasProvider<Function> {
   private final AliasProvider<ColumnIdentifier> identifierAliasProvider;
+  private final AggregationColumnProvider aggregationColumnProvider;
   private final OneOfAccessor<Expression, ValueCase> expressionAccessor;
 
   @Override
   public String getAlias(final Function aggregateExpression) throws ConversionException {
-    final List<Expression> innerExpressions = aggregateExpression.getArgumentsList();
-
-    if (innerExpressions.size() != 1) {
-      throw new ConversionException("Aggregation function should have exactly one argument");
-    }
-
-    final Expression innerExpression = innerExpressions.get(0);
+    final Expression expression =
+        aggregationColumnProvider.getAggregationColumn(aggregateExpression);
     final ColumnIdentifier containingIdentifier =
-        expressionAccessor.access(
-            innerExpression, innerExpression.getValueCase(), Set.of(COLUMNIDENTIFIER));
+        expressionAccessor.access(expression, expression.getValueCase(), Set.of(COLUMNIDENTIFIER));
     final String alias = aggregateExpression.getAlias();
 
     if (StringUtils.isNotBlank(alias)) {

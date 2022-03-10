@@ -17,13 +17,26 @@ import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 public class IdentifierExpressionConverter
     implements Converter<ColumnIdentifier, IdentifierExpression> {
   private final EntityAttributeMapping attributeMapping;
+  private final ArrayPathSuffixAddingIdentifierConverter arrayPathSuffixAddingIdentifierConverter;
 
   @Override
   public IdentifierExpression convert(
       final ColumnIdentifier identifier, final RequestContext requestContext)
       throws ConversionException {
-    final String subDocPath =
-        getSubDocPathById(attributeMapping, identifier.getColumnName(), requestContext);
-    return IdentifierExpression.of(subDocPath);
+    final String columnId = identifier.getColumnName();
+    final String subDocPath = getSubDocPathById(attributeMapping, columnId, requestContext);
+
+    final String suffixedSubDocPath;
+
+    if (attributeMapping.isMultiValued(requestContext, columnId)) {
+      suffixedSubDocPath =
+          arrayPathSuffixAddingIdentifierConverter.convert(
+              IdentifierConversionMetadata.builder().subDocPath(subDocPath).build(),
+              requestContext);
+    } else {
+      suffixedSubDocPath = subDocPath;
+    }
+
+    return IdentifierExpression.of(suffixedSubDocPath);
   }
 }
