@@ -6,6 +6,7 @@ import com.google.inject.TypeLiteral;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
+import org.hypertrace.core.documentstore.expression.type.FromTypeExpression;
 import org.hypertrace.core.documentstore.query.Query;
 import org.hypertrace.core.documentstore.query.Sort;
 import org.hypertrace.entity.query.service.EntityAttributeMapping;
@@ -16,6 +17,7 @@ import org.hypertrace.entity.query.service.converter.identifier.IdentifierModule
 import org.hypertrace.entity.query.service.converter.response.ResponseModule;
 import org.hypertrace.entity.query.service.converter.selection.SelectionConverterModule;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
+import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
 
@@ -36,6 +38,7 @@ public class ConverterModule extends AbstractModule {
         .to(ConstantExpressionConverter.class);
     bind(new TypeLiteral<Converter<List<OrderByExpression>, Sort>>() {}).to(OrderByConverter.class);
     bind(new TypeLiteral<Converter<EntityQueryRequest, Query>>() {}).to(QueryConverter.class);
+    bind(new TypeLiteral<Converter<List<Expression>, List<FromTypeExpression>>>() {}).to(FromClauseConverter.class);
   }
 
   @Provides

@@ -5,6 +5,7 @@ import com.google.inject.Singleton;
 import java.util.List;
 import java.util.function.Function;
 import lombok.AllArgsConstructor;
+import org.hypertrace.core.documentstore.expression.type.FromTypeExpression;
 import org.hypertrace.core.documentstore.query.Aggregation;
 import org.hypertrace.core.documentstore.query.Filter;
 import org.hypertrace.core.documentstore.query.Pagination;
@@ -24,6 +25,7 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
   private final Converter<List<Expression>, Selection> selectionConverter;
   private final Converter<EntityQueryRequest, Filter> filterConverter;
 
+  private final Converter<List<Expression>, List<FromTypeExpression>> fromClauseConverter;
   private final Converter<List<Expression>, Aggregation> groupByConverter;
 
   private final Converter<List<OrderByExpression>, Sort> orderByConverter;
@@ -42,6 +44,7 @@ public class QueryConverter implements Converter<EntityQueryRequest, Query> {
 
     setFieldIfNotEmpty(
         request.getGroupByList(), builder::setAggregation, groupByConverter, requestContext);
+    setFieldIfNotEmpty(request.getGroupByList(), builder::addFromClauses, fromClauseConverter, requestContext);
     setFieldIfNotEmpty(
         request.getOrderByList(), builder::setSort, orderByConverter, requestContext);
 
