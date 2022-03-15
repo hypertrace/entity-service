@@ -34,6 +34,7 @@ enum ApiAttribute {
   API_ATTRIBUTE_DISCOVERY_FROM = 24 [(string_value) = "api_discovery_from"];
   API_ATTRIBUTE_DISCOVERY_STATE = 25 [(string_value) = "api_discovery_state"];
   API_ATTRIBUTE_DISCOVERY_TIMESTAMP = 26 [(string_value) = "api_discovery_timestamp"];
+  API_ATTRIBUTE_NAMING_SOURCE = 27 [(string_value) = "api_naming_source"];
   reserved 5 to 17, 19 to 21;
 }
 
