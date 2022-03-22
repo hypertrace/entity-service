@@ -30,8 +30,8 @@ class LogicalExpressionConverterTest {
   @Mock private FilterTypeExpression filteringExpression1;
   @Mock private FilterTypeExpression filteringExpression2;
 
-  private final Filter childFilter1 = Filter.newBuilder().setOperator(Operator.AND).build();
-  private final Filter childFilter2 = Filter.newBuilder().setOperator(Operator.OR).build();
+  private final Filter childFilter1 = Filter.newBuilder().setOperator(Operator.IN).build();
+  private final Filter childFilter2 = Filter.newBuilder().setOperator(Operator.EQ).build();
   private final Filter filter =
       Filter.newBuilder()
           .setOperator(Operator.AND)
@@ -93,6 +93,29 @@ class LogicalExpressionConverterTest {
   void testSingleChildFilter() throws ConversionException {
     Filter filter =
         Filter.newBuilder().setOperator(Operator.AND).addChildFilter(childFilter1).build();
+    assertEquals(filteringExpression1, logicalExpressionConverter.convert(filter, requestContext));
+  }
+
+  @Test
+  void testAllChildFiltersEmpty() {
+    Filter filter =
+        Filter.newBuilder()
+            .setOperator(Operator.OR)
+            .addChildFilter(Filter.getDefaultInstance())
+            .build();
+    assertThrows(
+        ConversionException.class,
+        () -> logicalExpressionConverter.convert(filter, requestContext));
+  }
+
+  @Test
+  void testFewChildFiltersEmpty() throws ConversionException {
+    Filter filter =
+        Filter.newBuilder()
+            .setOperator(Operator.OR)
+            .addChildFilter(Filter.getDefaultInstance())
+            .addChildFilter(childFilter1)
+            .build();
     assertEquals(filteringExpression1, logicalExpressionConverter.convert(filter, requestContext));
   }
 }
