@@ -46,15 +46,24 @@ public class LogicalExpressionConverter implements Converter<Filter, FilterTypeE
 
     final List<FilterTypeExpression> innerFilters = new ArrayList<>();
     for (final Filter innerFilter : filter.getChildFilterList()) {
+      if (Filter.getDefaultInstance().equals(innerFilter)) {
+        continue;
+      }
+
       final FilterTypeExpression expression = convertInnerFilter(innerFilter, requestContext);
       innerFilters.add(expression);
     }
 
-    if (innerFilters.size() == 1) {
-      return innerFilters.get(0);
-    }
+    switch (innerFilters.size()) {
+      case 0:
+        throw new ConversionException(String.format("All child filters are empty in: %s", filter));
 
-    return LogicalExpression.builder().operator(operator).operands(innerFilters).build();
+      case 1:
+        return innerFilters.get(0);
+
+      default:
+        return LogicalExpression.builder().operator(operator).operands(innerFilters).build();
+    }
   }
 
   private FilterTypeExpression convertInnerFilter(
