@@ -26,6 +26,8 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class PrimitiveFilteringExpressionConverter extends FilteringExpressionConverterBase {
+  private static final String NULL_VALUE = "null";
+
   private final EntityAttributeMapping entityAttributeMapping;
   private final IdentifierConverterFactory identifierConverterFactory;
   private final Converter<LiteralConstant, ConstantExpression> constantExpressionConverter;
@@ -55,10 +57,44 @@ public class PrimitiveFilteringExpressionConverter extends FilteringExpressionCo
     final String suffixedSubDocPath = identifierConverter.convert(metadata, requestContext);
 
     final IdentifierExpression identifierExpression = IdentifierExpression.of(suffixedSubDocPath);
-    final RelationalOperator relationalOperator = convertOperator(operator);
+    final RelationalOperator relationalOperator = normalizeOperator(operator, value);
     final ConstantExpression constantExpression =
         constantExpressionConverter.convert(constant, requestContext);
 
     return RelationalExpression.of(identifierExpression, relationalOperator, constantExpression);
+  }
+
+  private RelationalOperator normalizeOperator(Operator operator, Value value)
+      throws ConversionException {
+    Operator normalizedOperator = operator;
+
+    // A null value filter translates to non-existence of attribute
+    // "EQ" null -> NOT_EXISTS
+    // "NEQ" null -> EXISTS
+    if (isNull(value)) {
+      switch (operator) {
+        case EQ:
+          normalizedOperator = Operator.NOT_EXISTS;
+          break;
+        case NEQ:
+          normalizedOperator = Operator.EXISTS;
+          break;
+        default:
+          throw new ConversionException(
+              String.format("Operator %s is not supported for null value", operator));
+      }
+    }
+
+    return convertOperator(normalizedOperator);
+  }
+
+  private boolean isNull(Value value) {
+    ValueType valueType = value.getValueType();
+    switch (valueType) {
+      case STRING:
+        return value.getString().equalsIgnoreCase(NULL_VALUE);
+      default:
+        return false;
+    }
   }
 }
