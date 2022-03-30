@@ -43,6 +43,8 @@ public class ValueHelper {
   public static final String VALUE_LIST_KEY = "valueList";
   public static final String VALUE_MAP_KEY = "valueMap";
 
+  private static final String NULL_VALUE = "null";
+
   private static final Set<ValueType> PRIMITIVE_TYPES =
       Set.of(STRING, LONG, INT, FLOAT, DOUBLE, BYTES, BOOL, TIMESTAMP);
 
@@ -79,6 +81,16 @@ public class ValueHelper {
 
   public boolean isMap(final ValueType valueType) {
     return MAP_TYPES.contains(valueType);
+  }
+
+  public boolean isNull(final Value value) {
+    ValueType valueType = value.getValueType();
+    switch (valueType) {
+      case STRING:
+        return NULL_VALUE.equalsIgnoreCase(value.getString());
+      default:
+        return false;
+    }
   }
 
   public ConstantExpression convertToConstantExpression(final Value value)

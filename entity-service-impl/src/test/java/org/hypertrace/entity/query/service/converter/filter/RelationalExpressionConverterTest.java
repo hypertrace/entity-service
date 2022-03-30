@@ -23,7 +23,6 @@ import org.hypertrace.entity.query.service.v1.Filter;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.Value;
-import org.hypertrace.entity.query.service.v1.ValueType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -68,7 +67,7 @@ class RelationalExpressionConverterTest {
     doReturn(constantExpression)
         .when(constantExpressionConverter)
         .convert(literalConstant, requestContext);
-    when(filteringExpressionConverterFactory.getConverter(any(ValueType.class)))
+    when(filteringExpressionConverterFactory.getConverter(any(Value.class)))
         .thenReturn(filteringExpressionConverter);
   }
 
