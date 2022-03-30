@@ -84,13 +84,7 @@ public class ValueHelper {
   }
 
   public boolean isNull(final Value value) {
-    ValueType valueType = value.getValueType();
-    switch (valueType) {
-      case STRING:
-        return NULL_VALUE.equalsIgnoreCase(value.getString());
-      default:
-        return false;
-    }
+    return NULL_VALUE.equalsIgnoreCase(value.getString());
   }
 
   public ConstantExpression convertToConstantExpression(final Value value)
