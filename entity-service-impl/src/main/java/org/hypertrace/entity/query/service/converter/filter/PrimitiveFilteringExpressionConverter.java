@@ -4,10 +4,13 @@ import static org.hypertrace.entity.query.service.converter.identifier.Identifie
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
+import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
+import org.hypertrace.core.documentstore.expression.operators.LogicalOperator;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
 import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -57,35 +60,50 @@ public class PrimitiveFilteringExpressionConverter extends FilteringExpressionCo
     final String suffixedSubDocPath = identifierConverter.convert(metadata, requestContext);
 
     final IdentifierExpression identifierExpression = IdentifierExpression.of(suffixedSubDocPath);
-    final RelationalOperator relationalOperator = normalizeOperator(operator, value);
     final ConstantExpression constantExpression =
         constantExpressionConverter.convert(constant, requestContext);
 
-    return RelationalExpression.of(identifierExpression, relationalOperator, constantExpression);
+    return convert(identifierExpression, operator, value, constantExpression);
   }
 
-  private RelationalOperator normalizeOperator(Operator operator, Value value)
+  /**
+   * 'field' EQ 'null' -> 'field' EQ 'null' || 'field' NOT_EXISTS
+   * 'field' NEQ 'null' -> 'field' NEQ 'null' || 'field' EXISTS
+   */
+  private FilterTypeExpression convert(
+      IdentifierExpression identifierExpression,
+      Operator operator,
+      Value value,
+      ConstantExpression constantExpression)
       throws ConversionException {
-    Operator normalizedOperator = operator;
-
-    // A null value filter translates to non-existence of attribute
-    // "EQ" null -> NOT_EXISTS
-    // "NEQ" null -> EXISTS
-    if (isNull(value)) {
+    final RelationalOperator relationalOperator = convertOperator(operator);
+    RelationalExpression relationalExpression =
+        RelationalExpression.of(identifierExpression, relationalOperator, constantExpression);
+    if (!isNull(value)) {
+      return relationalExpression;
+    } else {
+      Operator existenceOperator = operator;
       switch (operator) {
         case EQ:
-          normalizedOperator = Operator.NOT_EXISTS;
+          existenceOperator = Operator.NOT_EXISTS;
           break;
         case NEQ:
-          normalizedOperator = Operator.EXISTS;
+          existenceOperator = Operator.EXISTS;
           break;
         default:
           throw new ConversionException(
               String.format("Operator %s is not supported for null value", operator));
       }
-    }
 
-    return convertOperator(normalizedOperator);
+      RelationalExpression existenceRelationalExpression =
+          RelationalExpression.of(
+              identifierExpression, convertOperator(existenceOperator), constantExpression);
+
+      return LogicalExpression.builder()
+          .operator(LogicalOperator.OR)
+          .operands(List.of(existenceRelationalExpression, relationalExpression))
+          .build();
+    }
   }
 
   private boolean isNull(Value value) {
