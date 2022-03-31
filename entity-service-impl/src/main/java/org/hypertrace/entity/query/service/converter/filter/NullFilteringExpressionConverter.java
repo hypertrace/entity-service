@@ -3,7 +3,6 @@ package org.hypertrace.entity.query.service.converter.filter;
 import static org.hypertrace.entity.query.service.converter.identifier.IdentifierConverter.getSubDocPathById;
 
 import com.google.inject.Inject;
-import com.google.inject.Singleton;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
@@ -26,7 +25,6 @@ import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 
-@Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class NullFilteringExpressionConverter extends FilteringExpressionConverterBase {
   private final EntityAttributeMapping entityAttributeMapping;
