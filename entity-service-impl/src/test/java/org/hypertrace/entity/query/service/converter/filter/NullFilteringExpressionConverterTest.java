@@ -28,9 +28,11 @@ import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class NullFilteringExpressionConverterTest {
   private static final RequestContext REQUEST_CONTEXT = RequestContext.forTenantId("tenant1");
 
@@ -42,8 +44,6 @@ class NullFilteringExpressionConverterTest {
 
   @BeforeEach
   void setup() {
-    MockitoAnnotations.initMocks(this);
-
     nullFilteringExpressionConverter =
         new NullFilteringExpressionConverter(
             entityAttributeMapping, identifierConverterFactory, constantExpressionConverter);
@@ -89,7 +89,7 @@ class NullFilteringExpressionConverterTest {
   }
 
   @Test
-  void testNEqNull() throws ConversionException {
+  void testNeqNull() throws ConversionException {
     ColumnIdentifier columnIdentifier =
         ColumnIdentifier.newBuilder().setColumnName("column1").build();
     LiteralConstant constant =
@@ -115,15 +115,7 @@ class NullFilteringExpressionConverterTest {
     IdentifierExpression identifierExpression = IdentifierExpression.of("attributes.subDocPath1");
 
     assertEquals(
-        LogicalExpression.builder()
-            .operator(LogicalOperator.OR)
-            .operands(
-                List.of(
-                    RelationalExpression.of(
-                        identifierExpression, RelationalOperator.EXISTS, constantExpression),
-                    RelationalExpression.of(
-                        identifierExpression, RelationalOperator.NEQ, constantExpression)))
-            .build(),
+        RelationalExpression.of(identifierExpression, RelationalOperator.NEQ, constantExpression),
         filterTypeExpression);
   }
 }

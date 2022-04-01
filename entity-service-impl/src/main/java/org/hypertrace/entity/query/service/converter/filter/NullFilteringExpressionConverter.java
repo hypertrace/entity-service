@@ -63,28 +63,19 @@ public class NullFilteringExpressionConverter extends FilteringExpressionConvert
     RelationalExpression relationalExpression =
         RelationalExpression.of(identifierExpression, relationalOperator, constantExpression);
 
-    // 'field' EQ 'null' -> 'field' EQ 'null' || 'field' NOT_EXISTS
-    // 'field' NEQ 'null' -> 'field' NEQ 'null' || 'field' EXISTS
-    Operator existenceOperator;
     switch (operator) {
+        // 'field' EQ 'null' -> 'field' EQ 'null' || 'field' NOT_EXISTS
       case EQ:
-        existenceOperator = Operator.NOT_EXISTS;
-        break;
-      case NEQ:
-        existenceOperator = Operator.EXISTS;
-        break;
+        RelationalExpression nonExistenceRelationalExpression =
+            RelationalExpression.of(
+                identifierExpression, convertOperator(Operator.NOT_EXISTS), constantExpression);
+        return LogicalExpression.builder()
+            .operator(LogicalOperator.OR)
+            .operands(List.of(nonExistenceRelationalExpression, relationalExpression))
+            .build();
+
       default:
-        throw new ConversionException(
-            String.format("Operator %s is not supported for null value", operator));
+        return relationalExpression;
     }
-
-    RelationalExpression existenceRelationalExpression =
-        RelationalExpression.of(
-            identifierExpression, convertOperator(existenceOperator), constantExpression);
-
-    return LogicalExpression.builder()
-        .operator(LogicalOperator.OR)
-        .operands(List.of(existenceRelationalExpression, relationalExpression))
-        .build();
   }
 }
