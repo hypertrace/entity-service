@@ -11,7 +11,7 @@ dependencies {
 
   implementation("org.hypertrace.core.eventstore:event-store:0.1.2")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.0")
-  implementation("com.google.guava:guava:30.1.1-jre")
+  implementation("com.google.guava:guava:31.1-jre")
   implementation("org.slf4j:slf4j-api:1.7.30")
 
   constraints {
