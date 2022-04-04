@@ -64,14 +64,24 @@ public class NullFilteringExpressionConverter extends FilteringExpressionConvert
         RelationalExpression.of(identifierExpression, relationalOperator, constantExpression);
 
     switch (operator) {
-        // 'field' EQ 'null' -> 'field' EQ 'null' || 'field' NOT_EXISTS
       case EQ:
+        // 'field' EQ 'null' -> 'field' EQ 'null' || 'field' NOT_EXISTS
         RelationalExpression nonExistenceRelationalExpression =
             RelationalExpression.of(
                 identifierExpression, convertOperator(Operator.NOT_EXISTS), constantExpression);
         return LogicalExpression.builder()
             .operator(LogicalOperator.OR)
             .operands(List.of(nonExistenceRelationalExpression, relationalExpression))
+            .build();
+
+      case NEQ:
+        // 'field' NEQ 'null' -> 'field' NEQ 'null' && 'field' EXISTS
+        RelationalExpression existenceRelationalExpression =
+            RelationalExpression.of(
+                identifierExpression, convertOperator(Operator.EXISTS), constantExpression);
+        return LogicalExpression.builder()
+            .operator(LogicalOperator.AND)
+            .operands(List.of(existenceRelationalExpression, relationalExpression))
             .build();
 
       default:

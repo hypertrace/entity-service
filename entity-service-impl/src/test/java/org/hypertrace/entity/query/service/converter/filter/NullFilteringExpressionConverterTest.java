@@ -115,7 +115,15 @@ class NullFilteringExpressionConverterTest {
     IdentifierExpression identifierExpression = IdentifierExpression.of("attributes.subDocPath1");
 
     assertEquals(
-        RelationalExpression.of(identifierExpression, RelationalOperator.NEQ, constantExpression),
+        LogicalExpression.builder()
+            .operator(LogicalOperator.AND)
+            .operands(
+                List.of(
+                    RelationalExpression.of(
+                        identifierExpression, RelationalOperator.EXISTS, constantExpression),
+                    RelationalExpression.of(
+                        identifierExpression, RelationalOperator.NEQ, constantExpression)))
+            .build(),
         filterTypeExpression);
   }
 }

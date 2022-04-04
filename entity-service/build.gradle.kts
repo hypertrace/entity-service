@@ -23,10 +23,10 @@ dependencies {
   implementation(project(":entity-service-impl"))
   implementation(project(":entity-service-change-event-generator"))
 
-  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.7.0")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.0")
+  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.7.2")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.2")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.28")
-  implementation("org.hypertrace.core.documentstore:document-store:0.6.13")
+  implementation("org.hypertrace.core.documentstore:document-store:0.6.15")
 
   runtimeOnly("io.grpc:grpc-netty:1.43.1")
 
