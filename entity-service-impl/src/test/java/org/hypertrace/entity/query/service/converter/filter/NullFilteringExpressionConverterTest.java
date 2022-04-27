@@ -6,13 +6,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
 import java.util.Optional;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
-import org.hypertrace.core.documentstore.expression.operators.LogicalOperator;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
 import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -76,15 +73,8 @@ class NullFilteringExpressionConverterTest {
     IdentifierExpression identifierExpression = IdentifierExpression.of("attributes.subDocPath1");
 
     assertEquals(
-        LogicalExpression.builder()
-            .operator(LogicalOperator.OR)
-            .operands(
-                List.of(
-                    RelationalExpression.of(
-                        identifierExpression, RelationalOperator.NOT_EXISTS, constantExpression),
-                    RelationalExpression.of(
-                        identifierExpression, RelationalOperator.EQ, constantExpression)))
-            .build(),
+        RelationalExpression.of(
+            identifierExpression, RelationalOperator.NOT_EXISTS, constantExpression),
         filterTypeExpression);
   }
 
@@ -115,15 +105,8 @@ class NullFilteringExpressionConverterTest {
     IdentifierExpression identifierExpression = IdentifierExpression.of("attributes.subDocPath1");
 
     assertEquals(
-        LogicalExpression.builder()
-            .operator(LogicalOperator.AND)
-            .operands(
-                List.of(
-                    RelationalExpression.of(
-                        identifierExpression, RelationalOperator.EXISTS, constantExpression),
-                    RelationalExpression.of(
-                        identifierExpression, RelationalOperator.NEQ, constantExpression)))
-            .build(),
+        RelationalExpression.of(
+            identifierExpression, RelationalOperator.EXISTS, constantExpression),
         filterTypeExpression);
   }
 }

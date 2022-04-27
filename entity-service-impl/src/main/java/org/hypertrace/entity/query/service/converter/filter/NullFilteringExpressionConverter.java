@@ -3,13 +3,10 @@ package org.hypertrace.entity.query.service.converter.filter;
 import static org.hypertrace.entity.query.service.converter.identifier.IdentifierConverter.getSubDocPathById;
 
 import com.google.inject.Inject;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
-import org.hypertrace.core.documentstore.expression.operators.LogicalOperator;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
 import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -65,24 +62,14 @@ public class NullFilteringExpressionConverter extends FilteringExpressionConvert
 
     switch (operator) {
       case EQ:
-        // 'field' EQ 'null' -> 'field' EQ 'null' || 'field' NOT_EXISTS
-        RelationalExpression nonExistenceRelationalExpression =
-            RelationalExpression.of(
-                identifierExpression, convertOperator(Operator.NOT_EXISTS), constantExpression);
-        return LogicalExpression.builder()
-            .operator(LogicalOperator.OR)
-            .operands(List.of(nonExistenceRelationalExpression, relationalExpression))
-            .build();
+        // 'field' EQ 'null' -> 'field' NOT_EXISTS
+        return RelationalExpression.of(
+            identifierExpression, convertOperator(Operator.NOT_EXISTS), constantExpression);
 
       case NEQ:
-        // 'field' NEQ 'null' -> 'field' NEQ 'null' && 'field' EXISTS
-        RelationalExpression existenceRelationalExpression =
-            RelationalExpression.of(
-                identifierExpression, convertOperator(Operator.EXISTS), constantExpression);
-        return LogicalExpression.builder()
-            .operator(LogicalOperator.AND)
-            .operands(List.of(existenceRelationalExpression, relationalExpression))
-            .build();
+        // 'field' NEQ 'null' -> 'field' EXISTS
+        return RelationalExpression.of(
+            identifierExpression, convertOperator(Operator.EXISTS), constantExpression);
 
       default:
         return relationalExpression;
