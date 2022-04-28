@@ -1,9 +1,6 @@
 package org.hypertrace.entity.query.service.converter.filter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -16,13 +13,11 @@ import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
-import org.hypertrace.entity.query.service.converter.identifier.IdentifierConverter;
 import org.hypertrace.entity.query.service.converter.identifier.IdentifierConverterFactory;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.Value;
-import org.hypertrace.entity.query.service.v1.ValueType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,14 +49,7 @@ class NullFilteringExpressionConverterTest {
         LiteralConstant.newBuilder().setValue(Value.newBuilder().setString("null").build()).build();
 
     when(entityAttributeMapping.getDocStorePathByAttributeId(REQUEST_CONTEXT, "column1"))
-        .thenReturn(Optional.of("subDocPath1"));
-
-    IdentifierConverter identifierConverter = mock(IdentifierConverter.class);
-    when(identifierConverter.convert(any(), eq(REQUEST_CONTEXT)))
-        .thenReturn("attributes.subDocPath1");
-    when(identifierConverterFactory.getIdentifierConverter(
-            "column1", "subDocPath1", ValueType.STRING, REQUEST_CONTEXT))
-        .thenReturn(identifierConverter);
+        .thenReturn(Optional.of("attributes.subDocPath1"));
 
     ConstantExpression constantExpression = ConstantExpression.of("null");
     when(constantExpressionConverter.convert(constant, REQUEST_CONTEXT))
@@ -86,14 +74,7 @@ class NullFilteringExpressionConverterTest {
         LiteralConstant.newBuilder().setValue(Value.newBuilder().setString("null").build()).build();
 
     when(entityAttributeMapping.getDocStorePathByAttributeId(REQUEST_CONTEXT, "column1"))
-        .thenReturn(Optional.of("subDocPath1"));
-
-    IdentifierConverter identifierConverter = mock(IdentifierConverter.class);
-    when(identifierConverter.convert(any(), eq(REQUEST_CONTEXT)))
-        .thenReturn("attributes.subDocPath1");
-    when(identifierConverterFactory.getIdentifierConverter(
-            "column1", "subDocPath1", ValueType.STRING, REQUEST_CONTEXT))
-        .thenReturn(identifierConverter);
+        .thenReturn(Optional.of("attributes.subDocPath1"));
 
     ConstantExpression constantExpression = ConstantExpression.of("null");
     when(constantExpressionConverter.convert(constant, REQUEST_CONTEXT))

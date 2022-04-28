@@ -13,14 +13,10 @@ import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
-import org.hypertrace.entity.query.service.converter.identifier.IdentifierConversionMetadata;
-import org.hypertrace.entity.query.service.converter.identifier.IdentifierConverter;
 import org.hypertrace.entity.query.service.converter.identifier.IdentifierConverterFactory;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Operator;
-import org.hypertrace.entity.query.service.v1.Value;
-import org.hypertrace.entity.query.service.v1.ValueType;
 
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class NullFilteringExpressionConverter extends FilteringExpressionConverterBase {
@@ -37,22 +33,8 @@ public class NullFilteringExpressionConverter extends FilteringExpressionConvert
       throws ConversionException {
     final String id = columnIdentifier.getColumnName();
     final String subDocPath = getSubDocPathById(entityAttributeMapping, id, requestContext);
-    final Value value = constant.getValue();
-    final ValueType valueType = value.getValueType();
 
-    final IdentifierConverter identifierConverter =
-        identifierConverterFactory.getIdentifierConverter(
-            id, subDocPath, valueType, requestContext);
-
-    final IdentifierConversionMetadata metadata =
-        IdentifierConversionMetadata.builder()
-            .subDocPath(subDocPath)
-            .operator(operator)
-            .valueType(valueType)
-            .build();
-    final String suffixedSubDocPath = identifierConverter.convert(metadata, requestContext);
-
-    final IdentifierExpression identifierExpression = IdentifierExpression.of(suffixedSubDocPath);
+    final IdentifierExpression identifierExpression = IdentifierExpression.of(subDocPath);
     final RelationalOperator relationalOperator = convertOperator(operator);
     final ConstantExpression constantExpression =
         constantExpressionConverter.convert(constant, requestContext);
