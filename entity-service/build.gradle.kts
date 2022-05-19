@@ -28,7 +28,8 @@ dependencies {
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.28")
   implementation("org.hypertrace.core.documentstore:document-store:0.6.15")
 
-  runtimeOnly("io.grpc:grpc-netty:1.43.1")
+  runtimeOnly("io.grpc:grpc-netty:1.46.0")
+  runtimeOnly("io.netty:netty-codec-http2:4.1.77.Final")
 
   // Logging
   implementation("org.slf4j:slf4j-api:1.7.30")

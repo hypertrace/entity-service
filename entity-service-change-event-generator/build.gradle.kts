@@ -21,6 +21,9 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.21") {
       because("Multiple vulnerabilities")
     }
+    runtimeOnly("org.jetbrains.kotlin:kotlin-stdlib:1.6.21") {
+      because("https://snyk.io/vuln/SNYK-JAVA-ORGJETBRAINSKOTLIN-2628385")
+    }
   }
 
   runtimeOnly("io.confluent:kafka-protobuf-serializer:6.0.1")
