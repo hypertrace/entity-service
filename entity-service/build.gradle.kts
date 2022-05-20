@@ -23,13 +23,12 @@ dependencies {
   implementation(project(":entity-service-impl"))
   implementation(project(":entity-service-change-event-generator"))
 
-  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.7.2")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.2")
+  implementation("org.hypertrace.core.grpcutils:grpc-server-utils:0.7.3")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.3")
   implementation("org.hypertrace.core.serviceframework:platform-service-framework:0.1.28")
   implementation("org.hypertrace.core.documentstore:document-store:0.6.15")
 
-  runtimeOnly("io.grpc:grpc-netty:1.46.0")
-  runtimeOnly("io.netty:netty-codec-http2:4.1.77.Final")
+  runtimeOnly("io.grpc:grpc-netty:1.45.1")
 
   // Logging
   implementation("org.slf4j:slf4j-api:1.7.30")
@@ -40,7 +39,7 @@ dependencies {
 
   // integration test
   integrationTestImplementation(project(":entity-service-client"))
-  integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.2")
+  integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.3")
   integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.28")
   integrationTestImplementation("org.testcontainers:testcontainers:1.16.1")

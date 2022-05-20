@@ -10,7 +10,7 @@ dependencies {
   api("com.typesafe:config:1.4.1")
 
   implementation("org.hypertrace.core.eventstore:event-store:0.1.2")
-  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.2")
+  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.3")
   implementation("com.google.guava:guava:31.1-jre")
   implementation("org.slf4j:slf4j-api:1.7.30")
 
