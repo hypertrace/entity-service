@@ -12,8 +12,8 @@ dependencies {
   compileOnly("org.projectlombok:lombok:1.18.18")
 
   implementation("org.hypertrace.core.documentstore:document-store:0.6.15")
-  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.2")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.2")
+  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.3")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.3")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.12.3")
   implementation("com.google.inject:guice:5.0.1")
 
