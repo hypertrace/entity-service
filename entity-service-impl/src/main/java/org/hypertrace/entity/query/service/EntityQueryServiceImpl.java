@@ -60,6 +60,8 @@ import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
+import org.hypertrace.entity.query.service.v1.DeleteEntitiesRequest;
+import org.hypertrace.entity.query.service.v1.DeleteEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceImplBase;
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
@@ -540,6 +542,30 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     long total =
         entitiesCollection.total(DocStoreConverter.transform(tenantId.get(), query, emptyList()));
     responseObserver.onNext(TotalEntitiesResponse.newBuilder().setTotal(total).build());
+    responseObserver.onCompleted();
+  }
+
+  @Override
+  public void deleteEntities(
+      DeleteEntitiesRequest request, StreamObserver<DeleteEntitiesResponse> responseObserver) {
+    RequestContext requestContext = RequestContext.CURRENT.get();
+    Optional<String> tenantId = requestContext.getTenantId();
+    if (tenantId.isEmpty()) {
+      responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
+      return;
+    }
+
+    EntityQueryRequest entityQueryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(request.getEntityType())
+            .setFilter(request.getFilter())
+            .build();
+
+    // converting entity query request to entity data service query
+    Query query = entityQueryConverter.convertToEDSQuery(requestContext, entityQueryRequest);
+    entitiesCollection.delete(
+        DocStoreConverter.transform(tenantId.get(), query, newArrayList()).getFilter());
+    responseObserver.onNext(DeleteEntitiesResponse.newBuilder().build());
     responseObserver.onCompleted();
   }
 
