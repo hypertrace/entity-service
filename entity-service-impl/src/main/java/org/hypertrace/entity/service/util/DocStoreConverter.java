@@ -20,6 +20,7 @@ import org.hypertrace.core.documentstore.OrderBy;
 import org.hypertrace.entity.data.service.v1.AttributeFilter;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValue.TypeCase;
+import org.hypertrace.entity.data.service.v1.DeleteEntitiesRequest;
 import org.hypertrace.entity.data.service.v1.Operator;
 import org.hypertrace.entity.data.service.v1.OrderByExpression;
 import org.hypertrace.entity.data.service.v1.Query;
@@ -51,6 +52,30 @@ public class DocStoreConverter {
     String json = JSONFORMAT_PRINTER.print(entity);
 
     return new JSONDocument(json);
+  }
+
+  public static org.hypertrace.core.documentstore.Filter transform(
+      @Nonnull String tenantId, @Nonnull DeleteEntitiesRequest request) {
+    List<Filter> filters = new ArrayList<>();
+    filters.add(getTenantIdEqFilter(tenantId));
+    if (StringUtils.isNotEmpty(request.getEntityType())) {
+      filters.add(
+          new Filter(Filter.Op.EQ, EntityServiceConstants.ENTITY_TYPE, request.getEntityType()));
+    }
+
+    if (request.hasEntityIds()) {
+      filters.add(
+          new Filter(
+              Filter.Op.IN, EntityServiceConstants.ENTITY_ID, request.getEntityIds().getIdsList()));
+    }
+
+    if (request.hasFilter()) {
+      filters.add(transform(request.getFilter()));
+    }
+
+    return filters.size() == 1
+        ? filters.get(0)
+        : new Filter(Op.AND, null, null, filters.toArray(new Filter[] {}));
   }
 
   public static org.hypertrace.core.documentstore.Query transform(

@@ -13,11 +13,13 @@ import org.hypertrace.core.documentstore.OrderBy;
 import org.hypertrace.entity.data.service.v1.AttributeFilter;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
+import org.hypertrace.entity.data.service.v1.DeleteEntitiesRequest;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Operator;
 import org.hypertrace.entity.data.service.v1.OrderByExpression;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.data.service.v1.SortOrder;
+import org.hypertrace.entity.data.service.v1.StringList;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.service.constants.EntityConstants;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -31,6 +33,48 @@ public class DocStoreConverterTest {
   private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static DocStoreJsonFormat.Printer JSONFORMAT_PRINTER = DocStoreJsonFormat.printer();
   private static final String ATTRIBUTES_LABELS_FIELD_NAME = "attributes.labels";
+
+  @Test
+  public void testDeleteEntitiesRequestConversion() {
+    Filter filter =
+        DocStoreConverter.transform(
+            "tenantId",
+            DeleteEntitiesRequest.newBuilder()
+                .setEntityType("API")
+                .setEntityIds(StringList.newBuilder().addIds("id1").build())
+                .build());
+    Assertions.assertEquals(3, filter.getChildFilters().length);
+    Assertions.assertEquals("tenantId", filter.getChildFilters()[0].getValue());
+    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[0].getOp());
+    Assertions.assertEquals("API", filter.getChildFilters()[1].getValue());
+    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[1].getOp());
+    Assertions.assertEquals(List.of("id1"), filter.getChildFilters()[2].getValue());
+    Assertions.assertEquals(Op.IN, filter.getChildFilters()[2].getOp());
+
+    filter =
+        DocStoreConverter.transform(
+            "tenantId",
+            DeleteEntitiesRequest.newBuilder()
+                .setEntityType("API")
+                .setFilter(
+                    AttributeFilter.newBuilder()
+                        .setName("name")
+                        .setOperator(Operator.EQ)
+                        .setAttributeValue(
+                            AttributeValue.newBuilder()
+                                .setValue(Value.newBuilder().setString("value").build())
+                                .build())
+                        .build())
+                .build());
+    Assertions.assertEquals(3, filter.getChildFilters().length);
+    Assertions.assertEquals("tenantId", filter.getChildFilters()[0].getValue());
+    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[0].getOp());
+    Assertions.assertEquals("API", filter.getChildFilters()[1].getValue());
+    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[1].getOp());
+    Assertions.assertEquals("name", filter.getChildFilters()[2].getFieldName());
+    Assertions.assertEquals("value", filter.getChildFilters()[2].getValue());
+    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[2].getOp());
+  }
 
   @Test
   public void testEntityQueryLimitOffsetConversion() {
@@ -833,7 +877,9 @@ public class DocStoreConverterTest {
 
     JSONDocument jsonDocument = DocStoreConverter.transform(testEntity);
     Assertions.assertEquals(
-        "{\"tenantId\":\"tenant1\",\"entityName\":\"myentity1\",\"identifyingAttributes\":{\"entity_id\":{\"value\":{\"string\":\"my-entity-id-1\"}}},\"attributes\":{\"timestamp\":{\"value\":{\"long\":1584055141072}}}}",
+        "{\"tenantId\":\"tenant1\",\"entityName\":\"myentity1\","
+            + "\"identifyingAttributes\":{\"entity_id\":{\"value\":{\"string\":\"my-entity-id-1"
+            + "\"}}},\"attributes\":{\"timestamp\":{\"value\":{\"long\":1584055141072}}}}",
         jsonDocument.toJson());
   }
 

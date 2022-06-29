@@ -69,15 +69,3 @@ message BulkEntityArrayAttributeUpdateRequest {
 
 message BulkEntityArrayAttributeUpdateResponse {
 }
-
-message DeleteEntitiesRequest {
-  string entityType = 1;
-  oneof deleteRequest {
-    StringList entity_ids = 2;
-    Filter filter = 3;
-  }
-}
-
-message StringList {
-  repeated string ids = 1;
-}

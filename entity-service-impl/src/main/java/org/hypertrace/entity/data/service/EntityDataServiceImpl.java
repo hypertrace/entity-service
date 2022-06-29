@@ -32,6 +32,8 @@ import org.hypertrace.core.documentstore.Key;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
+import org.hypertrace.entity.data.service.v1.DeleteEntitiesRequest;
+import org.hypertrace.entity.data.service.v1.DeleteEntitiesResponse;
 import org.hypertrace.entity.data.service.v1.Empty;
 import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
@@ -581,6 +583,21 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         responseObserver.onError(e);
       }
     }
+  }
+
+  @Override
+  public void deleteEntities(
+      DeleteEntitiesRequest request, StreamObserver<DeleteEntitiesResponse> responseObserver) {
+    RequestContext requestContext = RequestContext.CURRENT.get();
+    Optional<String> tenantId = requestContext.getTenantId();
+    if (tenantId.isEmpty()) {
+      responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
+      return;
+    }
+
+    this.entitiesCollection.delete(DocStoreConverter.transform(tenantId.get(), request));
+    responseObserver.onNext(DeleteEntitiesResponse.newBuilder().build());
+    responseObserver.onCompleted();
   }
 
   private void validate(ByIdRequest request) throws InvalidRequestException {
