@@ -12,8 +12,7 @@ dependencies {
   compileOnly("org.projectlombok:lombok:1.18.18")
 
   implementation("org.apache.commons:commons-collections4:4.4")
-  implementation(files("/Users/amanbansal/Code/hypertrace/document-store/document-store/build/libs/document-store-0.7.0-SNAPSHOT.jar"))
-//  implementation("org.hypertrace.core.documentstore:document-store:0.6.15")
+  implementation("org.hypertrace.core.documentstore:document-store:0.6.19")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.3")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.3")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.12.3")
