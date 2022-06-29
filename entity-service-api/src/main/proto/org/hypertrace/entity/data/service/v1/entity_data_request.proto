@@ -102,8 +102,8 @@ message MergeAndUpsertEntityResponse {
 }
 
 message DeleteEntitiesRequest {
-  string entityType = 1;
-  oneof deleteRequest {
+  string entity_type = 1;
+  oneof delete_request {
     StringList entity_ids = 2;
     AttributeFilter filter = 3;
   }
