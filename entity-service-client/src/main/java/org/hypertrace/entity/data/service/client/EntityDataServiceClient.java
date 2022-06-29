@@ -17,6 +17,8 @@ import org.hypertrace.entity.data.service.v1.AttributeFilter;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
+import org.hypertrace.entity.data.service.v1.DeleteEntitiesRequest;
+import org.hypertrace.entity.data.service.v1.DeleteEntitiesResponse;
 import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entities;
@@ -200,5 +202,10 @@ public class EntityDataServiceClient implements EdsClient {
 
     // Handle this here, so that callers can just do a null check
     return entity.equals(EnrichedEntity.getDefaultInstance()) ? null : entity;
+  }
+
+  @Override
+  public DeleteEntitiesResponse deleteEntities(String tenantId, DeleteEntitiesRequest request) {
+    return execute(tenantId, () -> blockingStub.deleteEntities(request));
   }
 }

@@ -15,6 +15,8 @@ import javax.annotation.Nonnull;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
 import org.hypertrace.entity.data.service.client.exception.NotFoundException;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
+import org.hypertrace.entity.data.service.v1.DeleteEntitiesRequest;
+import org.hypertrace.entity.data.service.v1.DeleteEntitiesResponse;
 import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entity;
@@ -204,5 +206,10 @@ public class EdsCacheClient implements EdsClient {
   @Override
   public void upsertRelationships(String tenantId, EntityRelationships relationships) {
     client.upsertRelationships(tenantId, relationships);
+  }
+
+  @Override
+  public DeleteEntitiesResponse deleteEntities(String tenantId, DeleteEntitiesRequest request) {
+    return client.deleteEntities(tenantId, request);
   }
 }
