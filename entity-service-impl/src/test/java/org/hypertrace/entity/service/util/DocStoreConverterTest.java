@@ -36,22 +36,22 @@ public class DocStoreConverterTest {
 
   @Test
   public void testDeleteEntitiesRequestConversion() {
-    Filter filter =
+    org.hypertrace.core.documentstore.Query query =
         DocStoreConverter.transform(
             "tenantId",
             DeleteEntitiesRequest.newBuilder()
                 .setEntityType("API")
                 .setEntityIds(StringList.newBuilder().addIds("id1").build())
                 .build());
-    Assertions.assertEquals(3, filter.getChildFilters().length);
-    Assertions.assertEquals("tenantId", filter.getChildFilters()[0].getValue());
-    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[0].getOp());
-    Assertions.assertEquals("API", filter.getChildFilters()[1].getValue());
-    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[1].getOp());
-    Assertions.assertEquals(List.of("id1"), filter.getChildFilters()[2].getValue());
-    Assertions.assertEquals(Op.IN, filter.getChildFilters()[2].getOp());
+    Assertions.assertEquals(3, query.getFilter().getChildFilters().length);
+    Assertions.assertEquals("tenantId", query.getFilter().getChildFilters()[0].getValue());
+    Assertions.assertEquals(Op.EQ, query.getFilter().getChildFilters()[0].getOp());
+    Assertions.assertEquals("API", query.getFilter().getChildFilters()[1].getValue());
+    Assertions.assertEquals(Op.EQ, query.getFilter().getChildFilters()[1].getOp());
+    Assertions.assertEquals(List.of("id1"), query.getFilter().getChildFilters()[2].getValue());
+    Assertions.assertEquals(Op.IN, query.getFilter().getChildFilters()[2].getOp());
 
-    filter =
+    query =
         DocStoreConverter.transform(
             "tenantId",
             DeleteEntitiesRequest.newBuilder()
@@ -66,14 +66,14 @@ public class DocStoreConverterTest {
                                 .build())
                         .build())
                 .build());
-    Assertions.assertEquals(3, filter.getChildFilters().length);
-    Assertions.assertEquals("tenantId", filter.getChildFilters()[0].getValue());
-    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[0].getOp());
-    Assertions.assertEquals("API", filter.getChildFilters()[1].getValue());
-    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[1].getOp());
-    Assertions.assertEquals("name", filter.getChildFilters()[2].getFieldName());
-    Assertions.assertEquals("value", filter.getChildFilters()[2].getValue());
-    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[2].getOp());
+    Assertions.assertEquals(3, query.getFilter().getChildFilters().length);
+    Assertions.assertEquals("tenantId", query.getFilter().getChildFilters()[0].getValue());
+    Assertions.assertEquals(Op.EQ, query.getFilter().getChildFilters()[0].getOp());
+    Assertions.assertEquals("API", query.getFilter().getChildFilters()[1].getValue());
+    Assertions.assertEquals(Op.EQ, query.getFilter().getChildFilters()[1].getOp());
+    Assertions.assertEquals("name", query.getFilter().getChildFilters()[2].getFieldName());
+    Assertions.assertEquals("value", query.getFilter().getChildFilters()[2].getValue());
+    Assertions.assertEquals(Op.EQ, query.getFilter().getChildFilters()[2].getOp());
   }
 
   @Test

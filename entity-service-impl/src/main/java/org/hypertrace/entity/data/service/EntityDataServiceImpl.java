@@ -10,6 +10,7 @@ import com.google.protobuf.Descriptors;
 import com.google.protobuf.GeneratedMessageV3;
 import com.google.protobuf.Message;
 import com.google.protobuf.ServiceException;
+import com.typesafe.config.Config;
 import io.grpc.Channel;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -61,9 +63,11 @@ import org.slf4j.LoggerFactory;
  * EntityDataService implementation with CRUD and query operations for entities on the doc store.
  */
 public class EntityDataServiceImpl extends EntityDataServiceImplBase {
+
   private static final Logger LOG = LoggerFactory.getLogger(EntityDataServiceImpl.class);
   private static final DocumentParser PARSER = new DocumentParser();
   private static final DocStoreJsonFormat.Printer PRINTER = DocStoreJsonFormat.printer();
+  private static final String ENTITY_IDS_DELETE_LIMIT_CONFIG = "entity.delete.limit";
   private static final String EVENT_STORE = "event.store";
   private static final String EVENT_STORE_TYPE_CONFIG = "type";
   private static final String ENTITY_CHANGE_EVENTS_TOPIC = "entity-change-events";
@@ -78,8 +82,11 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private final EntityIdGenerator entityIdGenerator;
   private final EntityChangeEventGenerator entityChangeEventGenerator;
 
+  private final Integer maxEntitiesToDelete;
+
   public EntityDataServiceImpl(
       Datastore datastore,
+      Config config,
       Channel entityTypeChannel,
       EntityChangeEventGenerator entityChangeEventGenerator) {
     this.entitiesCollection = datastore.getCollection(RAW_ENTITIES_COLLECTION);
@@ -92,15 +99,17 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     this.entityNormalizer =
         new EntityNormalizer(entityTypeClient, this.entityIdGenerator, identifyingAttributeCache);
     this.entityChangeEventGenerator = entityChangeEventGenerator;
+    this.maxEntitiesToDelete = config.hasPath(ENTITY_IDS_DELETE_LIMIT_CONFIG) ? config.getInt(
+        ENTITY_IDS_DELETE_LIMIT_CONFIG) : 10000;
   }
 
   /**
-   * Creates or Updates an Entity <br>
-   * If the entityId is provided it is used as is to update the Entity. If the identifying
-   * attributes are provided, then the entityId is generated from them If none of the above are
-   * provided, we error out. The ID of the entity is generated from its identifying attributes.
+   * Creates or Updates an Entity <br> If the entityId is provided it is used as is to update the
+   * Entity. If the identifying attributes are provided, then the entityId is generated from them If
+   * none of the above are provided, we error out. The ID of the entity is generated from its
+   * identifying attributes.
    *
-   * @param request Entity to be created
+   * @param request          Entity to be created
    * @param responseObserver Observer to be notified on about the Entity creation request
    */
   @Override
@@ -200,7 +209,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   /**
    * Get an Entity by the EntityId and EntityType
    *
-   * @param request ID of the entity which constitutes the EntityType and EntityID(UUID)
+   * @param request          ID of the entity which constitutes the EntityType and EntityID(UUID)
    * @param responseObserver Observer to be notified on about the Entity get request
    */
   @Override
@@ -230,7 +239,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   /**
    * Get an Entity by the EntityType and its identifying attributes
    *
-   * @param request ID of the entity which constitutes the EntityType and EntityID(UUID)
+   * @param request          ID of the entity which constitutes the EntityType and EntityID(UUID)
    * @param responseObserver Observer to be notified on about the Entity get request
    */
   @Override
@@ -264,7 +273,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   /**
    * Deletes an Entity by the EntityId and EntityType
    *
-   * @param request ID of the entity to be deleted
+   * @param request          ID of the entity to be deleted
    * @param responseObserver Observer to be notified on about the Entity delete request
    */
   @Override
@@ -301,7 +310,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   /**
    * Fetch entities by applying filters
    *
-   * @param request Query filters to be applied for filtering entities
+   * @param request          Query filters to be applied for filtering entities
    * @param responseObserver Observer to be notified on about the Entity query request
    */
   @Override
@@ -401,7 +410,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       } else {
         Filter f = new Filter();
         f.setOp(Filter.Op.AND);
-        f.setChildFilters(filters.toArray(new Filter[] {}));
+        f.setChildFilters(filters.toArray(new Filter[]{}));
         docStoreQuery.setFilter(f);
       }
     }
@@ -595,8 +604,34 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    this.entitiesCollection.delete(DocStoreConverter.transform(tenantId.get(), request));
-    responseObserver.onNext(DeleteEntitiesResponse.newBuilder().build());
+    if (StringUtils.isEmpty(request.getEntityType())) {
+      LOG.info(
+          "{}. Invalid upsertEnrichedEntity request:{}", request, ErrorMessages.ENTITY_TYPE_EMPTY);
+      responseObserver.onError(new RuntimeException(ErrorMessages.ENTITY_TYPE_EMPTY));
+      return;
+    }
+
+    Set<String> entityIds =
+        this.doQuery(DocStoreConverter.transform(tenantId.get(), request))
+            .map(Entity::getEntityId)
+            .collect(Collectors.toSet());
+
+    if (entityIds.size() > maxEntitiesToDelete) {
+      LOG.info(
+          "{}. Number of ids to delete exceeds the maximum limit: {}",
+          request,
+          ErrorMessages.ENTITY_IDS_LIMIT_EXCEED);
+      responseObserver.onError(new RuntimeException(ErrorMessages.ENTITY_IDS_LIMIT_EXCEED));
+      return;
+    }
+
+    this.entitiesCollection.delete(
+        entityIds.stream()
+            .map(
+                entityId ->
+                    new EntityV2TypeDocKey(tenantId.get(), request.getEntityType(), entityId))
+            .collect(Collectors.toSet()));
+    responseObserver.onNext(DeleteEntitiesResponse.newBuilder().addAllEntityIds(entityIds).build());
     responseObserver.onCompleted();
   }
 
@@ -820,6 +855,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   }
 
   static class ErrorMessages {
+
+    static final String ENTITY_IDS_LIMIT_EXCEED = "Entity Ids limit exceeded";
     static final String ENTITY_ID_EMPTY = "Entity ID is empty";
     static final String ENTITY_TYPE_EMPTY = "Entity Type is empty";
     static final String ENTITY_IDENTIFYING_ATTRS_EMPTY = "Entity identifying attributes are empty";

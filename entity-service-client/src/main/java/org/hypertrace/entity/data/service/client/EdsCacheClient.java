@@ -210,6 +210,10 @@ public class EdsCacheClient implements EdsClient {
 
   @Override
   public DeleteEntitiesResponse deleteEntities(String tenantId, DeleteEntitiesRequest request) {
-    return client.deleteEntities(tenantId, request);
+    DeleteEntitiesResponse deleteEntitiesResponse = client.deleteEntities(tenantId, request);
+    deleteEntitiesResponse
+        .getEntityIdsList()
+        .forEach(entityId -> this.entityCache.invalidate(new EdsCacheKey(tenantId, entityId)));
+    return deleteEntitiesResponse;
   }
 }

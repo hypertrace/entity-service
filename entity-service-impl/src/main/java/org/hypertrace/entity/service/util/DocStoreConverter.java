@@ -54,14 +54,15 @@ public class DocStoreConverter {
     return new JSONDocument(json);
   }
 
-  public static org.hypertrace.core.documentstore.Filter transform(
+  public static org.hypertrace.core.documentstore.Query transform(
       @Nonnull String tenantId, @Nonnull DeleteEntitiesRequest request) {
+    org.hypertrace.core.documentstore.Query docStoreQuery =
+        new org.hypertrace.core.documentstore.Query();
+
     List<Filter> filters = new ArrayList<>();
     filters.add(getTenantIdEqFilter(tenantId));
-    if (StringUtils.isNotEmpty(request.getEntityType())) {
-      filters.add(
-          new Filter(Filter.Op.EQ, EntityServiceConstants.ENTITY_TYPE, request.getEntityType()));
-    }
+    filters.add(
+        new Filter(Filter.Op.EQ, EntityServiceConstants.ENTITY_TYPE, request.getEntityType()));
 
     if (request.hasEntityIds()) {
       filters.add(
@@ -73,9 +74,8 @@ public class DocStoreConverter {
       filters.add(transform(request.getFilter()));
     }
 
-    return filters.size() == 1
-        ? filters.get(0)
-        : new Filter(Op.AND, null, null, filters.toArray(new Filter[] {}));
+    docStoreQuery.setFilter(new Filter(Op.AND, null, null, filters.toArray(new Filter[] {})));
+    return docStoreQuery;
   }
 
   public static org.hypertrace.core.documentstore.Query transform(

@@ -114,4 +114,5 @@ message StringList {
 }
 
 message DeleteEntitiesResponse {
+  repeated string entity_ids = 1;
 }

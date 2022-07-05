@@ -112,7 +112,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final boolean queryAggregationEnabled;
 
   public EntityQueryServiceImpl(
-      Datastore datastore, Config config, GrpcChannelRegistry channelRegistry) {
+      Datastore datastore, Config config, GrpcChannelRegistry channelRegistry,
+      EntityConfi) {
     this(
         datastore.getCollection(RAW_ENTITIES_COLLECTION),
         new EntityAttributeMapping(config, channelRegistry),
