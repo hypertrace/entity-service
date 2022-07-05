@@ -112,8 +112,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final boolean queryAggregationEnabled;
 
   public EntityQueryServiceImpl(
-      Datastore datastore, Config config, GrpcChannelRegistry channelRegistry,
-      EntityConfi) {
+      Datastore datastore, Config config, GrpcChannelRegistry channelRegistry) {
     this(
         datastore.getCollection(RAW_ENTITIES_COLLECTION),
         new EntityAttributeMapping(config, channelRegistry),
@@ -546,7 +545,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   @Deprecated(
       since =
-          "Will be removed when Collection.find() and Collection.aggregate() are implemented for Postgres and the 'queryAggregationEnabled' helm-value is enabled",
+          "Will be removed when Collection.find() and Collection.aggregate() are implemented for "
+              + "Postgres and the 'queryAggregationEnabled' helm-value is enabled",
       forRemoval = true)
   private Row convertToEntityQueryResult(
       RequestContext requestContext, Entity entity, List<Expression> selections) {
