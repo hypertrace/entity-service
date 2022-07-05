@@ -79,7 +79,7 @@ import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.ValueType;
-import org.hypertrace.entity.service.EntityServiceConfig;
+import org.hypertrace.entity.service.EntityServiceDataStoreConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceClientConfig;
 import org.hypertrace.entity.service.client.config.EntityServiceTestConfig;
 import org.hypertrace.entity.service.constants.EntityConstants;
@@ -1563,8 +1563,7 @@ public class EntityQueryServiceTest {
   }
 
   private static Datastore getDatastore() {
-    EntityServiceConfig entityServiceConfig =
-        new EntityServiceConfig(config.getConfig("entity.service.config"));
+    EntityServiceDataStoreConfig entityServiceConfig = new EntityServiceDataStoreConfig(config);
 
     Map<String, String> mongoConfig = new HashMap<>();
     mongoConfig.putIfAbsent("host", config.getString(MONGO_HOST_KEY));
