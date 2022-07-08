@@ -568,6 +568,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     if (entityIds.size() == 0) {
       LOG.info("{}. No entities found to delete", request);
       responseObserver.onNext(DeleteEntitiesResponse.newBuilder().build());
+      responseObserver.onCompleted();
       return;
     }
 
