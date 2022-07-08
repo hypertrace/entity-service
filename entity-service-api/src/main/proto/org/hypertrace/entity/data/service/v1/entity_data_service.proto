@@ -38,6 +38,4 @@ service EntityDataService {
   }
   rpc getEnrichedEntityByTypeAndIdentifyingProps (ByTypeAndIdentifyingAttributes) returns (EnrichedEntity) {
   }
-  rpc deleteEntities (DeleteEntitiesRequest) returns (DeleteEntitiesResponse) {
-  }
 }

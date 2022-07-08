@@ -10,7 +10,6 @@ import com.google.protobuf.Descriptors;
 import com.google.protobuf.GeneratedMessageV3;
 import com.google.protobuf.Message;
 import com.google.protobuf.ServiceException;
-import com.typesafe.config.Config;
 import io.grpc.Channel;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
@@ -21,7 +20,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,8 +32,6 @@ import org.hypertrace.core.documentstore.Key;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
-import org.hypertrace.entity.data.service.v1.DeleteEntitiesRequest;
-import org.hypertrace.entity.data.service.v1.DeleteEntitiesResponse;
 import org.hypertrace.entity.data.service.v1.Empty;
 import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
@@ -67,7 +63,6 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(EntityDataServiceImpl.class);
   private static final DocumentParser PARSER = new DocumentParser();
   private static final DocStoreJsonFormat.Printer PRINTER = DocStoreJsonFormat.printer();
-  private static final String ENTITY_IDS_DELETE_LIMIT_CONFIG = "entity.delete.limit";
   private static final String EVENT_STORE = "event.store";
   private static final String EVENT_STORE_TYPE_CONFIG = "type";
   private static final String ENTITY_CHANGE_EVENTS_TOPIC = "entity-change-events";
@@ -82,11 +77,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private final EntityIdGenerator entityIdGenerator;
   private final EntityChangeEventGenerator entityChangeEventGenerator;
 
-  private final Integer maxEntitiesToDelete;
-
   public EntityDataServiceImpl(
       Datastore datastore,
-      Config config,
       Channel entityTypeChannel,
       EntityChangeEventGenerator entityChangeEventGenerator) {
     this.entitiesCollection = datastore.getCollection(RAW_ENTITIES_COLLECTION);
@@ -99,10 +91,6 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     this.entityNormalizer =
         new EntityNormalizer(entityTypeClient, this.entityIdGenerator, identifyingAttributeCache);
     this.entityChangeEventGenerator = entityChangeEventGenerator;
-    this.maxEntitiesToDelete =
-        config.hasPath(ENTITY_IDS_DELETE_LIMIT_CONFIG)
-            ? config.getInt(ENTITY_IDS_DELETE_LIMIT_CONFIG)
-            : 10000;
   }
 
   /**
@@ -596,47 +584,6 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
   }
 
-  @Override
-  public void deleteEntities(
-      DeleteEntitiesRequest request, StreamObserver<DeleteEntitiesResponse> responseObserver) {
-    RequestContext requestContext = RequestContext.CURRENT.get();
-    Optional<String> tenantId = requestContext.getTenantId();
-    if (tenantId.isEmpty()) {
-      responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
-      return;
-    }
-
-    if (StringUtils.isEmpty(request.getEntityType())) {
-      LOG.info(
-          "{}. Invalid upsertEnrichedEntity request:{}", request, ErrorMessages.ENTITY_TYPE_EMPTY);
-      responseObserver.onError(new RuntimeException(ErrorMessages.ENTITY_TYPE_EMPTY));
-      return;
-    }
-
-    Set<String> entityIds =
-        this.doQuery(DocStoreConverter.transform(tenantId.get(), request))
-            .map(Entity::getEntityId)
-            .collect(Collectors.toSet());
-
-    if (entityIds.size() > maxEntitiesToDelete) {
-      LOG.info(
-          "{}. Number of ids to delete exceeds the maximum limit: {}",
-          request,
-          ErrorMessages.ENTITY_IDS_LIMIT_EXCEED);
-      responseObserver.onError(new RuntimeException(ErrorMessages.ENTITY_IDS_LIMIT_EXCEED));
-      return;
-    }
-
-    this.entitiesCollection.delete(
-        entityIds.stream()
-            .map(
-                entityId ->
-                    new EntityV2TypeDocKey(tenantId.get(), request.getEntityType(), entityId))
-            .collect(Collectors.toSet()));
-    responseObserver.onNext(DeleteEntitiesResponse.newBuilder().addAllEntityIds(entityIds).build());
-    responseObserver.onCompleted();
-  }
-
   private void validate(ByIdRequest request) throws InvalidRequestException {
     if (StringUtils.isEmpty(request.getEntityId())) {
       LOG.info("{}. Invalid get request:{}", request, ErrorMessages.ENTITY_ID_EMPTY);
@@ -857,8 +804,6 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   }
 
   static class ErrorMessages {
-
-    static final String ENTITY_IDS_LIMIT_EXCEED = "Entity Ids limit exceeded";
     static final String ENTITY_ID_EMPTY = "Entity ID is empty";
     static final String ENTITY_TYPE_EMPTY = "Entity Type is empty";
     static final String ENTITY_IDENTIFYING_ATTRS_EMPTY = "Entity identifying attributes are empty";

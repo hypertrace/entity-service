@@ -35,3 +35,7 @@ message Row {
 message TotalEntitiesResponse {
   int64 total = 1;
 }
+
+message DeleteEntitiesResponse {
+  repeated string entity_ids = 1;
+}

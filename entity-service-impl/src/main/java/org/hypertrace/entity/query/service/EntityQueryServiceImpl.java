@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import org.hypertrace.core.documentstore.BulkArrayValueUpdateRequest;
+import org.hypertrace.core.documentstore.CloseableIterator;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
@@ -60,6 +61,8 @@ import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
+import org.hypertrace.entity.query.service.v1.DeleteEntitiesRequest;
+import org.hypertrace.entity.query.service.v1.DeleteEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceImplBase;
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
@@ -88,10 +91,13 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceImpl.class);
   private static final Printer PRINTER = DocStoreJsonFormat.printer().includingDefaultValueFields();
+  private static final String ENTITY_ID_ATTRIBUTE_ID = "API.id";
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final String QUERY_AGGREGATION_ENABLED_CONFIG =
       "entity.service.config.query.aggregation.enabled";
+  private static final String ENTITY_IDS_DELETE_LIMIT_CONFIG = "entity.delete.limit";
+
   private static final int DEFAULT_CHUNK_SIZE = 10_000;
   private static final String ARRAY_VALUE_PATH_SUFFIX =
       Stream.of(
@@ -110,6 +116,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final int CHUNK_SIZE;
   private final Injector injector;
   private final boolean queryAggregationEnabled;
+  private final Integer maxEntitiesToDelete;
 
   public EntityQueryServiceImpl(
       Datastore datastore, Config config, GrpcChannelRegistry channelRegistry) {
@@ -120,7 +127,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),
         config.hasPath(QUERY_AGGREGATION_ENABLED_CONFIG)
-            && config.getBoolean(QUERY_AGGREGATION_ENABLED_CONFIG));
+            && config.getBoolean(QUERY_AGGREGATION_ENABLED_CONFIG),
+        config.hasPath(ENTITY_IDS_DELETE_LIMIT_CONFIG)
+            ? config.getInt(ENTITY_IDS_DELETE_LIMIT_CONFIG)
+            : 10000);
   }
 
   @VisibleForTesting
@@ -128,13 +138,15 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       Collection entitiesCollection,
       EntityAttributeMapping entityAttributeMapping,
       int chunkSize,
-      boolean queryAggregationEnabled) {
+      boolean queryAggregationEnabled,
+      int maxEntitiesToDelete) {
     this.entitiesCollection = entitiesCollection;
     this.entityAttributeMapping = entityAttributeMapping;
     this.entityQueryConverter = new EntityQueryConverter(entityAttributeMapping);
     this.CHUNK_SIZE = chunkSize;
     this.injector = Guice.createInjector(new ConverterModule(entityAttributeMapping));
     this.queryAggregationEnabled = queryAggregationEnabled;
+    this.maxEntitiesToDelete = maxEntitiesToDelete;
   }
 
   @Override
@@ -543,6 +555,73 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     responseObserver.onCompleted();
   }
 
+  @Override
+  public void deleteEntities(
+      DeleteEntitiesRequest request, StreamObserver<DeleteEntitiesResponse> responseObserver) {
+    RequestContext requestContext = RequestContext.CURRENT.get();
+    if (validateDeleteEntitiesRequest(request, requestContext)) {
+      responseObserver.onError(new ServiceException("Invalid request provided"));
+      return;
+    }
+
+    List<String> entityIds = getEntityIdsToDelete(requestContext, request);
+    if (entityIds.size() == 0) {
+      LOG.info("{}. No entities found to delete", request);
+      responseObserver.onNext(DeleteEntitiesResponse.newBuilder().build());
+      return;
+    }
+
+    if (entityIds.size() > maxEntitiesToDelete) {
+      LOG.info(
+          "{}. Number of ids to delete exceeds the maximum limit: Entity Ids limit exceeded",
+          request);
+      responseObserver.onError(new RuntimeException("Entity Ids limit exceeded"));
+      return;
+    }
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Deleting entity of type: {} and ids: {}", request.getEntityType(), entityIds);
+    }
+
+    Optional<String> tenantId = requestContext.getTenantId();
+    this.entitiesCollection.delete(
+        DocStoreConverter.transform(tenantId.get(), request.getEntityType(), entityIds));
+    responseObserver.onNext(DeleteEntitiesResponse.newBuilder().addAllEntityIds(entityIds).build());
+    responseObserver.onCompleted();
+  }
+
+  private List<String> getEntityIdsToDelete(
+      RequestContext requestContext, DeleteEntitiesRequest request) {
+    List<Expression> selections =
+        List.of(
+            Expression.newBuilder()
+                .setColumnIdentifier(
+                    ColumnIdentifier.newBuilder().setColumnName(ENTITY_ID_ATTRIBUTE_ID).build())
+                .build());
+    EntityQueryRequest entityQueryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(request.getEntityType())
+            .setFilter(request.getFilter())
+            .build();
+    Query query = entityQueryConverter.convertToEDSQuery(requestContext, entityQueryRequest);
+    List<String> docStoreSelections =
+        entityQueryConverter.convertSelectionsToDocStoreSelections(requestContext, selections);
+    CloseableIterator<Document> documentIterator =
+        entitiesCollection.search(
+            DocStoreConverter.transform(
+                requestContext.getTenantId().get(), query, docStoreSelections));
+    List<String> entityIds = new ArrayList<>();
+    while (documentIterator.hasNext()) {
+      Optional<Entity> entity =
+          DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
+      if (entity.isPresent()) {
+        Row row = convertToEntityQueryResult(requestContext, entity.get(), selections);
+        entityIds.add(row.getColumn(0).getString());
+      }
+    }
+    return entityIds;
+  }
+
   @Deprecated(
       since =
           "Will be removed when Collection.find() and Collection.aggregate() are implemented for "
@@ -650,5 +729,20 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             new TypeLiteral<
                 Converter<
                     EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {}));
+  }
+
+  private boolean validateDeleteEntitiesRequest(
+      DeleteEntitiesRequest request, RequestContext requestContext) {
+    Optional<String> tenantId = requestContext.getTenantId();
+    if (tenantId.isEmpty()) {
+      LOG.error("{}. Invalid deleteEntities request: Tenant id is not provided", request);
+      return true;
+    }
+
+    if (StringUtils.isEmpty(request.getEntityType())) {
+      LOG.error("{}. Invalid deleteEntities request: Entity Type is empty", request);
+      return true;
+    }
+    return false;
   }
 }

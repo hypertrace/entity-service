@@ -65,3 +65,14 @@ enum SortOrder {
   ASC = 0;
   DESC = 1;
 }
+
+message DeleteEntitiesRequest {
+  string entity_type = 1;
+  oneof delete_request {
+    Filter filter = 2;
+  }
+}
+
+message StringList {
+  repeated string ids = 1;
+}

@@ -100,19 +100,3 @@ message MergeAndUpsertEntityRequest {
 message MergeAndUpsertEntityResponse {
   Entity entity = 1;
 }
-
-message DeleteEntitiesRequest {
-  string entity_type = 1;
-  oneof delete_request {
-    StringList entity_ids = 2;
-    AttributeFilter filter = 3;
-  }
-}
-
-message StringList {
-  repeated string ids = 1;
-}
-
-message DeleteEntitiesResponse {
-  repeated string entity_ids = 1;
-}

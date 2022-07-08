@@ -14,6 +14,7 @@ import static org.mockito.quality.Strictness.LENIENT;
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
+import java.io.IOException;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -38,11 +39,14 @@ import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
+import org.hypertrace.entity.query.service.v1.DeleteEntitiesRequest;
+import org.hypertrace.entity.query.service.v1.DeleteEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.LiteralConstant.Builder;
+import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.ResultSetMetadata;
@@ -75,7 +79,9 @@ public class EntityQueryServiceImplTest {
   @Mock EntityAttributeMapping mockAttributeMapping;
   @Mock Collection entitiesCollection;
 
+  private static final String API_ID = "API.id";
   private static final String ATTRIBUTE_ID1 = "Entity.id";
+  private static final String EDS_API_ID_COLUMN_NAME = "entityId";
   private static final String EDS_COLUMN_NAME1 = "attributes.entity_id";
   private static final String ATTRIBUTE_ID2 = "Entity.status";
   private static final String EDS_COLUMN_NAME2 = "attributes.status";
@@ -91,7 +97,8 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+                  new EntityQueryServiceImpl(
+                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
 
               eqs.update(null, mockResponseObserver);
 
@@ -111,7 +118,8 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+                  new EntityQueryServiceImpl(
+                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
 
               eqs.update(EntityUpdateRequest.newBuilder().build(), mockResponseObserver);
 
@@ -132,7 +140,8 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+                  new EntityQueryServiceImpl(
+                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
 
               eqs.update(
                   EntityUpdateRequest.newBuilder().setEntityType(TEST_ENTITY_TYPE).build(),
@@ -155,7 +164,8 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+                  new EntityQueryServiceImpl(
+                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
 
               eqs.update(
                   EntityUpdateRequest.newBuilder()
@@ -208,7 +218,7 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      mockEntitiesCollection, mockMappingForAttributes1And2(), 1, false);
+                      mockEntitiesCollection, mockMappingForAttributes1And2(), 1, false, 1000);
               eqs.update(updateRequest, mockResponseObserver);
               return null;
             });
@@ -225,6 +235,7 @@ public class EntityQueryServiceImplTest {
 
   @Nested
   class BulkUpdateEntities {
+
     @Test
     public void testBulkUpdate_noTenantId() throws Exception {
       StreamObserver<ResultSetChunk> mockResponseObserver = mock(StreamObserver.class);
@@ -234,7 +245,8 @@ public class EntityQueryServiceImplTest {
           .call(
               () -> {
                 EntityQueryServiceImpl eqs =
-                    new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+                    new EntityQueryServiceImpl(
+                        entitiesCollection, mockAttributeMapping, 1, false, 1000);
 
                 eqs.bulkUpdate(null, mockResponseObserver);
 
@@ -255,7 +267,8 @@ public class EntityQueryServiceImplTest {
           .call(
               () -> {
                 EntityQueryServiceImpl eqs =
-                    new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+                    new EntityQueryServiceImpl(
+                        entitiesCollection, mockAttributeMapping, 1, false, 1000);
 
                 eqs.bulkUpdate(BulkEntityUpdateRequest.newBuilder().build(), mockResponseObserver);
 
@@ -276,7 +289,8 @@ public class EntityQueryServiceImplTest {
           .call(
               () -> {
                 EntityQueryServiceImpl eqs =
-                    new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+                    new EntityQueryServiceImpl(
+                        entitiesCollection, mockAttributeMapping, 1, false, 1000);
 
                 eqs.bulkUpdate(
                     BulkEntityUpdateRequest.newBuilder().setEntityType(TEST_ENTITY_TYPE).build(),
@@ -306,7 +320,8 @@ public class EntityQueryServiceImplTest {
           .call(
               () -> {
                 EntityQueryServiceImpl eqs =
-                    new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+                    new EntityQueryServiceImpl(
+                        entitiesCollection, mockAttributeMapping, 1, false, 1000);
                 eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
                 return null;
               });
@@ -343,7 +358,7 @@ public class EntityQueryServiceImplTest {
               () -> {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
-                        mockEntitiesCollection, mockMappingForAttribute1(), 1, false);
+                        mockEntitiesCollection, mockMappingForAttribute1(), 1, false, 1000);
                 eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
                 return null;
               });
@@ -367,7 +382,8 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+                  new EntityQueryServiceImpl(
+                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
 
               eqs.execute(null, mockResponseObserver);
 
@@ -437,7 +453,7 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      mockEntitiesCollection, mockMappingForAttributes1And2(), 1, false);
+                      mockEntitiesCollection, mockMappingForAttributes1And2(), 1, false, 1000);
 
               eqs.execute(request, mockResponseObserver);
               return null;
@@ -524,7 +540,7 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      mockEntitiesCollection, mockMappingForAttributes1And2(), 2, false);
+                      mockEntitiesCollection, mockMappingForAttributes1And2(), 2, false, 1000);
 
               eqs.execute(request, mockResponseObserver);
               return null;
@@ -569,7 +585,8 @@ public class EntityQueryServiceImplTest {
         .call(
             () -> {
               EntityQueryServiceImpl eqs =
-                  new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+                  new EntityQueryServiceImpl(
+                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
               eqs.bulkUpdateEntityArrayAttribute(request, mockResponseObserver);
               return null;
             });
@@ -591,6 +608,57 @@ public class EntityQueryServiceImplTest {
     assertEquals(2, subDocuments.size());
     assertEquals("{\"value\":{\"string\":\"Label1\"}}", subDocuments.get(0).toString());
     assertEquals("{\"value\":{\"string\":\"Label2\"}}", subDocuments.get(1).toString());
+  }
+
+  @Test
+  public void testDeleteEntities() throws IOException {
+    Collection mockEntitiesCollection = mock(Collection.class);
+    UUID entityId = UUID.randomUUID();
+    List<Document> docs =
+        List.of(new JSONDocument("{\n" + "    \"entityId\": \"" + entityId + "\"" + "}"));
+
+    when(mockEntitiesCollection.search(any()))
+        .thenReturn(convertToCloseableIterator(docs.iterator()));
+
+    DeleteEntitiesRequest request =
+        DeleteEntitiesRequest.newBuilder()
+            .setEntityType(TEST_ENTITY_TYPE)
+            .setFilter(
+                org.hypertrace.entity.query.service.v1.Filter.newBuilder()
+                    .setLhs(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID1).build())
+                            .build())
+                    .setOperator(Operator.EQ)
+                    .setRhs(
+                        Expression.newBuilder()
+                            .setLiteral(
+                                LiteralConstant.newBuilder()
+                                    .setValue(
+                                        Value.newBuilder().setString(entityId.toString()).build())
+                                    .build())
+                            .build())
+                    .build())
+            .build();
+    StreamObserver<DeleteEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
+
+    Context.current()
+        .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
+        .run(
+            () -> {
+              EntityQueryServiceImpl eqs =
+                  new EntityQueryServiceImpl(
+                      mockEntitiesCollection, mockMappingForAttributes(), 100, false, 1000);
+
+              eqs.deleteEntities(request, mockResponseObserver);
+            });
+
+    DeleteEntitiesResponse response =
+        DeleteEntitiesResponse.newBuilder().addEntityIds(entityId.toString()).build();
+    verify(mockEntitiesCollection, times(1)).delete(any(Filter.class));
+    verify(mockResponseObserver, times(1)).onNext(eq(response));
+    verify(mockResponseObserver, times(1)).onCompleted();
   }
 
   @Test
@@ -648,7 +716,7 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      mockEntitiesCollection, mockMappingForAttributes1And2(), 100, false);
+                      mockEntitiesCollection, mockMappingForAttributes1And2(), 100, false, 1000);
 
               eqs.execute(request, mockResponseObserver);
             });
@@ -672,6 +740,7 @@ public class EntityQueryServiceImplTest {
 
   @Nested
   class TotalEntities {
+
     @DisplayName("should build correct doc store query for total")
     @Test
     public void test_buildTotalQuery() throws Exception {
@@ -684,7 +753,7 @@ public class EntityQueryServiceImplTest {
       ArgumentCaptor<Query> docStoreQueryCaptor = ArgumentCaptor.forClass(Query.class);
 
       EntityQueryServiceImpl eqs =
-          new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+          new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false, 1000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
 
       Context.current()
@@ -720,7 +789,7 @@ public class EntityQueryServiceImplTest {
               .build();
 
       EntityQueryServiceImpl eqs =
-          new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false);
+          new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false, 1000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
 
       when(entitiesCollection.total(any())).thenReturn(123L);
@@ -752,6 +821,13 @@ public class EntityQueryServiceImplTest {
   private RequestContext mockRequestContextWithTenantId() {
     // mock successful update
     return when(requestContext.getTenantId()).thenReturn(Optional.of("tenant1")).getMock();
+  }
+
+  private EntityAttributeMapping mockMappingForAttributes() {
+    return when(this.mockMappingForAttribute1()
+            .getDocStorePathByAttributeId(requestContext, API_ID))
+        .thenReturn(Optional.of(EDS_API_ID_COLUMN_NAME))
+        .getMock();
   }
 
   private EntityAttributeMapping mockMappingForAttribute1() {

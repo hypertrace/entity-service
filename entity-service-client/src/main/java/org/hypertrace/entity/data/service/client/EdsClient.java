@@ -5,8 +5,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
-import org.hypertrace.entity.data.service.v1.DeleteEntitiesRequest;
-import org.hypertrace.entity.data.service.v1.DeleteEntitiesResponse;
 import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entity;
@@ -48,6 +46,4 @@ public interface EdsClient {
   EnrichedEntity upsertEnrichedEntity(EnrichedEntity enrichedEntity);
 
   void upsertEnrichedEntities(String tenantId, EnrichedEntities enrichedEntities);
-
-  DeleteEntitiesResponse deleteEntities(String tenantId, DeleteEntitiesRequest request);
 }

@@ -13,13 +13,11 @@ import org.hypertrace.core.documentstore.OrderBy;
 import org.hypertrace.entity.data.service.v1.AttributeFilter;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
-import org.hypertrace.entity.data.service.v1.DeleteEntitiesRequest;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Operator;
 import org.hypertrace.entity.data.service.v1.OrderByExpression;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.data.service.v1.SortOrder;
-import org.hypertrace.entity.data.service.v1.StringList;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.service.constants.EntityConstants;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -35,45 +33,16 @@ public class DocStoreConverterTest {
   private static final String ATTRIBUTES_LABELS_FIELD_NAME = "attributes.labels";
 
   @Test
-  public void testDeleteEntitiesRequestConversion() {
-    org.hypertrace.core.documentstore.Query query =
-        DocStoreConverter.transform(
-            "tenantId",
-            DeleteEntitiesRequest.newBuilder()
-                .setEntityType("API")
-                .setEntityIds(StringList.newBuilder().addIds("id1").build())
-                .build());
-    Assertions.assertEquals(3, query.getFilter().getChildFilters().length);
-    Assertions.assertEquals("tenantId", query.getFilter().getChildFilters()[0].getValue());
-    Assertions.assertEquals(Op.EQ, query.getFilter().getChildFilters()[0].getOp());
-    Assertions.assertEquals("API", query.getFilter().getChildFilters()[1].getValue());
-    Assertions.assertEquals(Op.EQ, query.getFilter().getChildFilters()[1].getOp());
-    Assertions.assertEquals(List.of("id1"), query.getFilter().getChildFilters()[2].getValue());
-    Assertions.assertEquals(Op.IN, query.getFilter().getChildFilters()[2].getOp());
-
-    query =
-        DocStoreConverter.transform(
-            "tenantId",
-            DeleteEntitiesRequest.newBuilder()
-                .setEntityType("API")
-                .setFilter(
-                    AttributeFilter.newBuilder()
-                        .setName("name")
-                        .setOperator(Operator.EQ)
-                        .setAttributeValue(
-                            AttributeValue.newBuilder()
-                                .setValue(Value.newBuilder().setString("value").build())
-                                .build())
-                        .build())
-                .build());
-    Assertions.assertEquals(3, query.getFilter().getChildFilters().length);
-    Assertions.assertEquals("tenantId", query.getFilter().getChildFilters()[0].getValue());
-    Assertions.assertEquals(Op.EQ, query.getFilter().getChildFilters()[0].getOp());
-    Assertions.assertEquals("API", query.getFilter().getChildFilters()[1].getValue());
-    Assertions.assertEquals(Op.EQ, query.getFilter().getChildFilters()[1].getOp());
-    Assertions.assertEquals("name", query.getFilter().getChildFilters()[2].getFieldName());
-    Assertions.assertEquals("value", query.getFilter().getChildFilters()[2].getValue());
-    Assertions.assertEquals(Op.EQ, query.getFilter().getChildFilters()[2].getOp());
+  public void testDeleteEntitiesRequestConversion() throws IOException {
+    org.hypertrace.core.documentstore.Filter filter =
+        DocStoreConverter.transform("tenantId", "API", List.of("id1"));
+    Assertions.assertEquals(3, filter.getChildFilters().length);
+    Assertions.assertEquals("tenantId", filter.getChildFilters()[0].getValue());
+    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[0].getOp());
+    Assertions.assertEquals("API", filter.getChildFilters()[1].getValue());
+    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[1].getOp());
+    Assertions.assertEquals(List.of("id1"), filter.getChildFilters()[2].getValue());
+    Assertions.assertEquals(Op.IN, filter.getChildFilters()[2].getOp());
   }
 
   @Test
