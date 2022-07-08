@@ -21,7 +21,7 @@ image:
   pullPolicy: IfNotPresent
   tagOverride: ""
 
-imagePullSecrets: {}
+imagePullSecrets: { }
 
 containerPort: 50061
 containerAdminPort: 50062
@@ -30,35 +30,36 @@ service:
   type: ClusterIP
   port: 50061
 
-nodeLabels: {}
+nodeLabels: { }
 
-tolerations: []
+tolerations: [ ]
 
-affinity: {}
+affinity: { }
 
-topologySpreadConstraints: []
+topologySpreadConstraints: [ ]
 
 javaOpts: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
 
 livenessProbe:
-  initialDelaySeconds: 10
   periodSeconds: 5
-
-readinessProbe:
-  initialDelaySeconds: 2
+  failureThreshold: 3
+  timeoutSeconds: 3
+startupProbe:
   periodSeconds: 5
+  failureThreshold: 24
+  timeoutSeconds: 3
 
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
   # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-   requests:
-     cpu: 0.1
-     memory: 1024Mi
-   limits:
-     cpu: 1
-     memory: 1024Mi
+  requests:
+    cpu: 0.1
+    memory: 1024Mi
+  limits:
+    cpu: 1
+    memory: 1024Mi
 
 deploymentLabels:
   app: entity-service
@@ -66,7 +67,7 @@ deploymentLabels:
 podLabels:
   app: entity-service
 
-podAnnotations: {}
+podAnnotations: { }
 
 # The Deployment Selector match labels are different from the pod labels. Note that they should be a subset of the pod
 # labels. You append new labels to them but cannot remove labels. If you remove or modify the labels you will need to
@@ -99,8 +100,8 @@ entityServiceConfig:
     host: attribute-service
     port: 9012
 
-attributes: []
-extraAttributes: []
+attributes: [ ]
+extraAttributes: [ ]
 
 logConfig:
   name: entity-service-log-config
@@ -114,7 +115,7 @@ logConfig:
 config-bootstrapper:
   job:
     prefix: entity
-  configurationCommands: {}
+  configurationCommands: { }
 
 hpa:
   enabled: false
@@ -136,5 +137,5 @@ kafka-topic-creator:
           retention.ms: 86400000 # default = 604800000 (7 days)
   zookeeper:
     address: zookeeper:2181
-  imagePullSecrets: []
-  podAnnotations: {}
+  imagePullSecrets: [ ]
+  podAnnotations: { }

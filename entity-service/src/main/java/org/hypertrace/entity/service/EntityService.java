@@ -1,130 +1,41 @@
 package org.hypertrace.entity.service;
 
-import com.typesafe.config.Config;
-import io.grpc.Channel;
-import io.grpc.Server;
-import io.grpc.ServerBuilder;
-import java.io.IOException;
-import java.time.Clock;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import org.hypertrace.core.documentstore.Datastore;
-import org.hypertrace.core.documentstore.DatastoreProvider;
-import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
-import org.hypertrace.core.grpcutils.server.InterceptorUtil;
-import org.hypertrace.core.serviceframework.PlatformService;
 import org.hypertrace.core.serviceframework.config.ConfigClient;
-import org.hypertrace.entity.data.service.EntityDataServiceImpl;
-import org.hypertrace.entity.query.service.EntityQueryServiceImpl;
-import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
-import org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorFactory;
-import org.hypertrace.entity.type.service.v2.EntityTypeServiceImpl;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.hypertrace.core.serviceframework.grpc.GrpcPlatformServiceFactory;
+import org.hypertrace.core.serviceframework.grpc.StandAloneGrpcPlatformServiceContainer;
 
-public class EntityService extends PlatformService {
+public class EntityService extends StandAloneGrpcPlatformServiceContainer {
 
-  private static final Logger LOG = LoggerFactory.getLogger(EntityService.class);
-  private static final String SERVICE_NAME_CONFIG = "service.name";
-  private static final String SERVICE_PORT_CONFIG = "service.port";
-  private static final String ENTITY_SERVICE_CONFIG = "entity.service.config";
+  private final EntityServiceFactory entityServiceFactory = new EntityServiceFactory();
+  private ScheduledFuture<?> dataStoreReportingFuture;
 
-  private String serviceName;
-  private Datastore datastore;
-  private Server server;
+  @Override
+  protected GrpcPlatformServiceFactory getServiceFactory() {
+    return entityServiceFactory;
+  }
 
-  private final ScheduledExecutorService scheduledExecutorService =
-      Executors.newSingleThreadScheduledExecutor();
-  private int consecutiveFailedHealthCheck = 0;
+  @Override
+  protected void doStart() {
+    this.dataStoreReportingFuture = this.startReportingDataStoreHealth();
+    super.doStart();
+  }
+
+  @Override
+  protected void doStop() {
+    this.dataStoreReportingFuture.cancel(false);
+    super.doStop();
+  }
 
   public EntityService(ConfigClient configClient) {
     super(configClient);
   }
 
-  @Override
-  protected void doInit() {
-    serviceName = getAppConfig().getString(SERVICE_NAME_CONFIG);
-    int port = getAppConfig().getInt(SERVICE_PORT_CONFIG);
-    Config config = getAppConfig().getConfig(ENTITY_SERVICE_CONFIG);
-    EntityServiceConfig entityServiceConfig = new EntityServiceConfig(config);
-    Config dataStoreConfig =
-        entityServiceConfig.getDataStoreConfig(entityServiceConfig.getDataStoreType());
-    this.datastore =
-        DatastoreProvider.getDatastore(entityServiceConfig.getDataStoreType(), dataStoreConfig);
-
-    GrpcChannelRegistry channelRegistry = new GrpcChannelRegistry();
-    this.getLifecycle().shutdownComplete().thenRun(channelRegistry::shutdown);
-
-    Channel localChannel = channelRegistry.forAddress("localhost", port);
-    EntityChangeEventGenerator entityChangeEventGenerator =
-        EntityChangeEventGeneratorFactory.getInstance()
-            .createEntityChangeEventGenerator(getAppConfig(), Clock.systemUTC());
-
-    server =
-        ServerBuilder.forPort(port)
-            .addService(
-                InterceptorUtil.wrapInterceptors(
-                    new org.hypertrace.entity.type.service.EntityTypeServiceImpl(datastore)))
-            .addService(InterceptorUtil.wrapInterceptors(new EntityTypeServiceImpl(datastore)))
-            .addService(
-                InterceptorUtil.wrapInterceptors(
-                    new EntityDataServiceImpl(datastore, localChannel, entityChangeEventGenerator)))
-            .addService(
-                InterceptorUtil.wrapInterceptors(
-                    new EntityQueryServiceImpl(datastore, getAppConfig(), channelRegistry)))
-            .build();
-    scheduledExecutorService.scheduleAtFixedRate(
-        () -> {
-          if (!datastore.healthCheck()) {
-            consecutiveFailedHealthCheck++;
-            if (consecutiveFailedHealthCheck > 5) {
-              LOG.warn("Failed 5 times to connect to data store, shut down EntityService...");
-              System.exit(2);
-            }
-          } else {
-            consecutiveFailedHealthCheck = 0;
-          }
-        },
-        60,
-        60,
-        TimeUnit.SECONDS);
-  }
-
-  @Override
-  protected void doStart() {
-    LOG.info("Starting Entity Data Service");
-    try {
-      server.start();
-      server.awaitTermination();
-    } catch (IOException e) {
-      LOG.error("Fail to start the server.");
-      throw new RuntimeException(e);
-    } catch (InterruptedException ie) {
-      Thread.currentThread().interrupt();
-      throw new RuntimeException(ie);
-    }
-  }
-
-  @Override
-  protected void doStop() {
-    LOG.info("Shutting down service: {}", serviceName);
-    while (!server.isShutdown()) {
-      server.shutdown();
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException ignore) {
-      }
-    }
-  }
-
-  @Override
-  public boolean healthCheck() {
-    return true;
-  }
-
-  @Override
-  public String getServiceName() {
-    return serviceName;
+  private ScheduledFuture<?> startReportingDataStoreHealth() {
+    return Executors.newSingleThreadScheduledExecutor()
+        .scheduleAtFixedRate(
+            entityServiceFactory::checkAndReportDataStoreHealth, 10, 60, TimeUnit.SECONDS);
   }
 }
