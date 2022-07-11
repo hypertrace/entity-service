@@ -72,7 +72,3 @@ message DeleteEntitiesRequest {
     Filter filter = 2;
   }
 }
-
-message StringList {
-  repeated string ids = 1;
-}

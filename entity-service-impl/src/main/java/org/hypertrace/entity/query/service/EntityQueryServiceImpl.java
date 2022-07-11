@@ -91,7 +91,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceImpl.class);
   private static final Printer PRINTER = DocStoreJsonFormat.printer().includingDefaultValueFields();
-  private static final String ENTITY_ID_ATTRIBUTE_ID = "API.id";
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final String QUERY_AGGREGATION_ENABLED_CONFIG =
@@ -116,7 +115,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final int CHUNK_SIZE;
   private final Injector injector;
   private final boolean queryAggregationEnabled;
-  private final Integer maxEntitiesToDelete;
+  private final int maxEntitiesToDelete;
 
   public EntityQueryServiceImpl(
       Datastore datastore, Config config, GrpcChannelRegistry channelRegistry) {
@@ -559,66 +558,59 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   public void deleteEntities(
       DeleteEntitiesRequest request, StreamObserver<DeleteEntitiesResponse> responseObserver) {
     RequestContext requestContext = RequestContext.CURRENT.get();
-    if (validateDeleteEntitiesRequest(request, requestContext)) {
-      responseObserver.onError(new ServiceException("Invalid request provided"));
-      return;
+    try {
+      validateDeleteEntitiesRequest(request, requestContext);
+    } catch (Exception ex) {
+      responseObserver.onError(ex);
     }
 
     List<String> entityIds = getEntityIdsToDelete(requestContext, request);
     if (entityIds.size() == 0) {
-      LOG.info("{}. No entities found to delete", request);
+      LOG.debug("{}. No entities found to delete", request);
       responseObserver.onNext(DeleteEntitiesResponse.newBuilder().build());
       responseObserver.onCompleted();
       return;
     }
 
     if (entityIds.size() > maxEntitiesToDelete) {
-      LOG.info(
+      LOG.warn(
           "{}. Number of ids to delete exceeds the maximum limit: Entity Ids limit exceeded",
           request);
       responseObserver.onError(new RuntimeException("Entity Ids limit exceeded"));
       return;
     }
 
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Deleting entity of type: {} and ids: {}", request.getEntityType(), entityIds);
+    LOG.debug("Deleting entity of type: {} and ids: {}", request.getEntityType(), entityIds);
+    try {
+      Optional<String> tenantId = requestContext.getTenantId();
+      this.entitiesCollection.delete(
+          DocStoreConverter.transform(tenantId.orElseThrow(), request.getEntityType(), entityIds));
+      responseObserver.onNext(
+          DeleteEntitiesResponse.newBuilder().addAllEntityIds(entityIds).build());
+      responseObserver.onCompleted();
+    } catch (Exception ex) {
+      responseObserver.onError(ex);
     }
-
-    Optional<String> tenantId = requestContext.getTenantId();
-    this.entitiesCollection.delete(
-        DocStoreConverter.transform(tenantId.get(), request.getEntityType(), entityIds));
-    responseObserver.onNext(DeleteEntitiesResponse.newBuilder().addAllEntityIds(entityIds).build());
-    responseObserver.onCompleted();
   }
 
   private List<String> getEntityIdsToDelete(
       RequestContext requestContext, DeleteEntitiesRequest request) {
-    List<Expression> selections =
-        List.of(
-            Expression.newBuilder()
-                .setColumnIdentifier(
-                    ColumnIdentifier.newBuilder().setColumnName(ENTITY_ID_ATTRIBUTE_ID).build())
-                .build());
+    List<String> docStoreSelections = List.of(EntityServiceConstants.ENTITY_ID);
     EntityQueryRequest entityQueryRequest =
         EntityQueryRequest.newBuilder()
             .setEntityType(request.getEntityType())
             .setFilter(request.getFilter())
             .build();
     Query query = entityQueryConverter.convertToEDSQuery(requestContext, entityQueryRequest);
-    List<String> docStoreSelections =
-        entityQueryConverter.convertSelectionsToDocStoreSelections(requestContext, selections);
     CloseableIterator<Document> documentIterator =
         entitiesCollection.search(
             DocStoreConverter.transform(
-                requestContext.getTenantId().get(), query, docStoreSelections));
+                requestContext.getTenantId().orElseThrow(), query, docStoreSelections));
     List<String> entityIds = new ArrayList<>();
     while (documentIterator.hasNext()) {
       Optional<Entity> entity =
           DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
-      if (entity.isPresent()) {
-        Row row = convertToEntityQueryResult(requestContext, entity.get(), selections);
-        entityIds.add(row.getColumn(0).getString());
-      }
+      entity.ifPresent(value -> entityIds.add(value.getEntityId()));
     }
     return entityIds;
   }
@@ -732,18 +724,18 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                     EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {}));
   }
 
-  private boolean validateDeleteEntitiesRequest(
+  private void validateDeleteEntitiesRequest(
       DeleteEntitiesRequest request, RequestContext requestContext) {
     Optional<String> tenantId = requestContext.getTenantId();
     if (tenantId.isEmpty()) {
       LOG.error("{}. Invalid deleteEntities request: Tenant id is not provided", request);
-      return true;
+      throw new IllegalArgumentException(
+          "Invalid deleteEntities request: Tenant id is not provided");
     }
 
-    if (StringUtils.isEmpty(request.getEntityType())) {
+    if (request.getEntityType().isEmpty()) {
       LOG.error("{}. Invalid deleteEntities request: Entity Type is empty", request);
-      return true;
+      throw new IllegalArgumentException(" Invalid deleteEntities request: Entity Type is empty");
     }
-    return false;
   }
 }
