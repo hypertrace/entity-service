@@ -17,6 +17,7 @@ import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
 import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -562,6 +563,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       validateDeleteEntitiesRequest(request, requestContext);
     } catch (Exception ex) {
       responseObserver.onError(ex);
+      return;
     }
 
     List<String> entityIds = getEntityIdsToDelete(requestContext, request);
@@ -729,13 +731,16 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     Optional<String> tenantId = requestContext.getTenantId();
     if (tenantId.isEmpty()) {
       LOG.error("{}. Invalid deleteEntities request: Tenant id is not provided", request);
-      throw new IllegalArgumentException(
-          "Invalid deleteEntities request: Tenant id is not provided");
+      throw Status.INVALID_ARGUMENT
+          .withDescription("Invalid deleteEntities request: Tenant id is not provided")
+          .asRuntimeException();
     }
 
     if (request.getEntityType().isEmpty()) {
       LOG.error("{}. Invalid deleteEntities request: Entity Type is empty", request);
-      throw new IllegalArgumentException(" Invalid deleteEntities request: Entity Type is empty");
+      throw Status.INVALID_ARGUMENT
+          .withDescription("Invalid deleteEntities request: Entity Type is empty")
+          .asRuntimeException();
     }
   }
 }
