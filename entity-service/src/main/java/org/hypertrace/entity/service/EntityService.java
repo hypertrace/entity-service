@@ -1,41 +1,36 @@
 package org.hypertrace.entity.service;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import static java.time.Duration.ofMinutes;
+import static java.time.Duration.ofSeconds;
+
+import java.util.List;
 import org.hypertrace.core.serviceframework.config.ConfigClient;
-import org.hypertrace.core.serviceframework.grpc.GrpcPlatformServiceFactory;
+import org.hypertrace.core.serviceframework.grpc.GrpcPlatformServerDefinition;
+import org.hypertrace.core.serviceframework.grpc.PlatformPeriodicTaskDefinition;
 import org.hypertrace.core.serviceframework.grpc.StandAloneGrpcPlatformServiceContainer;
 
 public class EntityService extends StandAloneGrpcPlatformServiceContainer {
 
   private final EntityServiceFactory entityServiceFactory = new EntityServiceFactory();
-  private ScheduledFuture<?> dataStoreReportingFuture;
-
-  @Override
-  protected GrpcPlatformServiceFactory getServiceFactory() {
-    return entityServiceFactory;
-  }
-
-  @Override
-  protected void doStart() {
-    this.dataStoreReportingFuture = this.startReportingDataStoreHealth();
-    super.doStart();
-  }
-
-  @Override
-  protected void doStop() {
-    this.dataStoreReportingFuture.cancel(false);
-    super.doStop();
-  }
 
   public EntityService(ConfigClient configClient) {
     super(configClient);
+    this.registerManagedPeriodicTask(
+        PlatformPeriodicTaskDefinition.builder()
+            .name("Data Store health check")
+            .runnable(this.entityServiceFactory::checkAndReportDataStoreHealth)
+            .initialDelay(ofSeconds(10))
+            .period(ofMinutes(1))
+            .build());
   }
 
-  private ScheduledFuture<?> startReportingDataStoreHealth() {
-    return Executors.newSingleThreadScheduledExecutor()
-        .scheduleAtFixedRate(
-            entityServiceFactory::checkAndReportDataStoreHealth, 10, 60, TimeUnit.SECONDS);
+  @Override
+  protected List<GrpcPlatformServerDefinition> getServerDefinitions() {
+    return List.of(
+        GrpcPlatformServerDefinition.builder()
+            .name(this.getServiceName())
+            .port(this.getServicePort())
+            .serviceFactory(this.entityServiceFactory)
+            .build());
   }
 }
