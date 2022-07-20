@@ -1404,6 +1404,7 @@ public class EntityQueryServiceTest {
     EntityQueryRequest entityQueryRequest =
         EntityQueryRequest.newBuilder()
             .setEntityType(EntityType.API.name())
+            .addSelection(createExpression(API_DISCOVERY_STATE_ATTR))
             .build();
 
     Iterator<ResultSetChunk> resultSetChunkIterator =
@@ -1424,6 +1425,7 @@ public class EntityQueryServiceTest {
     }
 
     assertEquals(1, values.size());
+    assertEquals("DISCOVERED", values.get(0));
   }
 
 
