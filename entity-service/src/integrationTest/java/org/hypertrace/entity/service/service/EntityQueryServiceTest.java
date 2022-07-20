@@ -1428,7 +1428,6 @@ public class EntityQueryServiceTest {
     assertEquals("DISCOVERED", values.get(0));
   }
 
-
   @Test
   public void testBulkArrayValueUpdateWithLabels() {
     Entity.Builder apiEntityBuilder1 =

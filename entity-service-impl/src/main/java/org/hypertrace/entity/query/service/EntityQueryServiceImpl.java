@@ -633,8 +633,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                             .build())
                     .build())
             .build();
-    try (CloseableIterator<Document> documentIterator = searchDocuments(requestContext,
-        entityQueryRequest)) {
+    try (CloseableIterator<Document> documentIterator =
+        searchDocuments(requestContext, entityQueryRequest)) {
       final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
       ResultSetMetadata resultSetMetadata =
           this.buildMetadataForSelections(entityQueryRequest.getSelectionList());
@@ -746,30 +746,26 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   private AliasProvider<ColumnIdentifier> getIdentifierAliasProvider() {
     return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {
-        }));
+        com.google.inject.Key.get(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {}));
   }
 
   private AliasProvider<Function> getAggregateExpressionAliasProvider() {
     return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<AliasProvider<Function>>() {
-        }));
+        com.google.inject.Key.get(new TypeLiteral<AliasProvider<Function>>() {}));
   }
 
   private Converter<List<Expression>, Selection> getSelectionConverter() {
     return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<Converter<List<Expression>, Selection>>() {
-        }));
+        com.google.inject.Key.get(new TypeLiteral<Converter<List<Expression>, Selection>>() {}));
   }
 
   private Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-  getQueryConverter() {
+      getQueryConverter() {
     return injector.getInstance(
         com.google.inject.Key.get(
             new TypeLiteral<
                 Converter<
-                    EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {
-            }));
+                    EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {}));
   }
 
   private void validateDeleteEntitiesRequest(
