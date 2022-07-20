@@ -1346,6 +1346,88 @@ public class EntityQueryServiceTest {
   }
 
   @Test
+  public void testDeleteEntities() {
+    Entity.Builder apiEntityBuilder1 = createApiEntity(SERVICE_ID, "api1", API_TYPE);
+    apiEntityBuilder1
+        .putAttributes(
+            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
+        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+    entityDataServiceClient.upsert(apiEntityBuilder1.build());
+
+    Entity.Builder apiEntityBuilder2 = createApiEntity(SERVICE_ID, "api2", API_TYPE);
+    apiEntityBuilder2
+        .putAttributes(
+            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
+        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+    entityDataServiceClient.upsert(apiEntityBuilder2.build());
+
+    Entity.Builder apiEntityBuilder3 = createApiEntity(SERVICE_ID, "api3", API_TYPE);
+    apiEntityBuilder3
+        .putAttributes(
+            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
+        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+    entityDataServiceClient.upsert(apiEntityBuilder3.build());
+
+    DeleteEntitiesResponse response =
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            HEADERS,
+            () ->
+                entityQueryServiceClient.deleteEntities(
+                    DeleteEntitiesRequest.newBuilder()
+                        .setEntityType(EntityType.API.name())
+                        .setFilter(
+                            Filter.newBuilder()
+                                .setLhs(
+                                    Expression.newBuilder()
+                                        .setColumnIdentifier(
+                                            ColumnIdentifier.newBuilder()
+                                                .setColumnName(API_DISCOVERY_STATE_ATTR)
+                                                .build())
+                                        .build())
+                                .setOperator(Operator.EQ)
+                                .setRhs(
+                                    Expression.newBuilder()
+                                        .setLiteral(
+                                            LiteralConstant.newBuilder()
+                                                .setValue(
+                                                    org.hypertrace.entity.query.service.v1.Value
+                                                        .newBuilder()
+                                                        .setString("UNDER_DISCOVERY")
+                                                        .build())
+                                                .build())
+                                        .build())
+                                .build())
+                        .build()));
+
+    assertEquals(2, response.getEntityIdsCount());
+
+    EntityQueryRequest entityQueryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(EntityType.API.name())
+            .build();
+
+    Iterator<ResultSetChunk> resultSetChunkIterator =
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            HEADERS, () -> entityQueryServiceClient.execute(entityQueryRequest));
+
+    List<String> values = new ArrayList<>();
+
+    while (resultSetChunkIterator.hasNext()) {
+      ResultSetChunk chunk = resultSetChunkIterator.next();
+
+      for (Row row : chunk.getRowList()) {
+        for (int i = 0; i < row.getColumnCount(); i++) {
+          String value = row.getColumnList().get(i).getString();
+          values.add(value);
+        }
+      }
+    }
+
+    assertEquals(1, values.size());
+  }
+
+
+  @Test
   public void testBulkArrayValueUpdateWithLabels() {
     Entity.Builder apiEntityBuilder1 =
         Entity.newBuilder()
@@ -1468,63 +1550,6 @@ public class EntityQueryServiceTest {
               HEADERS, () -> entityQueryServiceClient.total(totalEntitiesRequest));
 
       assertEquals(2, response.getTotal());
-    }
-
-    @Test
-    public void testDeleteEntities() {
-      Entity.Builder apiEntityBuilder1 = createApiEntity(SERVICE_ID, "api1", API_TYPE);
-      apiEntityBuilder1
-          .putAttributes(
-              apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
-          .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
-      entityDataServiceClient.upsert(apiEntityBuilder1.build());
-
-      Entity.Builder apiEntityBuilder2 = createApiEntity(SERVICE_ID, "api2", API_TYPE);
-      apiEntityBuilder2
-          .putAttributes(
-              apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
-          .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
-      entityDataServiceClient.upsert(apiEntityBuilder2.build());
-
-      Entity.Builder apiEntityBuilder3 = createApiEntity(SERVICE_ID, "api3", API_TYPE);
-      apiEntityBuilder2
-          .putAttributes(
-              apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
-          .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
-      entityDataServiceClient.upsert(apiEntityBuilder3.build());
-
-      DeleteEntitiesResponse response =
-          GrpcClientRequestContextUtil.executeWithHeadersContext(
-              HEADERS,
-              () ->
-                  entityQueryServiceClient.deleteEntities(
-                      DeleteEntitiesRequest.newBuilder()
-                          .setEntityType(EntityType.API.name())
-                          .setFilter(
-                              Filter.newBuilder()
-                                  .setLhs(
-                                      Expression.newBuilder()
-                                          .setColumnIdentifier(
-                                              ColumnIdentifier.newBuilder()
-                                                  .setColumnName(API_DISCOVERY_STATE_ATTR)
-                                                  .build())
-                                          .build())
-                                  .setOperator(Operator.EQ)
-                                  .setRhs(
-                                      Expression.newBuilder()
-                                          .setLiteral(
-                                              LiteralConstant.newBuilder()
-                                                  .setValue(
-                                                      org.hypertrace.entity.query.service.v1.Value
-                                                          .newBuilder()
-                                                          .setString("UNDER_DISCOVERY")
-                                                          .build())
-                                                  .build())
-                                          .build())
-                                  .build())
-                          .build()));
-
-      assertEquals(2, response.getEntityIdsCount());
     }
 
     @Test

@@ -19,6 +19,7 @@ import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import org.hypertrace.core.documentstore.BulkArrayValueUpdateRequest;
+import org.hypertrace.core.documentstore.CloseableIterator;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
@@ -157,71 +159,63 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
-    final Iterator<Document> documentIterator;
-    try {
-      documentIterator = searchDocuments(requestContext, request);
-    } catch (final Exception e) {
-      responseObserver.onError(new ServiceException(e));
-      return;
-    }
-
-    final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
-    ResultSetMetadata resultSetMetadata;
-    try {
+    try (CloseableIterator<Document> documentIterator = searchDocuments(requestContext, request)) {
+      final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
+      ResultSetMetadata resultSetMetadata;
       resultSetMetadata = this.buildMetadataForSelections(request.getSelectionList());
-    } catch (final ConversionException e) {
-      responseObserver.onError(new ServiceException(e));
-      return;
-    }
 
-    if (!documentIterator.hasNext()) {
-      ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
-      resultBuilder.setResultSetMetadata(resultSetMetadata);
-      resultBuilder.setIsLastChunk(true);
-      resultBuilder.setChunkId(0);
-      responseObserver.onNext(resultBuilder.build());
-      responseObserver.onCompleted();
-      return;
-    }
-
-    boolean isNewChunk = true;
-    int chunkId = 0, rowCount = 0;
-    ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
-    while (documentIterator.hasNext()) {
-      // Set metadata for new chunk
-      if (isNewChunk) {
+      if (!documentIterator.hasNext()) {
+        ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
         resultBuilder.setResultSetMetadata(resultSetMetadata);
-        isNewChunk = false;
-      }
-
-      try {
-        Optional<Row> row =
-            convertToRow(
-                requestContext,
-                documentIterator.next(),
-                resultSetMetadata,
-                rowConverter,
-                request.getSelectionList());
-        if (row.isPresent()) {
-          resultBuilder.addRow(row.get());
-          rowCount++;
-        }
-      } catch (final Exception e) {
-        responseObserver.onError(new ServiceException(e));
+        resultBuilder.setIsLastChunk(true);
+        resultBuilder.setChunkId(0);
+        responseObserver.onNext(resultBuilder.build());
+        responseObserver.onCompleted();
         return;
       }
 
-      // current chunk is complete
-      if (rowCount >= CHUNK_SIZE || !documentIterator.hasNext()) {
-        resultBuilder.setChunkId(chunkId++);
-        resultBuilder.setIsLastChunk(!documentIterator.hasNext());
-        responseObserver.onNext(resultBuilder.build());
-        resultBuilder = ResultSetChunk.newBuilder();
-        isNewChunk = true;
-        rowCount = 0;
+      boolean isNewChunk = true;
+      int chunkId = 0, rowCount = 0;
+      ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+      while (documentIterator.hasNext()) {
+        // Set metadata for new chunk
+        if (isNewChunk) {
+          resultBuilder.setResultSetMetadata(resultSetMetadata);
+          isNewChunk = false;
+        }
+
+        try {
+          Optional<Row> row =
+              convertToRow(
+                  requestContext,
+                  documentIterator.next(),
+                  resultSetMetadata,
+                  rowConverter,
+                  request.getSelectionList());
+          if (row.isPresent()) {
+            resultBuilder.addRow(row.get());
+            rowCount++;
+          }
+        } catch (final Exception e) {
+          responseObserver.onError(new ServiceException(e));
+          return;
+        }
+
+        // current chunk is complete
+        if (rowCount >= CHUNK_SIZE || !documentIterator.hasNext()) {
+          resultBuilder.setChunkId(chunkId++);
+          resultBuilder.setIsLastChunk(!documentIterator.hasNext());
+          responseObserver.onNext(resultBuilder.build());
+          resultBuilder = ResultSetChunk.newBuilder();
+          isNewChunk = true;
+          rowCount = 0;
+        }
       }
+      responseObserver.onCompleted();
+    } catch (Exception ex) {
+      LOG.error("Error while executing entity query request ", ex);
+      responseObserver.onError(new ServiceException(ex));
     }
-    responseObserver.onCompleted();
   }
 
   private Optional<Row> convertToRow(
@@ -246,9 +240,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return Optional.empty();
   }
 
-  private Iterator<Document> searchDocuments(
+  private CloseableIterator<Document> searchDocuments(
       RequestContext requestContext, EntityQueryRequest request) throws ConversionException {
-    final Iterator<Document> documentIterator;
+    final CloseableIterator<Document> documentIterator;
     if (queryAggregationEnabled) {
       final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
           queryConverter = getQueryConverter();
@@ -622,25 +616,25 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   }
 
   private List<String> getEntityIdsToDelete(
-      RequestContext requestContext, DeleteEntitiesRequest request) {
-    try {
-      EntityQueryRequest entityQueryRequest =
-          EntityQueryRequest.newBuilder()
-              .setEntityType(request.getEntityType())
-              .setFilter(request.getFilter())
-              .setLimit(maxEntitiesToDelete + 1)
-              .addSelection(
-                  Expression.newBuilder()
-                      .setColumnIdentifier(
-                          ColumnIdentifier.newBuilder()
-                              .setColumnName(
-                                  this.entityAttributeMapping
-                                      .getIdentifierAttributeId(request.getEntityType())
-                                      .orElseThrow())
-                              .build())
-                      .build())
-              .build();
-      Iterator<Document> documentIterator = searchDocuments(requestContext, entityQueryRequest);
+      RequestContext requestContext, DeleteEntitiesRequest request) throws IOException {
+    EntityQueryRequest entityQueryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(request.getEntityType())
+            .setFilter(request.getFilter())
+            .setLimit(maxEntitiesToDelete + 1)
+            .addSelection(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder()
+                            .setColumnName(
+                                this.entityAttributeMapping
+                                    .getIdentifierAttributeId(request.getEntityType())
+                                    .orElseThrow())
+                            .build())
+                    .build())
+            .build();
+    try (CloseableIterator<Document> documentIterator = searchDocuments(requestContext,
+        entityQueryRequest)) {
       final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
       ResultSetMetadata resultSetMetadata =
           this.buildMetadataForSelections(entityQueryRequest.getSelectionList());
@@ -752,26 +746,30 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   private AliasProvider<ColumnIdentifier> getIdentifierAliasProvider() {
     return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {}));
+        com.google.inject.Key.get(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {
+        }));
   }
 
   private AliasProvider<Function> getAggregateExpressionAliasProvider() {
     return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<AliasProvider<Function>>() {}));
+        com.google.inject.Key.get(new TypeLiteral<AliasProvider<Function>>() {
+        }));
   }
 
   private Converter<List<Expression>, Selection> getSelectionConverter() {
     return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<Converter<List<Expression>, Selection>>() {}));
+        com.google.inject.Key.get(new TypeLiteral<Converter<List<Expression>, Selection>>() {
+        }));
   }
 
   private Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-      getQueryConverter() {
+  getQueryConverter() {
     return injector.getInstance(
         com.google.inject.Key.get(
             new TypeLiteral<
                 Converter<
-                    EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {}));
+                    EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {
+            }));
   }
 
   private void validateDeleteEntitiesRequest(
