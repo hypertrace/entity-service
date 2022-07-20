@@ -1509,7 +1509,7 @@ public class EntityQueryServiceTest {
                                                   .setColumnName(API_DISCOVERY_STATE_ATTR)
                                                   .build())
                                           .build())
-                                  .setOperator(Operator.IN)
+                                  .setOperator(Operator.EQ)
                                   .setRhs(
                                       Expression.newBuilder()
                                           .setLiteral(

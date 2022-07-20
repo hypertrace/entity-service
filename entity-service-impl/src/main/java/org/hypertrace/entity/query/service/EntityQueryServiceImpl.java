@@ -195,15 +195,15 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       }
 
       try {
-        Row row =
+        Optional<Row> row =
             convertToRow(
                 requestContext,
                 documentIterator.next(),
                 resultSetMetadata,
                 rowConverter,
                 request.getSelectionList());
-        if (row != null) {
-          resultBuilder.addRow(row);
+        if (row.isPresent()) {
+          resultBuilder.addRow(row.get());
           rowCount++;
         }
       } catch (final Exception e) {
@@ -224,7 +224,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     responseObserver.onCompleted();
   }
 
-  private Row convertToRow(
+  private Optional<Row> convertToRow(
       RequestContext requestContext,
       Document document,
       ResultSetMetadata resultSetMetadata,
@@ -234,16 +234,16 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     final Row row;
     if (queryAggregationEnabled) {
       row = rowConverter.convertToRow(document, resultSetMetadata);
-      return row;
+      return Optional.of(row);
     } else {
       Optional<Entity> entity = DOCUMENT_PARSER.parseOrLog(document, Entity.newBuilder());
 
       if (entity.isPresent()) {
         row = convertToEntityQueryResult(requestContext, entity.get(), selectionList);
-        return row;
+        return Optional.of(row);
       }
     }
-    return null;
+    return Optional.empty();
   }
 
   private Iterator<Document> searchDocuments(
@@ -646,18 +646,14 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           this.buildMetadataForSelections(entityQueryRequest.getSelectionList());
       List<String> entityIds = new ArrayList<>();
       while (documentIterator.hasNext()) {
-        Row row =
+        Optional<Row> row =
             convertToRow(
                 requestContext,
                 documentIterator.next(),
                 resultSetMetadata,
                 rowConverter,
                 entityQueryRequest.getSelectionList());
-        if (row == null || row.getColumnCount() != 1) {
-          LOG.error("Not able to convert document to row {}", row);
-          continue;
-        }
-        entityIds.add(row.getColumn(0).getString());
+        row.ifPresent(value -> entityIds.add(value.getColumn(0).getString()));
       }
 
       return entityIds;
