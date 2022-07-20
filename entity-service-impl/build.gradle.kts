@@ -6,7 +6,7 @@ plugins {
 
 dependencies {
   api(project(":entity-service-api"))
-  api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.36")
+  api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.37")
 
   annotationProcessor("org.projectlombok:lombok:1.18.22")
   compileOnly("org.projectlombok:lombok:1.18.18")
