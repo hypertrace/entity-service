@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import org.hypertrace.core.documentstore.BulkArrayValueUpdateRequest;
-import org.hypertrace.core.documentstore.CloseableIterator;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
@@ -159,40 +158,15 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     final Iterator<Document> documentIterator;
-
-    if (queryAggregationEnabled) {
-      final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-          queryConverter = getQueryConverter();
-      final org.hypertrace.core.documentstore.query.Query query;
-
-      try {
-        query = queryConverter.convert(request, requestContext);
-        documentIterator = entitiesCollection.aggregate(query);
-      } catch (final Exception e) {
-        responseObserver.onError(new ServiceException(e));
-        return;
-      }
-    } else {
-      // TODO: Optimize this later. For now converting to EDS Query and then again to DocStore
-      // Query.
-      Query query = entityQueryConverter.convertToEDSQuery(requestContext, request);
-      /**
-       * {@link EntityQueryRequest} selections need to treated differently, since they don't
-       * transform one to one to {@link org.hypertrace.entity.data.service.v1.EntityDataRequest}
-       * selections
-       */
-      List<String> docStoreSelections =
-          entityQueryConverter.convertSelectionsToDocStoreSelections(
-              requestContext, request.getSelectionList());
-      documentIterator =
-          entitiesCollection.search(
-              DocStoreConverter.transform(tenantId.get(), query, docStoreSelections));
+    try {
+      documentIterator = searchDocuments(requestContext, request);
+    } catch (final Exception e) {
+      responseObserver.onError(new ServiceException(e));
+      return;
     }
 
     final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
-
     ResultSetMetadata resultSetMetadata;
-
     try {
       resultSetMetadata = this.buildMetadataForSelections(request.getSelectionList());
     } catch (final ConversionException e) {
@@ -209,6 +183,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       responseObserver.onCompleted();
       return;
     }
+
     boolean isNewChunk = true;
     int chunkId = 0, rowCount = 0;
     ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
@@ -220,24 +195,17 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       }
 
       try {
-        final Row row;
-        if (queryAggregationEnabled) {
-          row = rowConverter.convertToRow(documentIterator.next(), resultSetMetadata);
+        Row row =
+            convertToRow(
+                requestContext,
+                documentIterator.next(),
+                resultSetMetadata,
+                rowConverter,
+                request.getSelectionList());
+        if (row != null) {
           resultBuilder.addRow(row);
           rowCount++;
-        } else {
-          Optional<Entity> entity =
-              DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
-
-          if (entity.isPresent()) {
-            row =
-                convertToEntityQueryResult(
-                    requestContext, entity.get(), request.getSelectionList());
-            resultBuilder.addRow(row);
-            rowCount++;
-          }
         }
-
       } catch (final Exception e) {
         responseObserver.onError(new ServiceException(e));
         return;
@@ -254,6 +222,58 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       }
     }
     responseObserver.onCompleted();
+  }
+
+  private Row convertToRow(
+      RequestContext requestContext,
+      Document document,
+      ResultSetMetadata resultSetMetadata,
+      DocumentConverter rowConverter,
+      List<Expression> selectionList)
+      throws ConversionException {
+    final Row row;
+    if (queryAggregationEnabled) {
+      row = rowConverter.convertToRow(document, resultSetMetadata);
+      return row;
+    } else {
+      Optional<Entity> entity = DOCUMENT_PARSER.parseOrLog(document, Entity.newBuilder());
+
+      if (entity.isPresent()) {
+        row = convertToEntityQueryResult(requestContext, entity.get(), selectionList);
+        return row;
+      }
+    }
+    return null;
+  }
+
+  private Iterator<Document> searchDocuments(
+      RequestContext requestContext, EntityQueryRequest request) throws ConversionException {
+    final Iterator<Document> documentIterator;
+    if (queryAggregationEnabled) {
+      final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
+          queryConverter = getQueryConverter();
+      final org.hypertrace.core.documentstore.query.Query query;
+
+      query = queryConverter.convert(request, requestContext);
+      documentIterator = entitiesCollection.aggregate(query);
+    } else {
+      // TODO: Optimize this later. For now converting to EDS Query and then again to DocStore
+      // Query.
+      Query query = entityQueryConverter.convertToEDSQuery(requestContext, request);
+      /**
+       * {@link EntityQueryRequest} selections need to treated differently, since they don't
+       * transform one to one to {@link org.hypertrace.entity.data.service.v1.EntityDataRequest}
+       * selections
+       */
+      List<String> docStoreSelections =
+          entityQueryConverter.convertSelectionsToDocStoreSelections(
+              requestContext, request.getSelectionList());
+      documentIterator =
+          entitiesCollection.search(
+              DocStoreConverter.transform(
+                  requestContext.getTenantId().orElseThrow(), query, docStoreSelections));
+    }
+    return documentIterator;
   }
 
   private ResultSetChunk convertDocumentsToResultSetChunk(
@@ -559,14 +579,15 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   public void deleteEntities(
       DeleteEntitiesRequest request, StreamObserver<DeleteEntitiesResponse> responseObserver) {
     RequestContext requestContext = RequestContext.CURRENT.get();
+    List<String> entityIds;
     try {
       validateDeleteEntitiesRequest(request, requestContext);
+      entityIds = getEntityIdsToDelete(requestContext, request);
     } catch (Exception ex) {
       responseObserver.onError(ex);
       return;
     }
 
-    List<String> entityIds = getEntityIdsToDelete(requestContext, request);
     if (entityIds.size() == 0) {
       LOG.debug("{}. No entities found to delete", request);
       responseObserver.onNext(DeleteEntitiesResponse.newBuilder().build());
@@ -576,9 +597,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     if (entityIds.size() > maxEntitiesToDelete) {
       LOG.warn(
-          "{}. Number of ids to delete exceeds the maximum limit: Entity Ids limit exceeded",
+          "{}. Number of entity ids to delete exceeds the maximum limit: Entity Ids limit exceeded",
           request);
-      responseObserver.onError(new RuntimeException("Entity Ids limit exceeded"));
+      responseObserver.onError(
+          Status.FAILED_PRECONDITION
+              .withDescription("Number of entity ids to delete exceeds the maximum limit.")
+              .asRuntimeException());
       return;
     }
 
@@ -591,30 +615,58 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           DeleteEntitiesResponse.newBuilder().addAllEntityIds(entityIds).build());
       responseObserver.onCompleted();
     } catch (Exception ex) {
-      responseObserver.onError(ex);
+      LOG.error("Error while deleting entity ids {}", entityIds, ex);
+      responseObserver.onError(
+          Status.INTERNAL.withDescription("Error while deleting entity ids").asRuntimeException());
     }
   }
 
   private List<String> getEntityIdsToDelete(
       RequestContext requestContext, DeleteEntitiesRequest request) {
-    List<String> docStoreSelections = List.of(EntityServiceConstants.ENTITY_ID);
-    EntityQueryRequest entityQueryRequest =
-        EntityQueryRequest.newBuilder()
-            .setEntityType(request.getEntityType())
-            .setFilter(request.getFilter())
-            .build();
-    Query query = entityQueryConverter.convertToEDSQuery(requestContext, entityQueryRequest);
-    CloseableIterator<Document> documentIterator =
-        entitiesCollection.search(
-            DocStoreConverter.transform(
-                requestContext.getTenantId().orElseThrow(), query, docStoreSelections));
-    List<String> entityIds = new ArrayList<>();
-    while (documentIterator.hasNext()) {
-      Optional<Entity> entity =
-          DOCUMENT_PARSER.parseOrLog(documentIterator.next(), Entity.newBuilder());
-      entity.ifPresent(value -> entityIds.add(value.getEntityId()));
+    try {
+      EntityQueryRequest entityQueryRequest =
+          EntityQueryRequest.newBuilder()
+              .setEntityType(request.getEntityType())
+              .setFilter(request.getFilter())
+              .setLimit(maxEntitiesToDelete + 1)
+              .addSelection(
+                  Expression.newBuilder()
+                      .setColumnIdentifier(
+                          ColumnIdentifier.newBuilder()
+                              .setColumnName(
+                                  this.entityAttributeMapping
+                                      .getIdentifierAttributeId(request.getEntityType())
+                                      .orElseThrow())
+                              .build())
+                      .build())
+              .build();
+      Iterator<Document> documentIterator = searchDocuments(requestContext, entityQueryRequest);
+      final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
+      ResultSetMetadata resultSetMetadata =
+          this.buildMetadataForSelections(entityQueryRequest.getSelectionList());
+      List<String> entityIds = new ArrayList<>();
+      while (documentIterator.hasNext()) {
+        Row row =
+            convertToRow(
+                requestContext,
+                documentIterator.next(),
+                resultSetMetadata,
+                rowConverter,
+                entityQueryRequest.getSelectionList());
+        if (row == null || row.getColumnCount() != 1) {
+          LOG.error("Not able to convert document to row {}", row);
+          continue;
+        }
+        entityIds.add(row.getColumn(0).getString());
+      }
+
+      return entityIds;
+    } catch (Exception ex) {
+      LOG.error("Error while getting entity ids to delete", ex);
+      throw Status.INVALID_ARGUMENT
+          .withDescription("Error while getting entity ids to delete")
+          .asRuntimeException();
     }
-    return entityIds;
   }
 
   @Deprecated(

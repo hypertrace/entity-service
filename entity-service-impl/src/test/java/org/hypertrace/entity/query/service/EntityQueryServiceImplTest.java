@@ -619,6 +619,8 @@ public class EntityQueryServiceImplTest {
 
     when(mockEntitiesCollection.search(any()))
         .thenReturn(convertToCloseableIterator(docs.iterator()));
+    when(mockAttributeMapping.getIdentifierAttributeId(TEST_ENTITY_TYPE))
+        .thenReturn(Optional.of("API.id"));
 
     DeleteEntitiesRequest request =
         DeleteEntitiesRequest.newBuilder()

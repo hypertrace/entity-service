@@ -13,6 +13,7 @@ import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 
 public class EntityAttributeMapping {
+  private static final String ID_ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.idAttributeMap";
   private static final String ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.attributeMap";
   private static final String ATTRIBUTE_SERVICE_HOST = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT = "attribute.service.config.port";
@@ -21,6 +22,7 @@ public class EntityAttributeMapping {
 
   private final CachingAttributeClient attributeClient;
   private final Map<String, String> explicitDocStoreMappingsByAttributeId;
+  private final Map<String, String> idAttributeMap;
 
   EntityAttributeMapping(Config config, GrpcChannelRegistry channelRegistry) {
     this(
@@ -32,14 +34,20 @@ public class EntityAttributeMapping {
         config.getConfigList(ATTRIBUTE_MAP_CONFIG_PATH).stream()
             .collect(
                 toUnmodifiableMap(
-                    conf -> conf.getString("name"), conf -> conf.getString(SUB_DOC_PATH))));
+                    conf -> conf.getString("name"), conf -> conf.getString(SUB_DOC_PATH))),
+        config.getConfigList(ID_ATTRIBUTE_MAP_CONFIG_PATH).stream()
+            .collect(
+                toUnmodifiableMap(
+                    conf -> conf.getString("scope"), conf -> conf.getString("attribute"))));
   }
 
   EntityAttributeMapping(
       CachingAttributeClient attributeClient,
-      Map<String, String> explicitDocStoreMappingsByAttributeId) {
+      Map<String, String> explicitDocStoreMappingsByAttributeId,
+      Map<String, String> idAttributeMap) {
     this.attributeClient = attributeClient;
     this.explicitDocStoreMappingsByAttributeId = explicitDocStoreMappingsByAttributeId;
+    this.idAttributeMap = idAttributeMap;
   }
 
   /**
@@ -52,6 +60,10 @@ public class EntityAttributeMapping {
       RequestContext requestContext, String attributeId) {
     return Optional.ofNullable(this.explicitDocStoreMappingsByAttributeId.get(attributeId))
         .or(() -> this.calculateDocStorePathFromAttributeId(requestContext, attributeId));
+  }
+
+  public Optional<String> getIdentifierAttributeId(String entityType) {
+    return Optional.ofNullable(this.idAttributeMap.get(entityType));
   }
 
   public boolean isMultiValued(RequestContext requestContext, String attributeId) {
