@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
  * EntityDataService implementation with CRUD and query operations for entities on the doc store.
  */
 public class EntityDataServiceImpl extends EntityDataServiceImplBase {
+
   private static final Logger LOG = LoggerFactory.getLogger(EntityDataServiceImpl.class);
   private static final DocumentParser PARSER = new DocumentParser();
   private static final DocStoreJsonFormat.Printer PRINTER = DocStoreJsonFormat.printer();

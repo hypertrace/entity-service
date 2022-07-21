@@ -20,4 +20,6 @@ service EntityQueryService {
   }
   rpc bulkUpdateEntityArrayAttribute (BulkEntityArrayAttributeUpdateRequest) returns (BulkEntityArrayAttributeUpdateResponse) {
   }
+  rpc deleteEntities (DeleteEntitiesRequest) returns (DeleteEntitiesResponse) {
+  }
 }

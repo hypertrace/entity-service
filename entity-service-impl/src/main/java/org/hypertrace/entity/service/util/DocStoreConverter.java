@@ -53,6 +53,16 @@ public class DocStoreConverter {
     return new JSONDocument(json);
   }
 
+  public static org.hypertrace.core.documentstore.Filter transform(
+      @Nonnull String tenantId, @Nonnull String entityType, @Nonnull List<String> entityIds) {
+    List<Filter> filters = new ArrayList<>();
+    filters.add(getTenantIdEqFilter(tenantId));
+    filters.add(new Filter(Filter.Op.EQ, EntityServiceConstants.ENTITY_TYPE, entityType));
+
+    filters.add(new Filter(Filter.Op.IN, EntityServiceConstants.ENTITY_ID, entityIds));
+    return new Filter(Op.AND, null, null, filters.toArray(new Filter[] {}));
+  }
+
   public static org.hypertrace.core.documentstore.Query transform(
       @Nonnull String tenantId, @Nonnull Query query, List<String> selections) {
     org.hypertrace.core.documentstore.Query docStoreQuery =

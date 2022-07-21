@@ -8,6 +8,8 @@ import org.hypertrace.core.grpcutils.client.RequestContextClientCallCredsProvide
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
+import org.hypertrace.entity.query.service.v1.DeleteEntitiesRequest;
+import org.hypertrace.entity.query.service.v1.DeleteEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceBlockingStub;
@@ -53,5 +55,11 @@ public class EntityQueryServiceClient {
       BulkEntityUpdateRequest request, Map<String, String> headers) {
     return GrpcClientRequestContextUtil.executeWithHeadersContext(
         headers, () -> blockingStub.bulkUpdate(request));
+  }
+
+  public DeleteEntitiesResponse deleteEntities(
+      DeleteEntitiesRequest request, Map<String, String> headers) {
+    return GrpcClientRequestContextUtil.executeWithHeadersContext(
+        headers, () -> blockingStub.deleteEntities(request));
   }
 }

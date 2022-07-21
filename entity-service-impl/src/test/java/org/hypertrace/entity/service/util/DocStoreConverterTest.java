@@ -33,6 +33,19 @@ public class DocStoreConverterTest {
   private static final String ATTRIBUTES_LABELS_FIELD_NAME = "attributes.labels";
 
   @Test
+  public void testDeleteEntitiesRequestConversion() throws IOException {
+    org.hypertrace.core.documentstore.Filter filter =
+        DocStoreConverter.transform("tenantId", "API", List.of("id1"));
+    Assertions.assertEquals(3, filter.getChildFilters().length);
+    Assertions.assertEquals("tenantId", filter.getChildFilters()[0].getValue());
+    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[0].getOp());
+    Assertions.assertEquals("API", filter.getChildFilters()[1].getValue());
+    Assertions.assertEquals(Op.EQ, filter.getChildFilters()[1].getOp());
+    Assertions.assertEquals(List.of("id1"), filter.getChildFilters()[2].getValue());
+    Assertions.assertEquals(Op.IN, filter.getChildFilters()[2].getOp());
+  }
+
+  @Test
   public void testEntityQueryLimitOffsetConversion() {
     int limit = 2;
     int offset = 1;
@@ -833,7 +846,9 @@ public class DocStoreConverterTest {
 
     JSONDocument jsonDocument = DocStoreConverter.transform(testEntity);
     Assertions.assertEquals(
-        "{\"tenantId\":\"tenant1\",\"entityName\":\"myentity1\",\"identifyingAttributes\":{\"entity_id\":{\"value\":{\"string\":\"my-entity-id-1\"}}},\"attributes\":{\"timestamp\":{\"value\":{\"long\":1584055141072}}}}",
+        "{\"tenantId\":\"tenant1\",\"entityName\":\"myentity1\","
+            + "\"identifyingAttributes\":{\"entity_id\":{\"value\":{\"string\":\"my-entity-id-1"
+            + "\"}}},\"attributes\":{\"timestamp\":{\"value\":{\"long\":1584055141072}}}}",
         jsonDocument.toJson());
   }
 
