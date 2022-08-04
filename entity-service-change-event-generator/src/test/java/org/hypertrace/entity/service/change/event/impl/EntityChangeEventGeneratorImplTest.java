@@ -2,12 +2,16 @@ package org.hypertrace.entity.service.change.event.impl;
 
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -18,7 +22,9 @@ import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
 import org.hypertrace.entity.change.event.v1.EntityCreateEvent;
 import org.hypertrace.entity.change.event.v1.EntityDeleteEvent;
 import org.hypertrace.entity.change.event.v1.EntityUpdateEvent;
+import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
+import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.service.change.event.util.KeyUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,7 +50,11 @@ class EntityChangeEventGeneratorImplTest {
   void setup() {
     mockClock = mock(Clock.class);
     when(mockClock.millis()).thenReturn(CURRENT_TIME_MILLIS);
-    changeEventGenerator = new EntityChangeEventGeneratorImpl(eventProducer, mockClock);
+    changeEventGenerator =
+        new EntityChangeEventGeneratorImpl(
+            eventProducer,
+            Map.of(TEST_ENTITY_TYPE, List.of("skip_attribute", "skip_attribute_1")),
+            mockClock);
     requestContext = RequestContext.forTenantId(TEST_TENANT_ID);
   }
 
@@ -134,7 +144,179 @@ class EntityChangeEventGeneratorImplTest {
                 .build());
   }
 
+  @Test
+  void sendChangeNotification_withNewAddedAttributes() {
+    List<Entity> prevEntities =
+        createEntities(
+            1,
+            Map.of(
+                "attribute_key",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("value").build())
+                    .build(),
+                "skip_attribute",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("skip_value").build())
+                    .build()));
+    List<Entity> updatedEntities = new ArrayList<>();
+    updatedEntities.add(
+        prevEntities.get(0).toBuilder()
+            .putAttributes(
+                "attribute_key_1",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("value").build())
+                    .build())
+            .build());
+    changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
+    verify(eventProducer, times(1))
+        .send(
+            KeyUtil.getKey(updatedEntities.get(0)),
+            EntityChangeEventValue.newBuilder()
+                .setUpdateEvent(
+                    EntityUpdateEvent.newBuilder()
+                        .setPreviousEntity(prevEntities.get(0))
+                        .setLatestEntity(updatedEntities.get(0))
+                        .build())
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
+                .build());
+  }
+
+  @Test
+  void sendChangeNotification_withDeletedAttributes() {
+    List<Entity> prevEntities =
+        createEntities(
+            1,
+            Map.of(
+                "attribute_key",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("value").build())
+                    .build(),
+                "skip_attribute",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("skip_value").build())
+                    .build()));
+    List<Entity> updatedEntities = new ArrayList<>();
+    updatedEntities.add(prevEntities.get(0).toBuilder().removeAttributes("attribute_key").build());
+    changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
+    verify(eventProducer, times(1))
+        .send(
+            KeyUtil.getKey(updatedEntities.get(0)),
+            EntityChangeEventValue.newBuilder()
+                .setUpdateEvent(
+                    EntityUpdateEvent.newBuilder()
+                        .setPreviousEntity(prevEntities.get(0))
+                        .setLatestEntity(updatedEntities.get(0))
+                        .build())
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
+                .build());
+  }
+
+  @Test
+  void sendChangeNotification_withOnlySkipAttributes() {
+    List<Entity> prevEntities =
+        createEntities(
+            1,
+            Map.of(
+                "attribute_key",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("value").build())
+                    .build(),
+                "skip_attribute",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("skip_value").build())
+                    .build()));
+    // delete skip attributes only
+    Entity updatedEntity =
+        prevEntities.get(0).toBuilder().removeAttributes("skip_attribute").build();
+    changeEventGenerator.sendChangeNotification(
+        requestContext, prevEntities, List.of(updatedEntity));
+    verify(eventProducer, never())
+        .send(
+            KeyUtil.getKey(updatedEntity),
+            EntityChangeEventValue.newBuilder()
+                .setUpdateEvent(
+                    EntityUpdateEvent.newBuilder()
+                        .setPreviousEntity(prevEntities.get(0))
+                        .setLatestEntity(updatedEntity)
+                        .build())
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
+                .build());
+
+    // update skip attributes only
+    updatedEntity =
+        prevEntities.get(0).toBuilder()
+            .putAttributes(
+                "skip_attribute",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("skip_value").build())
+                    .build())
+            .build();
+    changeEventGenerator.sendChangeNotification(
+        requestContext, prevEntities, List.of(updatedEntity));
+    verify(eventProducer, never())
+        .send(
+            KeyUtil.getKey(updatedEntity),
+            EntityChangeEventValue.newBuilder()
+                .setUpdateEvent(
+                    EntityUpdateEvent.newBuilder()
+                        .setPreviousEntity(prevEntities.get(0))
+                        .setLatestEntity(updatedEntity)
+                        .build())
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
+                .build());
+
+    // add skip attributes only
+    updatedEntity =
+        prevEntities.get(0).toBuilder()
+            .putAttributes(
+                "skip_attribute_1",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("value").build())
+                    .build())
+            .build();
+    changeEventGenerator.sendChangeNotification(
+        requestContext, prevEntities, List.of(updatedEntity));
+    verify(eventProducer, never())
+        .send(
+            KeyUtil.getKey(updatedEntity),
+            EntityChangeEventValue.newBuilder()
+                .setUpdateEvent(
+                    EntityUpdateEvent.newBuilder()
+                        .setPreviousEntity(prevEntities.get(0))
+                        .setLatestEntity(updatedEntity)
+                        .build())
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
+                .build());
+
+    // update correct attributes
+    updatedEntity =
+        prevEntities.get(0).toBuilder()
+            .putAttributes(
+                "attribute_key",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("value1").build())
+                    .build())
+            .build();
+    changeEventGenerator.sendChangeNotification(
+        requestContext, prevEntities, List.of(updatedEntity));
+    verify(eventProducer, times(1))
+        .send(
+            KeyUtil.getKey(updatedEntity),
+            EntityChangeEventValue.newBuilder()
+                .setUpdateEvent(
+                    EntityUpdateEvent.newBuilder()
+                        .setPreviousEntity(prevEntities.get(0))
+                        .setLatestEntity(updatedEntity)
+                        .build())
+                .setEventTimeMillis(CURRENT_TIME_MILLIS)
+                .build());
+  }
+
   private List<Entity> createEntities(int count) {
+    return createEntities(count, new HashMap<>());
+  }
+
+  private List<Entity> createEntities(int count, Map<String, AttributeValue> attributeValueMap) {
     return IntStream.rangeClosed(1, count)
         .mapToObj(
             i ->
@@ -143,6 +325,7 @@ class EntityChangeEventGeneratorImplTest {
                     .setEntityType(TEST_ENTITY_TYPE)
                     .setEntityId(UUID.randomUUID().toString())
                     .setEntityName("Test entity " + i)
+                    .putAllAttributes(attributeValueMap)
                     .build())
         .collect(Collectors.toList());
   }

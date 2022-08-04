@@ -9,7 +9,6 @@ import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
 import java.time.Clock;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -31,9 +30,7 @@ import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.change.event.util.KeyUtil;
 
-/**
- * The interface Entity change event generator.
- */
+/** The interface Entity change event generator. */
 @Slf4j
 public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerator {
 
@@ -53,9 +50,12 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   EntityChangeEventGeneratorImpl(Config appConfig, Clock clock) {
     Config config = appConfig.getConfig(EVENT_STORE);
-    this.entityToAttributeChangeSkipMap = config.getConfigList(SKIP_ATTRIBUTES_CONFIG_PATH).stream()
-        .collect(Collectors.toUnmodifiableMap(conf -> conf.getString(SCOPE_PATH),
-            conf -> conf.getStringList(ATTRIBUTES_PATH)));
+    this.entityToAttributeChangeSkipMap =
+        config.getConfigList(SKIP_ATTRIBUTES_CONFIG_PATH).stream()
+            .collect(
+                Collectors.toUnmodifiableMap(
+                    conf -> conf.getString(SCOPE_PATH),
+                    conf -> conf.getStringList(ATTRIBUTES_PATH)));
     this.clock = clock;
     String storeType = config.getString(EVENT_STORE_TYPE_CONFIG);
     EventStore eventStore = EventStoreProvider.getEventStore(storeType, config);
@@ -69,10 +69,11 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   @VisibleForTesting
   EntityChangeEventGeneratorImpl(
       EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer,
+      Map<String, List<String>> entityToAttributeChangeSkipMap,
       Clock clock) {
     this.clock = clock;
     this.entityChangeEventProducer = entityChangeEventProducer;
-    this.entityToAttributeChangeSkipMap = new HashMap<>();
+    this.entityToAttributeChangeSkipMap = entityToAttributeChangeSkipMap;
   }
 
   @Override
@@ -145,9 +146,8 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   private void sendUpdateNotificationIfRequired(
       RequestContext requestContext, Entity prevEntity, Entity currEntity) {
     try {
-      MapDifference<String, AttributeValue> attributesDiff = Maps.difference(
-          prevEntity.getAttributesMap(), currEntity.getAttributesMap());
-      if (!shouldSendNotification(prevEntity.getEntityType(), attributesDiff)) {
+
+      if (!shouldSendNotification(prevEntity, currEntity)) {
         return;
       }
       Builder builder = EntityChangeEventValue.newBuilder();
@@ -168,34 +168,44 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     }
   }
 
-  private boolean shouldSendNotification(String entityType,
-      MapDifference<String, AttributeValue> attributesDiff) {
-    List<Entry<String, AttributeValue>> addedAttributes = attributesDiff
-        .entriesOnlyOnRight()
-        .entrySet().stream()
-        .filter(attributeKey -> !shouldSkipAttribute(entityType, attributeKey.getKey())).collect(
-            Collectors.toList());
+  private boolean shouldSendNotification(Entity prevEntity, Entity currEntity) {
+    if (prevEntity.getAttributesMap().isEmpty() && currEntity.getAttributesMap().isEmpty()) {
+      return true;
+    }
 
-    List<Entry<String, AttributeValue>> deletedAttributes = attributesDiff
-        .entriesOnlyOnLeft()
-        .entrySet().stream()
-        .filter(attributeKey -> !(this.entityToAttributeChangeSkipMap.get(entityType)
-            .contains(attributeKey.getKey()))).collect(
-            Collectors.toList());
+    MapDifference<String, AttributeValue> attributesDiff =
+        Maps.difference(prevEntity.getAttributesMap(), currEntity.getAttributesMap());
+    String entityType = prevEntity.getEntityType();
 
-    List<Entry<String, ValueDifference<AttributeValue>>> updatedAttributes = attributesDiff
-        .entriesDiffering()
-        .entrySet().stream()
-        .filter(attributeKey -> !(this.entityToAttributeChangeSkipMap.get(entityType)
-            .contains(attributeKey.getKey()))).collect(
-            Collectors.toList());
-    return addedAttributes.size() > 0 || deletedAttributes.size() > 0
+    List<Entry<String, AttributeValue>> addedAttributes =
+        attributesDiff.entriesOnlyOnRight().entrySet().stream()
+            .filter(attributeKey -> !shouldSkipAttribute(entityType, attributeKey.getKey()))
+            .collect(Collectors.toList());
+
+    List<Entry<String, AttributeValue>> deletedAttributes =
+        attributesDiff.entriesOnlyOnLeft().entrySet().stream()
+            .filter(
+                attributeKey ->
+                    !(this.entityToAttributeChangeSkipMap
+                        .get(entityType)
+                        .contains(attributeKey.getKey())))
+            .collect(Collectors.toList());
+
+    List<Entry<String, ValueDifference<AttributeValue>>> updatedAttributes =
+        attributesDiff.entriesDiffering().entrySet().stream()
+            .filter(
+                attributeKey ->
+                    !(this.entityToAttributeChangeSkipMap
+                        .get(entityType)
+                        .contains(attributeKey.getKey())))
+            .collect(Collectors.toList());
+    return addedAttributes.size() > 0
+        || deletedAttributes.size() > 0
         || updatedAttributes.size() > 0;
   }
 
   private boolean shouldSkipAttribute(String entityType, String attributeKey) {
-    return this.entityToAttributeChangeSkipMap.get(entityType)
-        .contains(attributeKey);
+    return this.entityToAttributeChangeSkipMap.get(entityType).contains(attributeKey);
   }
 
   private void sendDeleteNotification(RequestContext requestContext, Entity deletedEntity) {
