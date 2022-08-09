@@ -113,7 +113,14 @@ class EntityChangeEventGeneratorImplTest {
     List<Entity> prevEntities = createEntities(3);
     List<Entity> updatedEntities = createEntities(1);
     updatedEntities.add(prevEntities.get(0));
-    updatedEntities.add(prevEntities.get(1).toBuilder().setEntityName("Updated Entity").build());
+    updatedEntities.add(
+        prevEntities.get(1).toBuilder()
+            .putAttributes(
+                "attribute_key",
+                AttributeValue.newBuilder()
+                    .setValue(Value.newBuilder().setString("value").build())
+                    .build())
+            .build());
     changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
     verify(eventProducer, times(1))
         .send(

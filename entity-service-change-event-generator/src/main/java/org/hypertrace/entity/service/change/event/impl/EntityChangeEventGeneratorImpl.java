@@ -4,16 +4,13 @@ import static java.util.function.Function.identity;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.MapDifference;
-import com.google.common.collect.MapDifference.ValueDifference;
 import com.google.common.collect.Maps;
-import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.typesafe.config.Config;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.hypertrace.core.eventstore.EventProducer;
@@ -53,13 +50,11 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   EntityChangeEventGeneratorImpl(Config appConfig, Clock clock) {
     Config config = appConfig.getConfig(EVENT_STORE);
     this.entityToAttributeChangeSkipMap =
-        config.hasPath(SKIP_ATTRIBUTES_CONFIG_PATH)
-            ? config.getConfigList(SKIP_ATTRIBUTES_CONFIG_PATH).stream()
-                .collect(
-                    Collectors.toUnmodifiableMap(
-                        conf -> conf.getString(SCOPE_PATH),
-                        conf -> conf.getStringList(ATTRIBUTES_PATH)))
-            : new HashMap<>();
+        appConfig.getConfigList(SKIP_ATTRIBUTES_CONFIG_PATH).stream()
+            .collect(
+                Collectors.toUnmodifiableMap(
+                    conf -> conf.getString(SCOPE_PATH),
+                    conf -> conf.getStringList(ATTRIBUTES_PATH)));
     this.clock = clock;
     String storeType = config.getString(EVENT_STORE_TYPE_CONFIG);
     EventStore eventStore = EventStoreProvider.getEventStore(storeType, config);
@@ -173,64 +168,23 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   }
 
   private boolean shouldSendNotification(Entity prevEntity, Entity currEntity) {
-    boolean isAttributesChanged = false, isCoreEntityChanged = false;
-    for (FieldDescriptor fieldDescriptor : Entity.getDescriptor().getFields()) {
-      switch (fieldDescriptor.getNumber()) {
-        case Entity.ATTRIBUTES_FIELD_NUMBER:
-          isAttributesChanged = checkIfAttributesChanged(prevEntity, currEntity);
-          break;
-        default:
-          boolean isFieldChanged =
-              !prevEntity.getField(fieldDescriptor).equals(currEntity.getField(fieldDescriptor));
-          if (!isCoreEntityChanged) {
-            isCoreEntityChanged = isFieldChanged;
-          }
-          break;
-      }
-    }
-
-    return isCoreEntityChanged || isAttributesChanged;
-  }
-
-  private boolean checkIfAttributesChanged(Entity prevEntity, Entity currEntity) {
-    MapDifference<String, AttributeValue> attributesDiff =
-        Maps.difference(prevEntity.getAttributesMap(), currEntity.getAttributesMap());
     String entityType = prevEntity.getEntityType();
+    Entity.Builder prevEntityBuilder = prevEntity.toBuilder();
+    Entity.Builder currEntityBuilder = currEntity.toBuilder();
+    this.entityToAttributeChangeSkipMap
+        .getOrDefault(entityType, new ArrayList<>())
+        .forEach(
+            attribute -> {
+              prevEntityBuilder.removeAttributes(attribute);
+              currEntityBuilder.removeAttributes(attribute);
+            });
 
-    List<Entry<String, AttributeValue>> addedAttributes =
-        attributesDiff.entriesOnlyOnRight().entrySet().stream()
-            .filter(attributeKey -> !shouldSkipAttribute(entityType, attributeKey.getKey()))
-            .collect(Collectors.toList());
+    MapDifference<String, AttributeValue> attributesDiff =
+        Maps.difference(
+            prevEntityBuilder.build().getAttributesMap(),
+            currEntityBuilder.build().getAttributesMap());
 
-    List<Entry<String, AttributeValue>> deletedAttributes =
-        attributesDiff.entriesOnlyOnLeft().entrySet().stream()
-            .filter(
-                attributeKey ->
-                    !(this.entityToAttributeChangeSkipMap
-                        .get(entityType)
-                        .contains(attributeKey.getKey())))
-            .collect(Collectors.toList());
-
-    List<Entry<String, ValueDifference<AttributeValue>>> updatedAttributes =
-        attributesDiff.entriesDiffering().entrySet().stream()
-            .filter(
-                attributeKey ->
-                    !(this.entityToAttributeChangeSkipMap
-                        .get(entityType)
-                        .contains(attributeKey.getKey())))
-            .collect(Collectors.toList());
-
-    return addedAttributes.size() > 0
-        || deletedAttributes.size() > 0
-        || updatedAttributes.size() > 0;
-  }
-
-  private boolean isCoreEntityChanged(Entity prevEntity, Entity currEntity) {
-    return !prevEntity.getEntityName().equals(currEntity.getEntityName());
-  }
-
-  private boolean shouldSkipAttribute(String entityType, String attributeKey) {
-    return this.entityToAttributeChangeSkipMap.get(entityType).contains(attributeKey);
+    return !attributesDiff.areEqual();
   }
 
   private void sendDeleteNotification(RequestContext requestContext, Entity deletedEntity) {

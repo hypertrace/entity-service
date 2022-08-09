@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.time.Clock;
+import java.util.List;
 import java.util.Map;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,8 @@ class EntityChangeEventGeneratorFactoryTest {
   private Config getEventStoreConfig() {
     return ConfigFactory.parseMap(
         Map.of(
+            "entity.service.change.skip.attributes",
+            List.of(),
             ENTITY_SERVICE_CONFIG_PUBLISH_CHANGE_EVENTS,
             "true",
             "event.store",
