@@ -7,8 +7,8 @@ import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
 import java.time.Clock;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -29,7 +29,9 @@ import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.change.event.util.KeyUtil;
 
-/** The interface Entity change event generator. */
+/**
+ * The interface Entity change event generator.
+ */
 @Slf4j
 public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerator {
 
@@ -172,7 +174,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     Entity.Builder prevEntityBuilder = prevEntity.toBuilder();
     Entity.Builder currEntityBuilder = currEntity.toBuilder();
     this.entityToAttributeChangeSkipMap
-        .getOrDefault(entityType, new ArrayList<>())
+        .getOrDefault(entityType, Collections.emptyList())
         .forEach(
             attribute -> {
               prevEntityBuilder.removeAttributes(attribute);
