@@ -384,6 +384,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         List<Entity> existingEntities =
             this.entityFetcher.getEntitiesByEntityIds(request.getEntityIdsList());
         entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
+
         List<Entity> updatedEntities =
             this.entityFetcher.getEntitiesByEntityIds(request.getEntityIdsList());
         this.entityChangeEventGenerator.sendChangeNotification(
@@ -464,6 +465,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       List<Entity> existingEntities =
           this.entityFetcher.getEntitiesByEntityIds(request.getEntityIdsList());
       entitiesCollection.bulkOperationOnArrayValue(bulkArrayValueUpdateRequest);
+
       List<Entity> updatedEntities =
           this.entityFetcher.getEntitiesByEntityIds(request.getEntityIdsList());
       this.entityChangeEventGenerator.sendChangeNotification(
@@ -556,6 +558,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       List<Entity> existingEntities =
           this.entityFetcher.getEntitiesByEntityIds(entitiesMap.keySet());
       entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
+
       List<Entity> updatedEntities =
           this.entityFetcher.getEntitiesByEntityIds(entitiesMap.keySet());
       this.entityChangeEventGenerator.sendChangeNotification(
@@ -656,6 +659,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       Optional<String> tenantId = requestContext.getTenantId();
       this.entitiesCollection.delete(
           DocStoreConverter.transform(tenantId.orElseThrow(), request.getEntityType(), entityIds));
+
       this.entityChangeEventGenerator.sendDeleteNotification(requestContext, existingEntities);
 
       responseObserver.onNext(
