@@ -48,7 +48,10 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
             new EntityTypeServiceImpl(datastore),
             new EntityDataServiceImpl(datastore, localChannel, entityChangeEventGenerator),
             new EntityQueryServiceImpl(
-                datastore, config, grpcServiceContainerEnvironment.getChannelRegistry()))
+                datastore,
+                config,
+                grpcServiceContainerEnvironment.getChannelRegistry(),
+                entityChangeEventGenerator))
         .map(GrpcPlatformService::new)
         .collect(Collectors.toUnmodifiableList());
   }
