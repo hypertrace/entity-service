@@ -676,16 +676,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
               .setEntityType(request.getEntityType())
               .setFilter(request.getFilter())
               .setLimit(maxEntitiesToDelete + 1)
-              .addSelection(
-                  Expression.newBuilder()
-                      .setColumnIdentifier(
-                          ColumnIdentifier.newBuilder()
-                              .setColumnName(
-                                  this.entityAttributeMapping
-                                      .getIdentifierAttributeId(request.getEntityType())
-                                      .orElseThrow())
-                              .build())
-                      .build())
               .build();
 
       final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
