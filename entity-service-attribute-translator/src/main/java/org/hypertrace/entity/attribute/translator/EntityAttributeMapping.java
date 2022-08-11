@@ -19,6 +19,9 @@ public class EntityAttributeMapping {
   private static final String ATTRIBUTE_SERVICE_PORT = "attribute.service.config.port";
   public static final String ENTITY_ATTRIBUTE_DOC_PREFIX = "attributes.";
   public static final String SUB_DOC_PATH = "subDocPath";
+  private static final String SCOPE_PATH = "scope";
+  private static final String ATTRIBUTE_PATH = "attribute";
+  private static final String NAME_PATH = "name";
 
   private final CachingAttributeClient attributeClient;
   private final Map<String, AttributeMetadata> explicitAttributeIdByScopeKey;
@@ -34,14 +37,14 @@ public class EntityAttributeMapping {
         config.getConfigList(ATTRIBUTE_MAP_CONFIG_PATH).stream()
             .collect(
                 toUnmodifiableMap(
-                    conf -> conf.getString("name"),
+                    conf -> conf.getString(NAME_PATH),
                     conf ->
                         new AttributeMetadata(
-                            conf.getString("scope"), conf.getString(SUB_DOC_PATH)))),
+                            conf.getString(SCOPE_PATH), conf.getString(SUB_DOC_PATH)))),
         config.getConfigList(ID_ATTRIBUTE_MAP_CONFIG_PATH).stream()
             .collect(
                 toUnmodifiableMap(
-                    conf -> conf.getString("scope"), conf -> conf.getString("attribute"))));
+                    conf -> conf.getString(SCOPE_PATH), conf -> conf.getString(ATTRIBUTE_PATH))));
   }
 
   EntityAttributeMapping(

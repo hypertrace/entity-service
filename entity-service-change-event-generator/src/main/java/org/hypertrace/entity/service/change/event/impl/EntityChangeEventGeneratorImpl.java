@@ -176,7 +176,8 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     this.changeNotificationSkipAttributeList.forEach(
         attributeId -> {
           Optional<AttributeMetadata> attributeScopeKey =
-              this.entityAttributeMapping.getAttributeMetadataByAttributeId(requestContext, attributeId);
+              this.entityAttributeMapping.getAttributeMetadataByAttributeId(
+                  requestContext, attributeId);
           if (attributeScopeKey.isPresent()
               && attributeScopeKey.get().getScope().equals(entityType)) {
             String docStorePath = attributeScopeKey.get().getDocStorePath();
