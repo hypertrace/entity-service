@@ -24,7 +24,7 @@ public class EntityAttributeMapping {
   private static final String NAME_PATH = "name";
 
   private final CachingAttributeClient attributeClient;
-  private final Map<String, AttributeMetadata> explicitAttributeIdByScopeKey;
+  private final Map<String, AttributeMetadata> explicitAttributeIdByAttributeMetadata;
   private final Map<String, String> idAttributeMap;
 
   public EntityAttributeMapping(Config config, GrpcChannelRegistry channelRegistry) {
@@ -49,11 +49,11 @@ public class EntityAttributeMapping {
 
   EntityAttributeMapping(
       CachingAttributeClient attributeClient,
-      Map<String, AttributeMetadata> attributeScopeKeyMap,
+      Map<String, AttributeMetadata> attributeIdByAttributeMetadata,
       Map<String, String> idAttributeMap) {
     this.attributeClient = attributeClient;
     this.idAttributeMap = idAttributeMap;
-    this.explicitAttributeIdByScopeKey = attributeScopeKeyMap;
+    this.explicitAttributeIdByAttributeMetadata = attributeIdByAttributeMetadata;
   }
 
   /**
@@ -65,14 +65,14 @@ public class EntityAttributeMapping {
   public Optional<String> getDocStorePathByAttributeId(
       RequestContext requestContext, String attributeId) {
     Optional<AttributeMetadata> attribute =
-        Optional.ofNullable(this.explicitAttributeIdByScopeKey.get(attributeId))
+        Optional.ofNullable(this.explicitAttributeIdByAttributeMetadata.get(attributeId))
             .or(() -> this.calculateAttributeScopeKeyFromAttributeId(requestContext, attributeId));
     return attribute.map(AttributeMetadata::getDocStorePath);
   }
 
   public Optional<AttributeMetadata> getAttributeMetadataByAttributeId(
       RequestContext requestContext, String attributeId) {
-    return Optional.ofNullable(this.explicitAttributeIdByScopeKey.get(attributeId))
+    return Optional.ofNullable(this.explicitAttributeIdByAttributeMetadata.get(attributeId))
         .or(() -> this.calculateAttributeScopeKeyFromAttributeId(requestContext, attributeId));
   }
 
