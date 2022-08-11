@@ -1,5 +1,6 @@
 package org.hypertrace.entity.service.change.event.impl;
 
+import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.hypertrace.core.eventstore.EventProducer;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.AttributeMetadata;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
@@ -159,9 +161,12 @@ class EntityChangeEventGeneratorImplTest {
 
   @Test
   void sendChangeNotification_withNewAddedAttributes() {
-    when(this.entityAttributeMapping.getDocStoreAttributeNameByAttributeId(
+    when(this.entityAttributeMapping.getAttributeMetadataByAttributeId(
             any(), eq(TEST_ENTITY_TYPE + ".skip_attribute")))
-        .thenReturn(Optional.of("skip_attribute"));
+        .thenReturn(
+            Optional.of(
+                new AttributeMetadata(
+                    TEST_ENTITY_TYPE, ENTITY_ATTRIBUTE_DOC_PREFIX + "skip_attribute")));
     List<Entity> prevEntities =
         createEntities(
             1,
@@ -199,9 +204,12 @@ class EntityChangeEventGeneratorImplTest {
 
   @Test
   void sendChangeNotification_withDeletedAttributes() {
-    when(this.entityAttributeMapping.getDocStoreAttributeNameByAttributeId(
+    when(this.entityAttributeMapping.getAttributeMetadataByAttributeId(
             any(), eq(TEST_ENTITY_TYPE + ".skip_attribute")))
-        .thenReturn(Optional.of("skip_attribute"));
+        .thenReturn(
+            Optional.of(
+                new AttributeMetadata(
+                    TEST_ENTITY_TYPE, ENTITY_ATTRIBUTE_DOC_PREFIX + "skip_attribute")));
     List<Entity> prevEntities =
         createEntities(
             1,
@@ -232,12 +240,18 @@ class EntityChangeEventGeneratorImplTest {
 
   @Test
   void sendChangeNotification_withOnlySkipAttributes() {
-    when(this.entityAttributeMapping.getDocStoreAttributeNameByAttributeId(
+    when(this.entityAttributeMapping.getAttributeMetadataByAttributeId(
             any(), eq(TEST_ENTITY_TYPE + ".skip_attribute")))
-        .thenReturn(Optional.of("skip_attribute"));
-    when(this.entityAttributeMapping.getDocStoreAttributeNameByAttributeId(
+        .thenReturn(
+            Optional.of(
+                new AttributeMetadata(
+                    TEST_ENTITY_TYPE, ENTITY_ATTRIBUTE_DOC_PREFIX + "skip_attribute")));
+    when(this.entityAttributeMapping.getAttributeMetadataByAttributeId(
             any(), eq(TEST_ENTITY_TYPE + ".skip_attribute_1")))
-        .thenReturn(Optional.of("skip_attribute_1"));
+        .thenReturn(
+            Optional.of(
+                new AttributeMetadata(
+                    TEST_ENTITY_TYPE, ENTITY_ATTRIBUTE_DOC_PREFIX + "skip_attribute_1")));
     List<Entity> prevEntities =
         createEntities(
             1,

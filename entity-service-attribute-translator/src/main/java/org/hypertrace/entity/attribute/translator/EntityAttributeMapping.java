@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.hypertrace.core.attribute.service.cachingclient.CachingAttributeClient;
 import org.hypertrace.core.attribute.service.v1.AttributeKind;
-import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
 import org.hypertrace.core.attribute.service.v1.AttributeSource;
 import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -22,7 +21,7 @@ public class EntityAttributeMapping {
   public static final String SUB_DOC_PATH = "subDocPath";
 
   private final CachingAttributeClient attributeClient;
-  private final Map<String, String> explicitDocStoreMappingsByAttributeId;
+  private final Map<String, AttributeMetadata> explicitAttributeIdByScopeKey;
   private final Map<String, String> idAttributeMap;
 
   public EntityAttributeMapping(Config config, GrpcChannelRegistry channelRegistry) {
@@ -35,7 +34,10 @@ public class EntityAttributeMapping {
         config.getConfigList(ATTRIBUTE_MAP_CONFIG_PATH).stream()
             .collect(
                 toUnmodifiableMap(
-                    conf -> conf.getString("name"), conf -> conf.getString(SUB_DOC_PATH))),
+                    conf -> conf.getString("name"),
+                    conf ->
+                        new AttributeMetadata(
+                            conf.getString("scope"), conf.getString(SUB_DOC_PATH)))),
         config.getConfigList(ID_ATTRIBUTE_MAP_CONFIG_PATH).stream()
             .collect(
                 toUnmodifiableMap(
@@ -44,11 +46,11 @@ public class EntityAttributeMapping {
 
   EntityAttributeMapping(
       CachingAttributeClient attributeClient,
-      Map<String, String> explicitDocStoreMappingsByAttributeId,
+      Map<String, AttributeMetadata> attributeScopeKeyMap,
       Map<String, String> idAttributeMap) {
     this.attributeClient = attributeClient;
-    this.explicitDocStoreMappingsByAttributeId = explicitDocStoreMappingsByAttributeId;
     this.idAttributeMap = idAttributeMap;
+    this.explicitAttributeIdByScopeKey = attributeScopeKeyMap;
   }
 
   /**
@@ -59,14 +61,16 @@ public class EntityAttributeMapping {
    */
   public Optional<String> getDocStorePathByAttributeId(
       RequestContext requestContext, String attributeId) {
-    return Optional.ofNullable(this.explicitDocStoreMappingsByAttributeId.get(attributeId))
-        .or(() -> this.calculateDocStorePathFromAttributeId(requestContext, attributeId));
+    Optional<AttributeMetadata> attribute =
+        Optional.ofNullable(this.explicitAttributeIdByScopeKey.get(attributeId))
+            .or(() -> this.calculateAttributeScopeKeyFromAttributeId(requestContext, attributeId));
+    return attribute.map(AttributeMetadata::getDocStorePath);
   }
 
-  public Optional<String> getDocStoreAttributeNameByAttributeId(
+  public Optional<AttributeMetadata> getAttributeMetadataByAttributeId(
       RequestContext requestContext, String attributeId) {
-    Optional<String> docStorePath = this.getDocStorePathByAttributeId(requestContext, attributeId);
-    return docStorePath.map(s -> removePrefix(s, ENTITY_ATTRIBUTE_DOC_PREFIX));
+    return Optional.ofNullable(this.explicitAttributeIdByScopeKey.get(attributeId))
+        .or(() -> this.calculateAttributeScopeKeyFromAttributeId(requestContext, attributeId));
   }
 
   public Optional<String> getIdentifierAttributeId(String entityType) {
@@ -79,32 +83,28 @@ public class EntityAttributeMapping {
             this.attributeClient
                 .get(attributeId)
                 .filter(metadata -> metadata.getSourcesList().contains(AttributeSource.EDS))
-                .map(AttributeMetadata::getValueKind)
+                .map(org.hypertrace.core.attribute.service.v1.AttributeMetadata::getValueKind)
                 .map(valueKind -> (AttributeKind.TYPE_STRING_ARRAY == valueKind))
                 .onErrorComplete()
                 .defaultIfEmpty(false)
                 .blockingGet());
   }
 
-  private Optional<String> calculateDocStorePathFromAttributeId(
+  private Optional<AttributeMetadata> calculateAttributeScopeKeyFromAttributeId(
       RequestContext requestContext, String attributeId) {
     return requestContext.call(
         () ->
             this.attributeClient
                 .get(attributeId)
                 .filter(metadata -> metadata.getSourcesList().contains(AttributeSource.EDS))
-                .map(AttributeMetadata::getKey)
-                .map(key -> ENTITY_ATTRIBUTE_DOC_PREFIX + key)
+                .map(
+                    metadata ->
+                        new AttributeMetadata(
+                            metadata.getScopeString(),
+                            ENTITY_ATTRIBUTE_DOC_PREFIX + metadata.getKey()))
                 .map(Optional::of)
                 .onErrorComplete()
                 .defaultIfEmpty(Optional.empty())
                 .blockingGet());
-  }
-
-  private String removePrefix(String str, final String prefix) {
-    if (str != null && prefix != null && str.startsWith(prefix)) {
-      return str.substring(prefix.length());
-    }
-    return str;
   }
 }

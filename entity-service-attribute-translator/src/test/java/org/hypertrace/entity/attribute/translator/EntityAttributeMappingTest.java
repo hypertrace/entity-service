@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.hypertrace.core.attribute.service.cachingclient.CachingAttributeClient;
 import org.hypertrace.core.attribute.service.v1.AttributeKind;
-import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
 import org.hypertrace.core.attribute.service.v1.AttributeSource;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.junit.jupiter.api.Test;
@@ -32,7 +31,7 @@ class EntityAttributeMappingTest {
     EntityAttributeMapping attributeMapping =
         new EntityAttributeMapping(
             this.mockAttributeClient,
-            Map.of("some-id", "attributes.some-key"),
+            Map.of("some-id", new AttributeMetadata("scope", "attributes.some-key")),
             Collections.emptyMap());
 
     assertEquals(
@@ -49,8 +48,10 @@ class EntityAttributeMappingTest {
     EntityAttributeMapping attributeMapping =
         new EntityAttributeMapping(
             this.mockAttributeClient, Collections.emptyMap(), Collections.emptyMap());
-    AttributeMetadata sourcelessMetadata =
-        AttributeMetadata.newBuilder().setKey("some-key").build();
+    org.hypertrace.core.attribute.service.v1.AttributeMetadata sourcelessMetadata =
+        org.hypertrace.core.attribute.service.v1.AttributeMetadata.newBuilder()
+            .setKey("some-key")
+            .build();
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(sourcelessMetadata));
 
     // Empty result, since the mock metadata doesn't have an entity source
@@ -58,7 +59,7 @@ class EntityAttributeMappingTest {
         Optional.empty(),
         attributeMapping.getDocStorePathByAttributeId(mockRequestContext, "some-id"));
 
-    AttributeMetadata goodMetadata =
+    org.hypertrace.core.attribute.service.v1.AttributeMetadata goodMetadata =
         sourcelessMetadata.toBuilder().addSources(AttributeSource.EDS).build();
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(goodMetadata));
 
@@ -87,8 +88,8 @@ class EntityAttributeMappingTest {
     EntityAttributeMapping attributeMapping =
         new EntityAttributeMapping(
             this.mockAttributeClient, Collections.emptyMap(), Collections.emptyMap());
-    AttributeMetadata singleValueAttributeData =
-        AttributeMetadata.newBuilder()
+    org.hypertrace.core.attribute.service.v1.AttributeMetadata singleValueAttributeData =
+        org.hypertrace.core.attribute.service.v1.AttributeMetadata.newBuilder()
             .setKey("some-key")
             .setValueKind(AttributeKind.TYPE_STRING)
             .addSources(AttributeSource.EDS)
@@ -97,8 +98,8 @@ class EntityAttributeMappingTest {
 
     assertFalse(attributeMapping.isMultiValued(mockRequestContext, "some-id"));
 
-    AttributeMetadata multiValueAttributeData =
-        AttributeMetadata.newBuilder()
+    org.hypertrace.core.attribute.service.v1.AttributeMetadata multiValueAttributeData =
+        org.hypertrace.core.attribute.service.v1.AttributeMetadata.newBuilder()
             .setKey("some-key")
             .setValueKind(AttributeKind.TYPE_STRING_ARRAY)
             .addSources(AttributeSource.EDS)
@@ -107,8 +108,8 @@ class EntityAttributeMappingTest {
 
     assertTrue(attributeMapping.isMultiValued(mockRequestContext, "some-id"));
 
-    AttributeMetadata invalidSourceAttributeData =
-        AttributeMetadata.newBuilder()
+    org.hypertrace.core.attribute.service.v1.AttributeMetadata invalidSourceAttributeData =
+        org.hypertrace.core.attribute.service.v1.AttributeMetadata.newBuilder()
             .setKey("some-key")
             .setValueKind(AttributeKind.TYPE_STRING_ARRAY)
             .addSources(AttributeSource.QS)

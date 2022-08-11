@@ -1,6 +1,7 @@
 package org.hypertrace.entity.service.change.event.impl;
 
 import static java.util.function.Function.identity;
+import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.MapDifference;
@@ -18,6 +19,7 @@ import org.hypertrace.core.eventstore.EventProducerConfig;
 import org.hypertrace.core.eventstore.EventStore;
 import org.hypertrace.core.eventstore.EventStoreProvider;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.AttributeMetadata;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
@@ -173,15 +175,14 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     Entity.Builder currEntityBuilder = currEntity.toBuilder();
     this.changeNotificationSkipAttributeList.forEach(
         attributeId -> {
-          if (!attributeId.startsWith(entityType)) {
-            return;
-          }
-          Optional<String> attributeName =
-              this.entityAttributeMapping.getDocStoreAttributeNameByAttributeId(
-                  requestContext, attributeId);
-          if (attributeName.isPresent()) {
-            prevEntityBuilder.removeAttributes(attributeName.get());
-            currEntityBuilder.removeAttributes(attributeName.get());
+          Optional<AttributeMetadata> attributeScopeKey =
+              this.entityAttributeMapping.getAttributeMetadataByAttributeId(requestContext, attributeId);
+          if (attributeScopeKey.isPresent()
+              && attributeScopeKey.get().getScope().equals(entityType)) {
+            String docStorePath = attributeScopeKey.get().getDocStorePath();
+            String attributeName = removePrefix(docStorePath, ENTITY_ATTRIBUTE_DOC_PREFIX);
+            prevEntityBuilder.removeAttributes(attributeName);
+            currEntityBuilder.removeAttributes(attributeName);
           }
         });
 
@@ -217,5 +218,12 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   private EntityChangeEventKey getEntityChangeEventKey(Entity entity) {
     return KeyUtil.getKey(entity);
+  }
+
+  private String removePrefix(String str, final String prefix) {
+    if (str != null && prefix != null && str.startsWith(prefix)) {
+      return str.substring(prefix.length());
+    }
+    return str;
   }
 }
