@@ -2,6 +2,7 @@ package org.hypertrace.entity.service.change.event.impl;
 
 import com.typesafe.config.Config;
 import java.time.Clock;
+import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 
 public class EntityChangeEventGeneratorFactory {
@@ -19,9 +20,9 @@ public class EntityChangeEventGeneratorFactory {
   }
 
   public EntityChangeEventGenerator createEntityChangeEventGenerator(
-      Config appConfig, Clock clock) {
+      Config appConfig, EntityAttributeMapping entityAttributeMapping, Clock clock) {
     if (appConfig.getBoolean(ENTITY_SERVICE_CONFIG_PUBLISH_CHANGE_EVENTS)) {
-      return new EntityChangeEventGeneratorImpl(appConfig, clock);
+      return new EntityChangeEventGeneratorImpl(appConfig, entityAttributeMapping, clock);
     } else {
       return new NoopEntityChangeEventGenerator();
     }

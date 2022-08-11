@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.hypertrace.core.eventstore.EventProducer;
@@ -26,16 +27,17 @@ import org.hypertrace.entity.change.event.v1.EntityDeleteEvent;
 import org.hypertrace.entity.change.event.v1.EntityUpdateEvent;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
+import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.change.event.util.KeyUtil;
 
-/** The interface Entity change event generator. */
+/**
+ * The interface Entity change event generator.
+ */
 @Slf4j
 public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerator {
 
   private static final String SKIP_ATTRIBUTES_CONFIG_PATH = "entity.service.change.skip.attributes";
-  private static final String SCOPE_PATH = "scope";
-  private static final String ATTRIBUTES_PATH = "attributes";
   private static final String EVENT_STORE = "event.store";
   private static final String EVENT_STORE_TYPE_CONFIG = "type";
   private static final String ENTITY_CHANGE_EVENTS_TOPIC = "entity-change-events";
@@ -44,17 +46,16 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   private final EventProducer<EntityChangeEventKey, EntityChangeEventValue>
       entityChangeEventProducer;
-  private final Map<String, List<String>> entityToAttributeChangeSkipMap;
+  private final List<String> changeNotificationSkipAttributeList;
+  private final EntityAttributeMapping entityAttributeMapping;
   private final Clock clock;
 
-  EntityChangeEventGeneratorImpl(Config appConfig, Clock clock) {
+  EntityChangeEventGeneratorImpl(Config appConfig, EntityAttributeMapping entityAttributeMapping,
+      Clock clock) {
     Config config = appConfig.getConfig(EVENT_STORE);
-    this.entityToAttributeChangeSkipMap =
-        appConfig.getConfigList(SKIP_ATTRIBUTES_CONFIG_PATH).stream()
-            .collect(
-                Collectors.toUnmodifiableMap(
-                    conf -> conf.getString(SCOPE_PATH),
-                    conf -> conf.getStringList(ATTRIBUTES_PATH)));
+    this.changeNotificationSkipAttributeList =
+        appConfig.getStringList(SKIP_ATTRIBUTES_CONFIG_PATH);
+    this.entityAttributeMapping = entityAttributeMapping;
     this.clock = clock;
     String storeType = config.getString(EVENT_STORE_TYPE_CONFIG);
     EventStore eventStore = EventStoreProvider.getEventStore(storeType, config);
@@ -68,11 +69,13 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   @VisibleForTesting
   EntityChangeEventGeneratorImpl(
       EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer,
-      Map<String, List<String>> entityToAttributeChangeSkipMap,
+      List<String> changeNotificationSkipAttributeList,
+      EntityAttributeMapping entityAttributeMapping,
       Clock clock) {
     this.clock = clock;
     this.entityChangeEventProducer = entityChangeEventProducer;
-    this.entityToAttributeChangeSkipMap = entityToAttributeChangeSkipMap;
+    this.changeNotificationSkipAttributeList = changeNotificationSkipAttributeList;
+    this.entityAttributeMapping = entityAttributeMapping;
   }
 
   @Override
@@ -145,7 +148,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   private void sendUpdateNotificationIfRequired(
       RequestContext requestContext, Entity prevEntity, Entity currEntity) {
     try {
-      if (!shouldSendNotification(prevEntity, currEntity)) {
+      if (!shouldSendNotification(requestContext, prevEntity, currEntity)) {
         return;
       }
 
@@ -167,17 +170,23 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     }
   }
 
-  private boolean shouldSendNotification(Entity prevEntity, Entity currEntity) {
+  private boolean shouldSendNotification(RequestContext requestContext, Entity prevEntity,
+      Entity currEntity) {
     String entityType = prevEntity.getEntityType();
     Entity.Builder prevEntityBuilder = prevEntity.toBuilder();
     Entity.Builder currEntityBuilder = currEntity.toBuilder();
-    this.entityToAttributeChangeSkipMap
-        .getOrDefault(entityType, Collections.emptyList())
-        .forEach(
-            attribute -> {
-              prevEntityBuilder.removeAttributes(attribute);
-              currEntityBuilder.removeAttributes(attribute);
-            });
+    this.changeNotificationSkipAttributeList.forEach(attributeId -> {
+      if (!attributeId.startsWith(entityType)) {
+        return;
+      }
+      Optional<String> attributeName =
+          this.entityAttributeMapping.getDocStoreAttributeNameByAttributeId(requestContext,
+              attributeId);
+      if (attributeName.isPresent()) {
+        prevEntityBuilder.removeAttributes(attributeName.get());
+        currEntityBuilder.removeAttributes(attributeName.get());
+      }
+    });
 
     MapDifference<String, AttributeValue> attributesDiff =
         Maps.difference(

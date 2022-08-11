@@ -11,8 +11,10 @@ import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
 import org.hypertrace.core.attribute.service.v1.AttributeSource;
 import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.service.util.StringUtils;
 
 public class EntityAttributeMapping {
+
   private static final String ID_ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.idAttributeMap";
   private static final String ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.attributeMap";
   private static final String ATTRIBUTE_SERVICE_HOST = "attribute.service.config.host";
@@ -24,7 +26,7 @@ public class EntityAttributeMapping {
   private final Map<String, String> explicitDocStoreMappingsByAttributeId;
   private final Map<String, String> idAttributeMap;
 
-  EntityAttributeMapping(Config config, GrpcChannelRegistry channelRegistry) {
+  public EntityAttributeMapping(Config config, GrpcChannelRegistry channelRegistry) {
     this(
         CachingAttributeClient.builder(
                 channelRegistry.forAddress(
@@ -60,6 +62,13 @@ public class EntityAttributeMapping {
       RequestContext requestContext, String attributeId) {
     return Optional.ofNullable(this.explicitDocStoreMappingsByAttributeId.get(attributeId))
         .or(() -> this.calculateDocStorePathFromAttributeId(requestContext, attributeId));
+  }
+
+  public Optional<String> getDocStoreAttributeNameByAttributeId(
+      RequestContext requestContext, String attributeId) {
+    Optional<String> docStorePath = this.getDocStorePathByAttributeId(requestContext,
+        attributeId);
+    return docStorePath.map(s -> StringUtils.removePrefix(s, ENTITY_ATTRIBUTE_DOC_PREFIX));
   }
 
   public Optional<String> getIdentifierAttributeId(String entityType) {

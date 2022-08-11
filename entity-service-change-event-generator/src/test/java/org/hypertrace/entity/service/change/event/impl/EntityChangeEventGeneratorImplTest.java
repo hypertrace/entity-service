@@ -25,6 +25,7 @@ import org.hypertrace.entity.change.event.v1.EntityUpdateEvent;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Value;
+import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.service.change.event.util.KeyUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,7 @@ class EntityChangeEventGeneratorImplTest {
 
   @Mock EventProducer<EntityChangeEventKey, EntityChangeEventValue> eventProducer;
 
+  @Mock EntityAttributeMapping entityAttributeMapping;
   EntityChangeEventGeneratorImpl changeEventGenerator;
   RequestContext requestContext;
   private Clock mockClock;
@@ -53,7 +55,8 @@ class EntityChangeEventGeneratorImplTest {
     changeEventGenerator =
         new EntityChangeEventGeneratorImpl(
             eventProducer,
-            Map.of(TEST_ENTITY_TYPE, List.of("skip_attribute", "skip_attribute_1")),
+            List.of(TEST_ENTITY_TYPE + "skip_attribute", TEST_ENTITY_TYPE + "skip_attribute_1"),
+            entityAttributeMapping,
             mockClock);
     requestContext = RequestContext.forTenantId(TEST_TENANT_ID);
   }
