@@ -740,7 +740,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
 
   private Optional<Entity> getExistingEntity(String tenantId, String entityType, String entityId) {
     String docId = this.entityNormalizer.getEntityDocKey(tenantId, entityType, entityId).toString();
-    return this.entityFetcher.getEntitiesByEntityIds(List.of(docId)).stream().findFirst();
+    return this.entityFetcher.getEntitiesByDocIds(List.of(docId)).stream().findFirst();
   }
 
   private Optional<Entity> entityFromDocument(Document document) {
