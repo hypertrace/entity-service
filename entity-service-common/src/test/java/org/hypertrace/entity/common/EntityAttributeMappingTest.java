@@ -1,4 +1,4 @@
-package org.hypertrace.entity.query.service;
+package org.hypertrace.entity.common;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

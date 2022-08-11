@@ -7,7 +7,7 @@ plugins {
 dependencies {
   api(project(":entity-service-api"))
   api(project(":entity-service-change-event-api"))
-  api(project(":entity-service-impl"))
+  api(project(":entity-service-common"))
   api("com.typesafe:config:1.4.1")
 
   implementation("org.hypertrace.core.eventstore:event-store:0.1.2")

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Optional;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.common.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;

@@ -6,9 +6,9 @@ import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
+import static org.hypertrace.entity.common.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
-import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -45,8 +45,8 @@ import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.query.Filter;
 import org.hypertrace.core.documentstore.query.Selection;
-import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.common.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
@@ -120,8 +120,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final int maxEntitiesToDelete;
 
   public EntityQueryServiceImpl(
-      Datastore datastore, Config config,
-      EntityAttributeMapping entityAttributeMapping) {
+      Datastore datastore, Config config, EntityAttributeMapping entityAttributeMapping) {
     this(
         datastore.getCollection(RAW_ENTITIES_COLLECTION),
         entityAttributeMapping,
@@ -747,30 +746,26 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   private AliasProvider<ColumnIdentifier> getIdentifierAliasProvider() {
     return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {
-        }));
+        com.google.inject.Key.get(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {}));
   }
 
   private AliasProvider<Function> getAggregateExpressionAliasProvider() {
     return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<AliasProvider<Function>>() {
-        }));
+        com.google.inject.Key.get(new TypeLiteral<AliasProvider<Function>>() {}));
   }
 
   private Converter<List<Expression>, Selection> getSelectionConverter() {
     return injector.getInstance(
-        com.google.inject.Key.get(new TypeLiteral<Converter<List<Expression>, Selection>>() {
-        }));
+        com.google.inject.Key.get(new TypeLiteral<Converter<List<Expression>, Selection>>() {}));
   }
 
   private Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-  getQueryConverter() {
+      getQueryConverter() {
     return injector.getInstance(
         com.google.inject.Key.get(
             new TypeLiteral<
                 Converter<
-                    EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {
-            }));
+                    EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>>() {}));
   }
 
   private void validateDeleteEntitiesRequest(

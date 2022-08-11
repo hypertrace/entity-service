@@ -14,8 +14,8 @@ import org.hypertrace.core.documentstore.DatastoreProvider;
 import org.hypertrace.core.serviceframework.grpc.GrpcPlatformService;
 import org.hypertrace.core.serviceframework.grpc.GrpcPlatformServiceFactory;
 import org.hypertrace.core.serviceframework.grpc.GrpcServiceContainerEnvironment;
+import org.hypertrace.entity.common.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl;
-import org.hypertrace.entity.query.service.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.EntityQueryServiceImpl;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorFactory;
@@ -38,8 +38,8 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
     this.datastore =
         DatastoreProvider.getDatastore(
             dataStoreConfig.getDataStoreType(), dataStoreConfig.getDataStoreConfig());
-    EntityAttributeMapping entityAttributeMapping = new EntityAttributeMapping(config,
-        grpcServiceContainerEnvironment.getChannelRegistry());
+    EntityAttributeMapping entityAttributeMapping =
+        new EntityAttributeMapping(config, grpcServiceContainerEnvironment.getChannelRegistry());
     EntityChangeEventGenerator entityChangeEventGenerator =
         EntityChangeEventGeneratorFactory.getInstance()
             .createEntityChangeEventGenerator(config, entityAttributeMapping, Clock.systemUTC());
@@ -51,8 +51,7 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
             new org.hypertrace.entity.type.service.EntityTypeServiceImpl(datastore),
             new EntityTypeServiceImpl(datastore),
             new EntityDataServiceImpl(datastore, localChannel, entityChangeEventGenerator),
-            new EntityQueryServiceImpl(
-                datastore, config, entityAttributeMapping))
+            new EntityQueryServiceImpl(datastore, config, entityAttributeMapping))
         .map(GrpcPlatformService::new)
         .collect(Collectors.toUnmodifiableList());
   }

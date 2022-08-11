@@ -1,14 +1,14 @@
 package org.hypertrace.entity.service.change.event.impl;
 
 import static org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorFactory.ENTITY_SERVICE_CONFIG_PUBLISH_CHANGE_EVENTS;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
-import org.hypertrace.entity.query.service.EntityAttributeMapping;
+import org.hypertrace.entity.common.EntityAttributeMapping;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

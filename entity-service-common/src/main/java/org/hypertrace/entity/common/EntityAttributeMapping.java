@@ -1,4 +1,4 @@
-package org.hypertrace.entity.query.service;
+package org.hypertrace.entity.common;
 
 import static java.util.stream.Collectors.toUnmodifiableMap;
 
@@ -11,7 +11,6 @@ import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
 import org.hypertrace.core.attribute.service.v1.AttributeSource;
 import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
-import org.hypertrace.entity.service.util.StringUtils;
 
 public class EntityAttributeMapping {
 
@@ -19,7 +18,7 @@ public class EntityAttributeMapping {
   private static final String ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.attributeMap";
   private static final String ATTRIBUTE_SERVICE_HOST = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT = "attribute.service.config.port";
-  static final String ENTITY_ATTRIBUTE_DOC_PREFIX = "attributes.";
+  public static final String ENTITY_ATTRIBUTE_DOC_PREFIX = "attributes.";
   public static final String SUB_DOC_PATH = "subDocPath";
 
   private final CachingAttributeClient attributeClient;
@@ -66,9 +65,8 @@ public class EntityAttributeMapping {
 
   public Optional<String> getDocStoreAttributeNameByAttributeId(
       RequestContext requestContext, String attributeId) {
-    Optional<String> docStorePath = this.getDocStorePathByAttributeId(requestContext,
-        attributeId);
-    return docStorePath.map(s -> StringUtils.removePrefix(s, ENTITY_ATTRIBUTE_DOC_PREFIX));
+    Optional<String> docStorePath = this.getDocStorePathByAttributeId(requestContext, attributeId);
+    return docStorePath.map(s -> removePrefix(s, ENTITY_ATTRIBUTE_DOC_PREFIX));
   }
 
   public Optional<String> getIdentifierAttributeId(String entityType) {
@@ -101,5 +99,12 @@ public class EntityAttributeMapping {
                 .onErrorComplete()
                 .defaultIfEmpty(Optional.empty())
                 .blockingGet());
+  }
+
+  private String removePrefix(String str, final String prefix) {
+    if (str != null && prefix != null && str.startsWith(prefix)) {
+      return str.substring(prefix.length());
+    }
+    return str;
   }
 }
