@@ -66,14 +66,14 @@ public class EntityAttributeMapping {
       RequestContext requestContext, String attributeId) {
     Optional<AttributeMetadata> attribute =
         Optional.ofNullable(this.explicitAttributeIdByAttributeMetadata.get(attributeId))
-            .or(() -> this.calculateAttributeScopeKeyFromAttributeId(requestContext, attributeId));
+            .or(() -> this.calculateAttributeMetadataFromAttributeId(requestContext, attributeId));
     return attribute.map(AttributeMetadata::getDocStorePath);
   }
 
   public Optional<AttributeMetadata> getAttributeMetadataByAttributeId(
       RequestContext requestContext, String attributeId) {
     return Optional.ofNullable(this.explicitAttributeIdByAttributeMetadata.get(attributeId))
-        .or(() -> this.calculateAttributeScopeKeyFromAttributeId(requestContext, attributeId));
+        .or(() -> this.calculateAttributeMetadataFromAttributeId(requestContext, attributeId));
   }
 
   public Optional<String> getIdentifierAttributeId(String entityType) {
@@ -93,7 +93,7 @@ public class EntityAttributeMapping {
                 .blockingGet());
   }
 
-  private Optional<AttributeMetadata> calculateAttributeScopeKeyFromAttributeId(
+  private Optional<AttributeMetadata> calculateAttributeMetadataFromAttributeId(
       RequestContext requestContext, String attributeId) {
     return requestContext.call(
         () ->
