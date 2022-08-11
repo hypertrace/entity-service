@@ -2,7 +2,7 @@ package org.hypertrace.entity.service.change.event.impl;
 
 import com.typesafe.config.Config;
 import java.time.Clock;
-import org.hypertrace.entity.common.EntityAttributeMapping;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 
 public class EntityChangeEventGeneratorFactory {

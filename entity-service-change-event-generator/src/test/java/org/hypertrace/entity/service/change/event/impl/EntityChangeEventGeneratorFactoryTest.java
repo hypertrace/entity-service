@@ -8,7 +8,7 @@ import com.typesafe.config.ConfigFactory;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
-import org.hypertrace.entity.common.EntityAttributeMapping;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

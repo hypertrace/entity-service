@@ -1,4 +1,4 @@
-package org.hypertrace.entity.common;
+package org.hypertrace.entity.attribute.translator;
 
 import static java.util.stream.Collectors.toUnmodifiableMap;
 
