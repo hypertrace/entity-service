@@ -6,9 +6,4 @@ import lombok.Value;
 public class AttributeMetadataIdentifier {
   String scope;
   String docStorePath;
-
-  public AttributeMetadataIdentifier(String scope, String docStorePath) {
-    this.docStorePath = docStorePath;
-    this.scope = scope;
-  }
 }
