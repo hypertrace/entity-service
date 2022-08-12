@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.hypertrace.core.eventstore.EventProducer;
 import org.hypertrace.core.grpcutils.context.RequestContext;
-import org.hypertrace.entity.attribute.translator.AttributeMetadata;
+import org.hypertrace.entity.attribute.translator.AttributeMetadataIdentifier;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
@@ -165,7 +165,7 @@ class EntityChangeEventGeneratorImplTest {
             any(), eq(TEST_ENTITY_TYPE + ".skip_attribute")))
         .thenReturn(
             Optional.of(
-                new AttributeMetadata(
+                new AttributeMetadataIdentifier(
                     TEST_ENTITY_TYPE, ENTITY_ATTRIBUTE_DOC_PREFIX + "skip_attribute")));
     List<Entity> prevEntities =
         createEntities(
@@ -208,7 +208,7 @@ class EntityChangeEventGeneratorImplTest {
             any(), eq(TEST_ENTITY_TYPE + ".skip_attribute")))
         .thenReturn(
             Optional.of(
-                new AttributeMetadata(
+                new AttributeMetadataIdentifier(
                     TEST_ENTITY_TYPE, ENTITY_ATTRIBUTE_DOC_PREFIX + "skip_attribute")));
     List<Entity> prevEntities =
         createEntities(
@@ -244,13 +244,13 @@ class EntityChangeEventGeneratorImplTest {
             any(), eq(TEST_ENTITY_TYPE + ".skip_attribute")))
         .thenReturn(
             Optional.of(
-                new AttributeMetadata(
+                new AttributeMetadataIdentifier(
                     TEST_ENTITY_TYPE, ENTITY_ATTRIBUTE_DOC_PREFIX + "skip_attribute")));
     when(this.entityAttributeMapping.getAttributeMetadataByAttributeId(
             any(), eq(TEST_ENTITY_TYPE + ".skip_attribute_1")))
         .thenReturn(
             Optional.of(
-                new AttributeMetadata(
+                new AttributeMetadataIdentifier(
                     TEST_ENTITY_TYPE, ENTITY_ATTRIBUTE_DOC_PREFIX + "skip_attribute_1")));
     List<Entity> prevEntities =
         createEntities(

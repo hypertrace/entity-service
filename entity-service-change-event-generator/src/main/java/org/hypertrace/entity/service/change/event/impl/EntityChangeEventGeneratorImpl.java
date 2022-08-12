@@ -19,7 +19,7 @@ import org.hypertrace.core.eventstore.EventProducerConfig;
 import org.hypertrace.core.eventstore.EventStore;
 import org.hypertrace.core.eventstore.EventStoreProvider;
 import org.hypertrace.core.grpcutils.context.RequestContext;
-import org.hypertrace.entity.attribute.translator.AttributeMetadata;
+import org.hypertrace.entity.attribute.translator.AttributeMetadataIdentifier;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
@@ -27,7 +27,6 @@ import org.hypertrace.entity.change.event.v1.EntityChangeEventValue.Builder;
 import org.hypertrace.entity.change.event.v1.EntityCreateEvent;
 import org.hypertrace.entity.change.event.v1.EntityDeleteEvent;
 import org.hypertrace.entity.change.event.v1.EntityUpdateEvent;
-import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.change.event.util.KeyUtil;
@@ -170,29 +169,36 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   private boolean shouldSendNotification(
       RequestContext requestContext, Entity prevEntity, Entity currEntity) {
-    String entityType = prevEntity.getEntityType();
     Entity.Builder prevEntityBuilder = prevEntity.toBuilder();
     Entity.Builder currEntityBuilder = currEntity.toBuilder();
     this.changeNotificationSkipAttributeList.forEach(
-        attributeId -> {
-          Optional<AttributeMetadata> attributeScopeKey =
-              this.entityAttributeMapping.getAttributeMetadataByAttributeId(
-                  requestContext, attributeId);
-          if (attributeScopeKey.isPresent()
-              && attributeScopeKey.get().getScope().equals(entityType)) {
-            String docStorePath = attributeScopeKey.get().getDocStorePath();
+        attributeId ->
+            removeAttributeFromEntity(
+                requestContext, attributeId, prevEntityBuilder, currEntityBuilder));
+
+    return !Maps.difference(
+            prevEntityBuilder.build().getAttributesMap(),
+            currEntityBuilder.build().getAttributesMap())
+        .areEqual();
+  }
+
+  private void removeAttributeFromEntity(
+      RequestContext requestContext,
+      String attributeId,
+      Entity.Builder prevEntityBuilder,
+      Entity.Builder currEntityBuilder) {
+    Optional<AttributeMetadataIdentifier> metadataIdentifier =
+        this.entityAttributeMapping.getAttributeMetadataByAttributeId(requestContext, attributeId);
+    String entityType = prevEntityBuilder.getEntityType();
+    metadataIdentifier.ifPresent(
+        metadata -> {
+          if (metadata.getScope().equals(entityType)) {
+            String docStorePath = metadata.getDocStorePath();
             String attributeName = removePrefix(docStorePath, ENTITY_ATTRIBUTE_DOC_PREFIX);
             prevEntityBuilder.removeAttributes(attributeName);
             currEntityBuilder.removeAttributes(attributeName);
           }
         });
-
-    MapDifference<String, AttributeValue> attributesDiff =
-        Maps.difference(
-            prevEntityBuilder.build().getAttributesMap(),
-            currEntityBuilder.build().getAttributesMap());
-
-    return !attributesDiff.areEqual();
   }
 
   private void sendDeleteNotification(RequestContext requestContext, Entity deletedEntity) {

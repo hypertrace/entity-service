@@ -24,7 +24,7 @@ public class EntityAttributeMapping {
   private static final String NAME_PATH = "name";
 
   private final CachingAttributeClient attributeClient;
-  private final Map<String, AttributeMetadata> explicitAttributeIdByAttributeMetadata;
+  private final Map<String, AttributeMetadataIdentifier> explicitAttributeIdByAttributeMetadata;
   private final Map<String, String> idAttributeMap;
 
   public EntityAttributeMapping(Config config, GrpcChannelRegistry channelRegistry) {
@@ -39,7 +39,7 @@ public class EntityAttributeMapping {
                 toUnmodifiableMap(
                     conf -> conf.getString(NAME_PATH),
                     conf ->
-                        new AttributeMetadata(
+                        new AttributeMetadataIdentifier(
                             conf.getString(SCOPE_PATH), conf.getString(SUB_DOC_PATH)))),
         config.getConfigList(ID_ATTRIBUTE_MAP_CONFIG_PATH).stream()
             .collect(
@@ -49,7 +49,7 @@ public class EntityAttributeMapping {
 
   EntityAttributeMapping(
       CachingAttributeClient attributeClient,
-      Map<String, AttributeMetadata> attributeIdByAttributeMetadata,
+      Map<String, AttributeMetadataIdentifier> attributeIdByAttributeMetadata,
       Map<String, String> idAttributeMap) {
     this.attributeClient = attributeClient;
     this.idAttributeMap = idAttributeMap;
@@ -64,13 +64,13 @@ public class EntityAttributeMapping {
    */
   public Optional<String> getDocStorePathByAttributeId(
       RequestContext requestContext, String attributeId) {
-    Optional<AttributeMetadata> attribute =
+    Optional<AttributeMetadataIdentifier> attribute =
         Optional.ofNullable(this.explicitAttributeIdByAttributeMetadata.get(attributeId))
             .or(() -> this.calculateAttributeMetadataFromAttributeId(requestContext, attributeId));
-    return attribute.map(AttributeMetadata::getDocStorePath);
+    return attribute.map(AttributeMetadataIdentifier::getDocStorePath);
   }
 
-  public Optional<AttributeMetadata> getAttributeMetadataByAttributeId(
+  public Optional<AttributeMetadataIdentifier> getAttributeMetadataByAttributeId(
       RequestContext requestContext, String attributeId) {
     return Optional.ofNullable(this.explicitAttributeIdByAttributeMetadata.get(attributeId))
         .or(() -> this.calculateAttributeMetadataFromAttributeId(requestContext, attributeId));
@@ -93,7 +93,7 @@ public class EntityAttributeMapping {
                 .blockingGet());
   }
 
-  private Optional<AttributeMetadata> calculateAttributeMetadataFromAttributeId(
+  private Optional<AttributeMetadataIdentifier> calculateAttributeMetadataFromAttributeId(
       RequestContext requestContext, String attributeId) {
     return requestContext.call(
         () ->
@@ -102,7 +102,7 @@ public class EntityAttributeMapping {
                 .filter(metadata -> metadata.getSourcesList().contains(AttributeSource.EDS))
                 .map(
                     metadata ->
-                        new AttributeMetadata(
+                        new AttributeMetadataIdentifier(
                             metadata.getScopeString(),
                             ENTITY_ATTRIBUTE_DOC_PREFIX + metadata.getKey()))
                 .map(Optional::of)

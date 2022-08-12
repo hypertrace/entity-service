@@ -31,7 +31,7 @@ class EntityAttributeMappingTest {
     EntityAttributeMapping attributeMapping =
         new EntityAttributeMapping(
             this.mockAttributeClient,
-            Map.of("some-id", new AttributeMetadata("scope", "attributes.some-key")),
+            Map.of("some-id", new AttributeMetadataIdentifier("scope", "attributes.some-key")),
             Collections.emptyMap());
 
     assertEquals(
