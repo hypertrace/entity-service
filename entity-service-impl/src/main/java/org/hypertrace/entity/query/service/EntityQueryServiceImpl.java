@@ -6,9 +6,9 @@ import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
+import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
-import static org.hypertrace.entity.query.service.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -45,8 +45,8 @@ import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.query.Filter;
 import org.hypertrace.core.documentstore.query.Selection;
-import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
@@ -120,10 +120,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final int maxEntitiesToDelete;
 
   public EntityQueryServiceImpl(
-      Datastore datastore, Config config, GrpcChannelRegistry channelRegistry) {
+      Datastore datastore, Config config, EntityAttributeMapping entityAttributeMapping) {
     this(
         datastore.getCollection(RAW_ENTITIES_COLLECTION),
-        new EntityAttributeMapping(config, channelRegistry),
+        entityAttributeMapping,
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),

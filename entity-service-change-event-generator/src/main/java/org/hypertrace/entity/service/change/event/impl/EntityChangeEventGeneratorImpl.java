@@ -1,6 +1,7 @@
 package org.hypertrace.entity.service.change.event.impl;
 
 import static java.util.function.Function.identity;
+import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.MapDifference;
@@ -8,7 +9,9 @@ import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
 import java.time.Clock;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.hypertrace.core.eventstore.EventProducer;
@@ -16,6 +19,8 @@ import org.hypertrace.core.eventstore.EventProducerConfig;
 import org.hypertrace.core.eventstore.EventStore;
 import org.hypertrace.core.eventstore.EventStoreProvider;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.AttributeMetadataIdentifier;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue.Builder;
@@ -29,6 +34,8 @@ import org.hypertrace.entity.service.change.event.util.KeyUtil;
 /** The interface Entity change event generator. */
 @Slf4j
 public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerator {
+
+  private static final String SKIP_ATTRIBUTES_CONFIG_PATH = "entity.service.change.skip.attributes";
   private static final String EVENT_STORE = "event.store";
   private static final String EVENT_STORE_TYPE_CONFIG = "type";
   private static final String ENTITY_CHANGE_EVENTS_TOPIC = "entity-change-events";
@@ -37,10 +44,15 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   private final EventProducer<EntityChangeEventKey, EntityChangeEventValue>
       entityChangeEventProducer;
-  private Clock clock;
+  private final List<String> changeNotificationSkipAttributeList;
+  private final EntityAttributeMapping entityAttributeMapping;
+  private final Clock clock;
 
-  EntityChangeEventGeneratorImpl(Config appConfig, Clock clock) {
+  EntityChangeEventGeneratorImpl(
+      Config appConfig, EntityAttributeMapping entityAttributeMapping, Clock clock) {
     Config config = appConfig.getConfig(EVENT_STORE);
+    this.changeNotificationSkipAttributeList = appConfig.getStringList(SKIP_ATTRIBUTES_CONFIG_PATH);
+    this.entityAttributeMapping = entityAttributeMapping;
     this.clock = clock;
     String storeType = config.getString(EVENT_STORE_TYPE_CONFIG);
     EventStore eventStore = EventStoreProvider.getEventStore(storeType, config);
@@ -54,9 +66,13 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   @VisibleForTesting
   EntityChangeEventGeneratorImpl(
       EventProducer<EntityChangeEventKey, EntityChangeEventValue> entityChangeEventProducer,
+      List<String> changeNotificationSkipAttributeList,
+      EntityAttributeMapping entityAttributeMapping,
       Clock clock) {
     this.clock = clock;
     this.entityChangeEventProducer = entityChangeEventProducer;
+    this.changeNotificationSkipAttributeList = changeNotificationSkipAttributeList;
+    this.entityAttributeMapping = entityAttributeMapping;
   }
 
   @Override
@@ -97,7 +113,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
               MapDifference.ValueDifference<Entity> valueDifference = entry.getValue();
               Entity prevEntity = valueDifference.leftValue();
               Entity currEntity = valueDifference.rightValue();
-              sendUpdateNotification(requestContext, prevEntity, currEntity);
+              sendUpdateNotificationIfRequired(requestContext, prevEntity, currEntity);
             });
 
     mapDifference
@@ -126,9 +142,13 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     }
   }
 
-  private void sendUpdateNotification(
+  private void sendUpdateNotificationIfRequired(
       RequestContext requestContext, Entity prevEntity, Entity currEntity) {
     try {
+      if (!shouldSendNotification(requestContext, prevEntity, currEntity)) {
+        return;
+      }
+
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setUpdateEvent(
           EntityUpdateEvent.newBuilder()
@@ -145,6 +165,40 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
           currEntity.getTenantId(),
           ex);
     }
+  }
+
+  private boolean shouldSendNotification(
+      RequestContext requestContext, Entity prevEntity, Entity currEntity) {
+    Entity.Builder prevEntityBuilder = prevEntity.toBuilder();
+    Entity.Builder currEntityBuilder = currEntity.toBuilder();
+    this.changeNotificationSkipAttributeList.forEach(
+        attributeId ->
+            removeAttributeFromEntity(
+                requestContext, attributeId, prevEntityBuilder, currEntityBuilder));
+
+    return !Maps.difference(
+            prevEntityBuilder.build().getAttributesMap(),
+            currEntityBuilder.build().getAttributesMap())
+        .areEqual();
+  }
+
+  private void removeAttributeFromEntity(
+      RequestContext requestContext,
+      String attributeId,
+      Entity.Builder prevEntityBuilder,
+      Entity.Builder currEntityBuilder) {
+    Optional<AttributeMetadataIdentifier> metadataIdentifier =
+        this.entityAttributeMapping.getAttributeMetadataByAttributeId(requestContext, attributeId);
+    String entityType = prevEntityBuilder.getEntityType();
+    metadataIdentifier.ifPresent(
+        metadata -> {
+          if (metadata.getScope().equals(entityType)) {
+            String docStorePath = metadata.getDocStorePath();
+            String attributeName = removePrefix(docStorePath, ENTITY_ATTRIBUTE_DOC_PREFIX);
+            prevEntityBuilder.removeAttributes(attributeName);
+            currEntityBuilder.removeAttributes(attributeName);
+          }
+        });
   }
 
   private void sendDeleteNotification(RequestContext requestContext, Entity deletedEntity) {
@@ -171,5 +225,12 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   private EntityChangeEventKey getEntityChangeEventKey(Entity entity) {
     return KeyUtil.getKey(entity);
+  }
+
+  private String removePrefix(String str, final String prefix) {
+    if (str != null && prefix != null && str.startsWith(prefix)) {
+      return str.substring(prefix.length());
+    }
+    return str;
   }
 }
