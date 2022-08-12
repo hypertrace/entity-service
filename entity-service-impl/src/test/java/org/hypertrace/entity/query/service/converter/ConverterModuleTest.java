@@ -6,7 +6,7 @@ import com.google.inject.Guice;
 import com.google.inject.Key;
 import com.google.inject.TypeLiteral;
 import org.hypertrace.core.documentstore.query.Query;
-import org.hypertrace.entity.query.service.EntityAttributeMapping;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

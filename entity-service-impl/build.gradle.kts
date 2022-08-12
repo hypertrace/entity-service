@@ -6,12 +6,13 @@ plugins {
 
 dependencies {
   api(project(":entity-service-api"))
+  api(project(":entity-service-attribute-translator"))
   api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.37")
 
   annotationProcessor("org.projectlombok:lombok:1.18.22")
   compileOnly("org.projectlombok:lombok:1.18.18")
 
-  implementation("org.hypertrace.core.documentstore:document-store:0.7.4")
+  implementation("org.hypertrace.core.documentstore:document-store:0.7.5")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.3")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.3")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.12.3")

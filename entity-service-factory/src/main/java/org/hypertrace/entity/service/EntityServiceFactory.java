@@ -14,6 +14,7 @@ import org.hypertrace.core.documentstore.DatastoreProvider;
 import org.hypertrace.core.serviceframework.grpc.GrpcPlatformService;
 import org.hypertrace.core.serviceframework.grpc.GrpcPlatformServiceFactory;
 import org.hypertrace.core.serviceframework.grpc.GrpcServiceContainerEnvironment;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl;
 import org.hypertrace.entity.query.service.EntityQueryServiceImpl;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
@@ -21,6 +22,7 @@ import org.hypertrace.entity.service.change.event.impl.EntityChangeEventGenerato
 import org.hypertrace.entity.type.service.v2.EntityTypeServiceImpl;
 
 public class EntityServiceFactory implements GrpcPlatformServiceFactory {
+
   private static final String SERVICE_NAME = "entity-service";
   private static final String DATA_STORE_REPORTING_NAME = "entity-service-datastore";
 
@@ -36,9 +38,11 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
     this.datastore =
         DatastoreProvider.getDatastore(
             dataStoreConfig.getDataStoreType(), dataStoreConfig.getDataStoreConfig());
+    EntityAttributeMapping entityAttributeMapping =
+        new EntityAttributeMapping(config, grpcServiceContainerEnvironment.getChannelRegistry());
     EntityChangeEventGenerator entityChangeEventGenerator =
         EntityChangeEventGeneratorFactory.getInstance()
-            .createEntityChangeEventGenerator(config, Clock.systemUTC());
+            .createEntityChangeEventGenerator(config, entityAttributeMapping, Clock.systemUTC());
     Channel localChannel =
         grpcServiceContainerEnvironment
             .getChannelRegistry()
@@ -48,10 +52,7 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
             new EntityTypeServiceImpl(datastore),
             new EntityDataServiceImpl(datastore, localChannel, entityChangeEventGenerator),
             new EntityQueryServiceImpl(
-                datastore,
-                config,
-                grpcServiceContainerEnvironment.getChannelRegistry(),
-                entityChangeEventGenerator))
+                datastore, config, entityAttributeMapping, entityChangeEventGenerator))
         .map(GrpcPlatformService::new)
         .collect(Collectors.toUnmodifiableList());
   }

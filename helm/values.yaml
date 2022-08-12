@@ -96,6 +96,7 @@ entityServiceConfig:
     host: postgres
     port: 5432
     url: ""
+  skipAttributes: []
   attributeService:
     host: attribute-service
     port: 9012

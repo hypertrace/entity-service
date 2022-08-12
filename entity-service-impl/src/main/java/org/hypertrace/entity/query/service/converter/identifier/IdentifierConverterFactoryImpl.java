@@ -4,7 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.grpcutils.context.RequestContext;
-import org.hypertrace.entity.query.service.EntityAttributeMapping;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.ValueType;

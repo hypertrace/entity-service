@@ -1,4 +1,4 @@
-package org.hypertrace.entity.query.service;
+package org.hypertrace.entity.attribute.translator;
 
 import static java.util.stream.Collectors.toUnmodifiableMap;
 
@@ -7,24 +7,27 @@ import java.util.Map;
 import java.util.Optional;
 import org.hypertrace.core.attribute.service.cachingclient.CachingAttributeClient;
 import org.hypertrace.core.attribute.service.v1.AttributeKind;
-import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
 import org.hypertrace.core.attribute.service.v1.AttributeSource;
 import org.hypertrace.core.grpcutils.client.GrpcChannelRegistry;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 
 public class EntityAttributeMapping {
+
   private static final String ID_ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.idAttributeMap";
   private static final String ATTRIBUTE_MAP_CONFIG_PATH = "entity.service.attributeMap";
   private static final String ATTRIBUTE_SERVICE_HOST = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT = "attribute.service.config.port";
-  static final String ENTITY_ATTRIBUTE_DOC_PREFIX = "attributes.";
+  public static final String ENTITY_ATTRIBUTE_DOC_PREFIX = "attributes.";
   public static final String SUB_DOC_PATH = "subDocPath";
+  private static final String SCOPE_PATH = "scope";
+  private static final String ATTRIBUTE_PATH = "attribute";
+  private static final String NAME_PATH = "name";
 
   private final CachingAttributeClient attributeClient;
-  private final Map<String, String> explicitDocStoreMappingsByAttributeId;
+  private final Map<String, AttributeMetadataIdentifier> explicitAttributeIdByAttributeMetadata;
   private final Map<String, String> idAttributeMap;
 
-  EntityAttributeMapping(Config config, GrpcChannelRegistry channelRegistry) {
+  public EntityAttributeMapping(Config config, GrpcChannelRegistry channelRegistry) {
     this(
         CachingAttributeClient.builder(
                 channelRegistry.forAddress(
@@ -34,20 +37,23 @@ public class EntityAttributeMapping {
         config.getConfigList(ATTRIBUTE_MAP_CONFIG_PATH).stream()
             .collect(
                 toUnmodifiableMap(
-                    conf -> conf.getString("name"), conf -> conf.getString(SUB_DOC_PATH))),
+                    conf -> conf.getString(NAME_PATH),
+                    conf ->
+                        new AttributeMetadataIdentifier(
+                            conf.getString(SCOPE_PATH), conf.getString(SUB_DOC_PATH)))),
         config.getConfigList(ID_ATTRIBUTE_MAP_CONFIG_PATH).stream()
             .collect(
                 toUnmodifiableMap(
-                    conf -> conf.getString("scope"), conf -> conf.getString("attribute"))));
+                    conf -> conf.getString(SCOPE_PATH), conf -> conf.getString(ATTRIBUTE_PATH))));
   }
 
   EntityAttributeMapping(
       CachingAttributeClient attributeClient,
-      Map<String, String> explicitDocStoreMappingsByAttributeId,
+      Map<String, AttributeMetadataIdentifier> attributeIdByAttributeMetadata,
       Map<String, String> idAttributeMap) {
     this.attributeClient = attributeClient;
-    this.explicitDocStoreMappingsByAttributeId = explicitDocStoreMappingsByAttributeId;
     this.idAttributeMap = idAttributeMap;
+    this.explicitAttributeIdByAttributeMetadata = attributeIdByAttributeMetadata;
   }
 
   /**
@@ -58,8 +64,16 @@ public class EntityAttributeMapping {
    */
   public Optional<String> getDocStorePathByAttributeId(
       RequestContext requestContext, String attributeId) {
-    return Optional.ofNullable(this.explicitDocStoreMappingsByAttributeId.get(attributeId))
-        .or(() -> this.calculateDocStorePathFromAttributeId(requestContext, attributeId));
+    Optional<AttributeMetadataIdentifier> attribute =
+        Optional.ofNullable(this.explicitAttributeIdByAttributeMetadata.get(attributeId))
+            .or(() -> this.calculateAttributeMetadataFromAttributeId(requestContext, attributeId));
+    return attribute.map(AttributeMetadataIdentifier::getDocStorePath);
+  }
+
+  public Optional<AttributeMetadataIdentifier> getAttributeMetadataByAttributeId(
+      RequestContext requestContext, String attributeId) {
+    return Optional.ofNullable(this.explicitAttributeIdByAttributeMetadata.get(attributeId))
+        .or(() -> this.calculateAttributeMetadataFromAttributeId(requestContext, attributeId));
   }
 
   public Optional<String> getIdentifierAttributeId(String entityType) {
@@ -72,22 +86,25 @@ public class EntityAttributeMapping {
             this.attributeClient
                 .get(attributeId)
                 .filter(metadata -> metadata.getSourcesList().contains(AttributeSource.EDS))
-                .map(AttributeMetadata::getValueKind)
+                .map(org.hypertrace.core.attribute.service.v1.AttributeMetadata::getValueKind)
                 .map(valueKind -> (AttributeKind.TYPE_STRING_ARRAY == valueKind))
                 .onErrorComplete()
                 .defaultIfEmpty(false)
                 .blockingGet());
   }
 
-  private Optional<String> calculateDocStorePathFromAttributeId(
+  private Optional<AttributeMetadataIdentifier> calculateAttributeMetadataFromAttributeId(
       RequestContext requestContext, String attributeId) {
     return requestContext.call(
         () ->
             this.attributeClient
                 .get(attributeId)
                 .filter(metadata -> metadata.getSourcesList().contains(AttributeSource.EDS))
-                .map(AttributeMetadata::getKey)
-                .map(key -> ENTITY_ATTRIBUTE_DOC_PREFIX + key)
+                .map(
+                    metadata ->
+                        new AttributeMetadataIdentifier(
+                            metadata.getScopeString(),
+                            ENTITY_ATTRIBUTE_DOC_PREFIX + metadata.getKey()))
                 .map(Optional::of)
                 .onErrorComplete()
                 .defaultIfEmpty(Optional.empty())

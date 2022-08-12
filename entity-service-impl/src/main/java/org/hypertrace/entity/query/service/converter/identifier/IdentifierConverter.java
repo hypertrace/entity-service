@@ -2,7 +2,7 @@ package org.hypertrace.entity.query.service.converter.identifier;
 
 import java.util.Optional;
 import org.hypertrace.core.grpcutils.context.RequestContext;
-import org.hypertrace.entity.query.service.EntityAttributeMapping;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 

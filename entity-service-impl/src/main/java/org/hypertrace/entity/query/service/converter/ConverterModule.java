@@ -9,7 +9,7 @@ import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.type.FromTypeExpression;
 import org.hypertrace.core.documentstore.query.Query;
 import org.hypertrace.core.documentstore.query.Sort;
-import org.hypertrace.entity.query.service.EntityAttributeMapping;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.accessor.AccessorModule;
 import org.hypertrace.entity.query.service.converter.aggregation.AggregationModule;
 import org.hypertrace.entity.query.service.converter.filter.FilterModule;
