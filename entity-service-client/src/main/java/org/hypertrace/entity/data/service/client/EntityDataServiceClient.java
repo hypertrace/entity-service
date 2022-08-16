@@ -32,7 +32,12 @@ import org.hypertrace.entity.data.service.v1.RelationshipsQuery.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Client for all CRUD and Query operations on Entities stored in the Document Store */
+/**
+ * Client for all CRUD and Query operations on Entities stored in the Document Store
+ *
+ * @deprecated Use gRPC stub clients instead
+ */
+@Deprecated(forRemoval = true)
 public class EntityDataServiceClient implements EdsClient {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EntityDataServiceClient.class);
