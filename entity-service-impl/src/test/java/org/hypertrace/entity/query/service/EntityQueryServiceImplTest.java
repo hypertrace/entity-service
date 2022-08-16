@@ -11,10 +11,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.quality.Strictness.LENIENT;
 
+import com.google.common.collect.Streams;
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
-import java.io.IOException;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +34,7 @@ import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
+import org.hypertrace.entity.fetcher.EntityFetcher;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
@@ -58,6 +59,7 @@ import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
+import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
@@ -79,6 +81,8 @@ public class EntityQueryServiceImplTest {
   @Mock RequestContext requestContext;
   @Mock EntityAttributeMapping mockAttributeMapping;
   @Mock Collection entitiesCollection;
+  @Mock EntityChangeEventGenerator entityChangeEventGenerator;
+  @Mock EntityFetcher entityFetcher;
 
   private static final String API_ID = "API.id";
   private static final String ATTRIBUTE_ID1 = "Entity.id";
@@ -99,7 +103,13 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
+                      entitiesCollection,
+                      mockAttributeMapping,
+                      entityChangeEventGenerator,
+                      entityFetcher,
+                      1,
+                      false,
+                      1000);
 
               eqs.update(null, mockResponseObserver);
 
@@ -120,7 +130,13 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
+                      entitiesCollection,
+                      mockAttributeMapping,
+                      entityChangeEventGenerator,
+                      entityFetcher,
+                      1,
+                      false,
+                      1000);
 
               eqs.update(EntityUpdateRequest.newBuilder().build(), mockResponseObserver);
 
@@ -142,7 +158,13 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
+                      entitiesCollection,
+                      mockAttributeMapping,
+                      entityChangeEventGenerator,
+                      entityFetcher,
+                      1,
+                      false,
+                      1000);
 
               eqs.update(
                   EntityUpdateRequest.newBuilder().setEntityType(TEST_ENTITY_TYPE).build(),
@@ -166,7 +188,13 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
+                      entitiesCollection,
+                      mockAttributeMapping,
+                      entityChangeEventGenerator,
+                      entityFetcher,
+                      1,
+                      false,
+                      1000);
 
               eqs.update(
                   EntityUpdateRequest.newBuilder()
@@ -219,7 +247,13 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      mockEntitiesCollection, mockMappingForAttributes1And2(), 1, false, 1000);
+                      mockEntitiesCollection,
+                      mockMappingForAttributes1And2(),
+                      entityChangeEventGenerator,
+                      entityFetcher,
+                      1,
+                      false,
+                      1000);
               eqs.update(updateRequest, mockResponseObserver);
               return null;
             });
@@ -247,7 +281,13 @@ public class EntityQueryServiceImplTest {
               () -> {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
-                        entitiesCollection, mockAttributeMapping, 1, false, 1000);
+                        entitiesCollection,
+                        mockAttributeMapping,
+                        entityChangeEventGenerator,
+                        entityFetcher,
+                        1,
+                        false,
+                        1000);
 
                 eqs.bulkUpdate(null, mockResponseObserver);
 
@@ -269,7 +309,13 @@ public class EntityQueryServiceImplTest {
               () -> {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
-                        entitiesCollection, mockAttributeMapping, 1, false, 1000);
+                        entitiesCollection,
+                        mockAttributeMapping,
+                        entityChangeEventGenerator,
+                        entityFetcher,
+                        1,
+                        false,
+                        1000);
 
                 eqs.bulkUpdate(BulkEntityUpdateRequest.newBuilder().build(), mockResponseObserver);
 
@@ -291,7 +337,13 @@ public class EntityQueryServiceImplTest {
               () -> {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
-                        entitiesCollection, mockAttributeMapping, 1, false, 1000);
+                        entitiesCollection,
+                        mockAttributeMapping,
+                        entityChangeEventGenerator,
+                        entityFetcher,
+                        1,
+                        false,
+                        1000);
 
                 eqs.bulkUpdate(
                     BulkEntityUpdateRequest.newBuilder().setEntityType(TEST_ENTITY_TYPE).build(),
@@ -322,7 +374,13 @@ public class EntityQueryServiceImplTest {
               () -> {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
-                        entitiesCollection, mockAttributeMapping, 1, false, 1000);
+                        entitiesCollection,
+                        mockAttributeMapping,
+                        entityChangeEventGenerator,
+                        entityFetcher,
+                        1,
+                        false,
+                        1000);
                 eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
                 return null;
               });
@@ -359,7 +417,13 @@ public class EntityQueryServiceImplTest {
               () -> {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
-                        mockEntitiesCollection, mockMappingForAttribute1(), 1, false, 1000);
+                        mockEntitiesCollection,
+                        mockMappingForAttribute1(),
+                        entityChangeEventGenerator,
+                        entityFetcher,
+                        1,
+                        false,
+                        1000);
                 eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
                 return null;
               });
@@ -384,7 +448,13 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
+                      entitiesCollection,
+                      mockAttributeMapping,
+                      entityChangeEventGenerator,
+                      entityFetcher,
+                      1,
+                      false,
+                      1000);
 
               eqs.execute(null, mockResponseObserver);
 
@@ -454,7 +524,12 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      mockEntitiesCollection, mockMappingForAttributes1And2(), 1, false, 1000);
+                      mockEntitiesCollection,
+                      mockMappingForAttributes1And2(),
+                      entityChangeEventGenerator,
+                      1,
+                      false,
+                      1000);
 
               eqs.execute(request, mockResponseObserver);
               return null;
@@ -541,7 +616,12 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      mockEntitiesCollection, mockMappingForAttributes1And2(), 2, false, 1000);
+                      mockEntitiesCollection,
+                      mockMappingForAttributes1And2(),
+                      entityChangeEventGenerator,
+                      2,
+                      false,
+                      1000);
 
               eqs.execute(request, mockResponseObserver);
               return null;
@@ -587,7 +667,13 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      entitiesCollection, mockAttributeMapping, 1, false, 1000);
+                      entitiesCollection,
+                      mockAttributeMapping,
+                      entityChangeEventGenerator,
+                      entityFetcher,
+                      1,
+                      false,
+                      1000);
               eqs.bulkUpdateEntityArrayAttribute(request, mockResponseObserver);
               return null;
             });
@@ -612,14 +698,13 @@ public class EntityQueryServiceImplTest {
   }
 
   @Test
-  public void testDeleteEntities() throws IOException {
+  public void testDeleteEntities() {
     Collection mockEntitiesCollection = mock(Collection.class);
     UUID entityId = UUID.randomUUID();
-    List<Document> docs =
-        List.of(new JSONDocument("{\n" + "    \"entityId\": \"" + entityId + "\"" + "}"));
+    List<Entity> docs = List.of(Entity.newBuilder().setEntityId(entityId.toString()).build());
 
-    when(mockEntitiesCollection.search(any()))
-        .thenReturn(convertToCloseableIterator(docs.iterator()));
+    when(this.entityFetcher.query(any(org.hypertrace.core.documentstore.query.Query.class)))
+        .thenReturn(Streams.stream(docs.iterator()));
     when(mockAttributeMapping.getIdentifierAttributeId(TEST_ENTITY_TYPE))
         .thenReturn(Optional.of("API.id"));
 
@@ -652,7 +737,13 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      mockEntitiesCollection, mockMappingForAttributes(), 100, false, 1000);
+                      mockEntitiesCollection,
+                      mockMappingForAttributes(),
+                      entityChangeEventGenerator,
+                      entityFetcher,
+                      100,
+                      false,
+                      1000);
 
               eqs.deleteEntities(request, mockResponseObserver);
             });
@@ -719,7 +810,13 @@ public class EntityQueryServiceImplTest {
             () -> {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
-                      mockEntitiesCollection, mockMappingForAttributes1And2(), 100, false, 1000);
+                      mockEntitiesCollection,
+                      mockMappingForAttributes1And2(),
+                      entityChangeEventGenerator,
+                      entityFetcher,
+                      100,
+                      false,
+                      1000);
 
               eqs.execute(request, mockResponseObserver);
             });
@@ -756,7 +853,14 @@ public class EntityQueryServiceImplTest {
       ArgumentCaptor<Query> docStoreQueryCaptor = ArgumentCaptor.forClass(Query.class);
 
       EntityQueryServiceImpl eqs =
-          new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false, 1000);
+          new EntityQueryServiceImpl(
+              entitiesCollection,
+              mockAttributeMapping,
+              entityChangeEventGenerator,
+              entityFetcher,
+              1,
+              false,
+              1000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
 
       Context.current()
@@ -792,7 +896,14 @@ public class EntityQueryServiceImplTest {
               .build();
 
       EntityQueryServiceImpl eqs =
-          new EntityQueryServiceImpl(entitiesCollection, mockAttributeMapping, 1, false, 1000);
+          new EntityQueryServiceImpl(
+              entitiesCollection,
+              mockAttributeMapping,
+              entityChangeEventGenerator,
+              entityFetcher,
+              1,
+              false,
+              1000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
 
       when(entitiesCollection.total(any())).thenReturn(123L);
