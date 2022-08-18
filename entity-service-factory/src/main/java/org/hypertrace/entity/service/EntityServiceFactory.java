@@ -51,8 +51,7 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
             new org.hypertrace.entity.type.service.EntityTypeServiceImpl(datastore),
             new EntityTypeServiceImpl(datastore),
             new EntityDataServiceImpl(datastore, localChannel, entityChangeEventGenerator),
-            new EntityQueryServiceImpl(
-                datastore, config, entityAttributeMapping, entityChangeEventGenerator))
+            new EntityQueryServiceImpl(datastore, config, entityAttributeMapping))
         .map(GrpcPlatformService::new)
         .collect(Collectors.toUnmodifiableList());
   }
