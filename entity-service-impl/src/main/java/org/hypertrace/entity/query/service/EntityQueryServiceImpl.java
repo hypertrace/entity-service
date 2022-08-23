@@ -381,7 +381,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       Set<String> entityIdsForChangeNotification = new HashSet<>();
       boolean shouldSendNotification =
           this.entityAttributeChangeEvaluator.shouldSendNotification(
-              requestContext, request.getEntityType(), request.getOperation());
+              requestContext, request.getOperation());
 
       for (String entityId : request.getEntityIdsList()) {
         SingleValueKey key =
@@ -482,7 +482,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       List<String> entityIdsForChangeNotifications = Lists.newArrayList();
       boolean shouldSendNotification =
           this.entityAttributeChangeEvaluator.shouldSendNotification(
-              requestContext, request.getEntityType(), request.getAttribute());
+              requestContext, request.getAttribute());
       if (shouldSendNotification) {
         entityIdsForChangeNotifications = request.getEntityIdsList();
       }
@@ -576,7 +576,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           transformedUpdateOperations);
       boolean shouldSendNotification =
           this.entityAttributeChangeEvaluator.shouldSendNotification(
-              requestContext, entityType, updateOperations);
+              requestContext, updateOperations);
       if (shouldSendNotification) {
         entityIdsForChangeNotification.add(entityId);
       }

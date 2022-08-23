@@ -41,25 +41,23 @@ public class EntityAttributeChangeEvaluator {
   }
 
   public boolean shouldSendNotification(
-      RequestContext requestContext, String entityType, ColumnIdentifier columnIdentifier) {
+      RequestContext requestContext, ColumnIdentifier columnIdentifier) {
     String attributeId = columnIdentifier.getColumnName();
     return !this.changeNotificationSkipAttributeList.contains(attributeId);
   }
 
   public boolean shouldSendNotification(
-      RequestContext requestContext, String entityType, UpdateOperation updateOperation) {
-    String attributeId = updateOperation.getSetAttribute().getAttribute().getColumnName();
-    return !this.changeNotificationSkipAttributeList.contains(attributeId);
+      RequestContext requestContext, UpdateOperation updateOperation) {
+    ColumnIdentifier columnIdentifier = updateOperation.getSetAttribute().getAttribute();
+    return this.shouldSendNotification(requestContext, columnIdentifier);
   }
 
   public boolean shouldSendNotification(
-      RequestContext requestContext, String entityType, List<UpdateOperation> updateOperations) {
+      RequestContext requestContext, List<UpdateOperation> updateOperations) {
     List<UpdateOperation> validUpdateOperations =
         updateOperations.stream()
-            .filter(updateOperation -> !updateOperation.hasSetAttribute())
-            .filter(
-                updateOperation ->
-                    this.shouldSendNotification(requestContext, entityType, updateOperation))
+            .filter(UpdateOperation::hasSetAttribute)
+            .filter(updateOperation -> this.shouldSendNotification(requestContext, updateOperation))
             .collect(Collectors.toUnmodifiableList());
     return !validUpdateOperations.isEmpty();
   }
