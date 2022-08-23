@@ -31,6 +31,7 @@ import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.Query;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.EntityAttributeChangeEvaluator;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
@@ -83,6 +84,7 @@ public class EntityQueryServiceImplTest {
   @Mock Collection entitiesCollection;
   @Mock EntityChangeEventGenerator entityChangeEventGenerator;
   @Mock EntityFetcher entityFetcher;
+  @Mock EntityAttributeChangeEvaluator entityAttributeChangeEvaluator;
 
   private static final String API_ID = "API.id";
   private static final String ATTRIBUTE_ID1 = "Entity.id";
@@ -106,6 +108,7 @@ public class EntityQueryServiceImplTest {
                       entitiesCollection,
                       mockAttributeMapping,
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       entityFetcher,
                       1,
                       false,
@@ -133,6 +136,7 @@ public class EntityQueryServiceImplTest {
                       entitiesCollection,
                       mockAttributeMapping,
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       entityFetcher,
                       1,
                       false,
@@ -161,6 +165,7 @@ public class EntityQueryServiceImplTest {
                       entitiesCollection,
                       mockAttributeMapping,
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       entityFetcher,
                       1,
                       false,
@@ -191,6 +196,7 @@ public class EntityQueryServiceImplTest {
                       entitiesCollection,
                       mockAttributeMapping,
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       entityFetcher,
                       1,
                       false,
@@ -250,6 +256,7 @@ public class EntityQueryServiceImplTest {
                       mockEntitiesCollection,
                       mockMappingForAttributes1And2(),
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       entityFetcher,
                       1,
                       false,
@@ -284,6 +291,7 @@ public class EntityQueryServiceImplTest {
                         entitiesCollection,
                         mockAttributeMapping,
                         entityChangeEventGenerator,
+                        entityAttributeChangeEvaluator,
                         entityFetcher,
                         1,
                         false,
@@ -312,6 +320,7 @@ public class EntityQueryServiceImplTest {
                         entitiesCollection,
                         mockAttributeMapping,
                         entityChangeEventGenerator,
+                        entityAttributeChangeEvaluator,
                         entityFetcher,
                         1,
                         false,
@@ -340,6 +349,7 @@ public class EntityQueryServiceImplTest {
                         entitiesCollection,
                         mockAttributeMapping,
                         entityChangeEventGenerator,
+                        entityAttributeChangeEvaluator,
                         entityFetcher,
                         1,
                         false,
@@ -377,6 +387,7 @@ public class EntityQueryServiceImplTest {
                         entitiesCollection,
                         mockAttributeMapping,
                         entityChangeEventGenerator,
+                        entityAttributeChangeEvaluator,
                         entityFetcher,
                         1,
                         false,
@@ -420,6 +431,7 @@ public class EntityQueryServiceImplTest {
                         mockEntitiesCollection,
                         mockMappingForAttribute1(),
                         entityChangeEventGenerator,
+                        entityAttributeChangeEvaluator,
                         entityFetcher,
                         1,
                         false,
@@ -451,6 +463,7 @@ public class EntityQueryServiceImplTest {
                       entitiesCollection,
                       mockAttributeMapping,
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       entityFetcher,
                       1,
                       false,
@@ -527,6 +540,7 @@ public class EntityQueryServiceImplTest {
                       mockEntitiesCollection,
                       mockMappingForAttributes1And2(),
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       1,
                       false,
                       1000);
@@ -619,6 +633,7 @@ public class EntityQueryServiceImplTest {
                       mockEntitiesCollection,
                       mockMappingForAttributes1And2(),
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       2,
                       false,
                       1000);
@@ -670,6 +685,7 @@ public class EntityQueryServiceImplTest {
                       entitiesCollection,
                       mockAttributeMapping,
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       entityFetcher,
                       1,
                       false,
@@ -740,6 +756,7 @@ public class EntityQueryServiceImplTest {
                       mockEntitiesCollection,
                       mockMappingForAttributes(),
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       entityFetcher,
                       100,
                       false,
@@ -813,6 +830,7 @@ public class EntityQueryServiceImplTest {
                       mockEntitiesCollection,
                       mockMappingForAttributes1And2(),
                       entityChangeEventGenerator,
+                      entityAttributeChangeEvaluator,
                       entityFetcher,
                       100,
                       false,
@@ -857,6 +875,7 @@ public class EntityQueryServiceImplTest {
               entitiesCollection,
               mockAttributeMapping,
               entityChangeEventGenerator,
+              entityAttributeChangeEvaluator,
               entityFetcher,
               1,
               false,
@@ -900,6 +919,7 @@ public class EntityQueryServiceImplTest {
               entitiesCollection,
               mockAttributeMapping,
               entityChangeEventGenerator,
+              entityAttributeChangeEvaluator,
               entityFetcher,
               1,
               false,

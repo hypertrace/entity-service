@@ -12,6 +12,7 @@ import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FI
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
@@ -22,6 +23,7 @@ import io.grpc.stub.StreamObserver;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,6 +47,7 @@ import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.query.Filter;
 import org.hypertrace.core.documentstore.query.Selection;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.EntityAttributeChangeEvaluator;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
@@ -121,6 +124,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final int maxEntitiesToDelete;
   private final EntityFetcher entityFetcher;
   private final EntityChangeEventGenerator entityChangeEventGenerator;
+  private final EntityAttributeChangeEvaluator entityAttributeChangeEvaluator;
 
   public EntityQueryServiceImpl(
       Datastore datastore,
@@ -131,6 +135,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         datastore.getCollection(RAW_ENTITIES_COLLECTION),
         entityAttributeMapping,
         entityChangeEventGenerator,
+        new EntityAttributeChangeEvaluator(config, entityAttributeMapping),
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),
@@ -145,6 +150,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       Collection entitiesCollection,
       EntityAttributeMapping entityAttributeMapping,
       EntityChangeEventGenerator entityChangeEventGenerator,
+      EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
       int chunkSize,
       boolean queryAggregationEnabled,
       int maxEntitiesToDelete) {
@@ -152,6 +158,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         entitiesCollection,
         entityAttributeMapping,
         entityChangeEventGenerator,
+        entityAttributeChangeEvaluator,
         new EntityFetcher(entitiesCollection, DOCUMENT_PARSER),
         chunkSize,
         queryAggregationEnabled,
@@ -163,6 +170,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       Collection entitiesCollection,
       EntityAttributeMapping entityAttributeMapping,
       EntityChangeEventGenerator entityChangeEventGenerator,
+      EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
       EntityFetcher entityFetcher,
       int chunkSize,
       boolean queryAggregationEnabled,
@@ -176,6 +184,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     this.maxEntitiesToDelete = maxEntitiesToDelete;
     this.entityChangeEventGenerator = entityChangeEventGenerator;
     this.entityFetcher = entityFetcher;
+    this.entityAttributeChangeEvaluator = entityAttributeChangeEvaluator;
   }
 
   @Override
@@ -369,6 +378,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       JSONDocument jsonDocument = convertToJsonDocument(setAttribute.getValue());
 
       Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
+      Set<String> entityIdsForChangeNotification = new HashSet<>();
+      boolean shouldSendNotification =
+          this.entityAttributeChangeEvaluator.shouldSendNotification(
+              requestContext, request.getEntityType(), request.getOperation());
+
       for (String entityId : request.getEntityIdsList()) {
         SingleValueKey key =
             new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId);
@@ -379,14 +393,17 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           subDocument.put(subDocPath, jsonDocument);
           entitiesUpdateMap.put(key, subDocument);
         }
+        if (shouldSendNotification) {
+          entityIdsForChangeNotification.add(entityId);
+        }
       }
       try {
         List<Entity> existingEntities =
-            this.entityFetcher.getEntitiesByEntityIds(request.getEntityIdsList());
+            this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
         entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
 
         List<Entity> updatedEntities =
-            this.entityFetcher.getEntitiesByEntityIds(request.getEntityIdsList());
+            this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
         this.entityChangeEventGenerator.sendChangeNotification(
             requestContext, existingEntities, updatedEntities);
       } catch (Exception e) {
@@ -420,7 +437,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
     Map<String, EntityUpdateInfo> entitiesMap = request.getEntitiesMap();
     try {
-      doBulkUpdate(requestContext, entitiesMap);
+      doBulkUpdate(requestContext, request.getEntityType(), entitiesMap);
       responseObserver.onCompleted();
     } catch (Exception e) {
       responseObserver.onError(
@@ -462,8 +479,16 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
               getMatchingOperation(request.getOperation()),
               subDocuments);
 
+      List<String> entityIdsForChangeNotifications = Lists.newArrayList();
+      boolean shouldSendNotification =
+          this.entityAttributeChangeEvaluator.shouldSendNotification(
+              requestContext, request.getEntityType(), request.getAttribute());
+      if (shouldSendNotification) {
+        entityIdsForChangeNotifications = request.getEntityIdsList();
+      }
+
       List<Entity> existingEntities =
-          this.entityFetcher.getEntitiesByEntityIds(request.getEntityIdsList());
+          this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotifications);
       entitiesCollection.bulkOperationOnArrayValue(bulkArrayValueUpdateRequest);
 
       List<Entity> updatedEntities =
@@ -535,18 +560,26 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   }
 
   private void doBulkUpdate(
-      RequestContext requestContext, Map<String, EntityUpdateInfo> entitiesMap) throws Exception {
+      RequestContext requestContext, String entityType, Map<String, EntityUpdateInfo> entitiesMap)
+      throws Exception {
     Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
+    Set<String> entityIdsForChangeNotification = new HashSet<>();
     for (String entityId : entitiesMap.keySet()) {
+      List<UpdateOperation> updateOperations = entitiesMap.get(entityId).getUpdateOperationList();
       Map<String, Document> transformedUpdateOperations =
-          transformUpdateOperations(
-              entitiesMap.get(entityId).getUpdateOperationList(), requestContext);
+          transformUpdateOperations(updateOperations, requestContext);
       if (transformedUpdateOperations.isEmpty()) {
         continue;
       }
       entitiesUpdateMap.put(
           new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId),
           transformedUpdateOperations);
+      boolean shouldSendNotification =
+          this.entityAttributeChangeEvaluator.shouldSendNotification(
+              requestContext, entityType, updateOperations);
+      if (shouldSendNotification) {
+        entityIdsForChangeNotification.add(entityId);
+      }
     }
 
     if (entitiesUpdateMap.isEmpty()) {
@@ -556,11 +589,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     try {
       List<Entity> existingEntities =
-          this.entityFetcher.getEntitiesByEntityIds(entitiesMap.keySet());
+          this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
       entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
-
       List<Entity> updatedEntities =
-          this.entityFetcher.getEntitiesByEntityIds(entitiesMap.keySet());
+          this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
       this.entityChangeEventGenerator.sendChangeNotification(
           requestContext, existingEntities, updatedEntities);
     } catch (Exception e) {

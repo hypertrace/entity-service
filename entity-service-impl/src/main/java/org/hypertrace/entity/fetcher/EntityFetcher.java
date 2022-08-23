@@ -1,6 +1,7 @@
 package org.hypertrace.entity.fetcher;
 
 import com.google.common.collect.Streams;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -26,6 +27,9 @@ public class EntityFetcher {
   }
 
   public List<Entity> getEntitiesByEntityIds(java.util.Collection<String> entityIds) {
+    if (entityIds.isEmpty()) {
+      return Collections.emptyList();
+    }
     return query(buildExistingEntitiesByEntityIdQuery(entityIds)).collect(Collectors.toList());
   }
 
