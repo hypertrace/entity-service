@@ -23,7 +23,7 @@ dependencies {
   implementation(project(":entity-service-factory"))
 
   implementation("org.hypertrace.core.serviceframework:platform-grpc-service-framework:0.1.37")
-  implementation("org.hypertrace.core.documentstore:document-store:0.7.5")
+  implementation("org.hypertrace.core.documentstore:document-store:0.7.6")
 
   runtimeOnly("io.grpc:grpc-netty:1.45.1")
 
