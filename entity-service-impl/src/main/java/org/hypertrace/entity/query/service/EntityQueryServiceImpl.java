@@ -6,6 +6,7 @@ import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
+import static org.hypertrace.entity.attribute.translator.EntityAttributeChangeEvaluator.ALL_ENTITIES;
 import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
@@ -98,6 +99,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceImpl.class);
   private static final Printer PRINTER = DocStoreJsonFormat.printer().includingDefaultValueFields();
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
+  private static final String EQS_CHANGE_NOTIFICATION_ENABLED_ENTITY_TYPES_CONFIG =
+      "eqs.change.notification.enabled.entity.types";
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final String QUERY_AGGREGATION_ENABLED_CONFIG =
       "entity.service.config.query.aggregation.enabled";
@@ -135,7 +138,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         datastore.getCollection(RAW_ENTITIES_COLLECTION),
         entityAttributeMapping,
         entityChangeEventGenerator,
-        new EntityAttributeChangeEvaluator(config, entityAttributeMapping),
+        new EntityAttributeChangeEvaluator(
+            config,
+            config.hasPath(EQS_CHANGE_NOTIFICATION_ENABLED_ENTITY_TYPES_CONFIG)
+                ? config.getStringList(EQS_CHANGE_NOTIFICATION_ENABLED_ENTITY_TYPES_CONFIG)
+                : List.of(ALL_ENTITIES),
+            entityAttributeMapping),
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),
@@ -381,7 +389,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       Set<String> entityIdsForChangeNotification = new HashSet<>();
       boolean shouldSendNotification =
           this.entityAttributeChangeEvaluator.shouldSendNotification(
-              requestContext, request.getOperation());
+              requestContext, request.getEntityType(), request.getOperation());
 
       for (String entityId : request.getEntityIdsList()) {
         SingleValueKey key =
@@ -482,7 +490,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       List<String> entityIdsForChangeNotifications = Lists.newArrayList();
       boolean shouldSendNotification =
           this.entityAttributeChangeEvaluator.shouldSendNotification(
-              requestContext, request.getAttribute());
+              requestContext, request.getEntityType(), request.getAttribute());
       if (shouldSendNotification) {
         entityIdsForChangeNotifications = request.getEntityIdsList();
       }
@@ -576,7 +584,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           transformedUpdateOperations);
       boolean shouldSendNotification =
           this.entityAttributeChangeEvaluator.shouldSendNotification(
-              requestContext, updateOperations);
+              requestContext, entityType, updateOperations);
       if (shouldSendNotification) {
         entityIdsForChangeNotification.add(entityId);
       }

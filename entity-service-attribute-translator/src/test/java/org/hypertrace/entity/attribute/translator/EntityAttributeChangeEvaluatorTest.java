@@ -41,7 +41,7 @@ public class EntityAttributeChangeEvaluatorTest {
                 List.of(
                     TEST_ENTITY_TYPE + ".skip_attribute", TEST_ENTITY_TYPE + ".skip_attribute_1")));
     this.entityAttributeChangeEvaluator =
-        new EntityAttributeChangeEvaluator(config, entityAttributeMapping);
+        new EntityAttributeChangeEvaluator(config, List.of("*"), entityAttributeMapping);
   }
 
   @Test
@@ -101,6 +101,7 @@ public class EntityAttributeChangeEvaluatorTest {
     Assertions.assertTrue(
         entityAttributeChangeEvaluator.shouldSendNotification(
             requestContext,
+            TEST_ENTITY_TYPE,
             UpdateOperation.newBuilder()
                 .setSetAttribute(
                     SetAttribute.newBuilder()
@@ -114,6 +115,7 @@ public class EntityAttributeChangeEvaluatorTest {
     Assertions.assertFalse(
         entityAttributeChangeEvaluator.shouldSendNotification(
             requestContext,
+            TEST_ENTITY_TYPE,
             UpdateOperation.newBuilder()
                 .setSetAttribute(
                     SetAttribute.newBuilder()
@@ -130,6 +132,7 @@ public class EntityAttributeChangeEvaluatorTest {
     Assertions.assertTrue(
         entityAttributeChangeEvaluator.shouldSendNotification(
             requestContext,
+            TEST_ENTITY_TYPE,
             List.of(
                 UpdateOperation.newBuilder()
                     .setSetAttribute(
@@ -153,6 +156,7 @@ public class EntityAttributeChangeEvaluatorTest {
     Assertions.assertFalse(
         entityAttributeChangeEvaluator.shouldSendNotification(
             requestContext,
+            TEST_ENTITY_TYPE,
             List.of(
                 UpdateOperation.newBuilder()
                     .setSetAttribute(

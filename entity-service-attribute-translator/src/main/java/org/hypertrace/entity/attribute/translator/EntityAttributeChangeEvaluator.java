@@ -15,20 +15,34 @@ import org.hypertrace.entity.query.service.v1.UpdateOperation;
 public class EntityAttributeChangeEvaluator {
 
   private static final String SKIP_ATTRIBUTES_CONFIG_PATH = "entity.service.change.skip.attributes";
+  public static final String ALL_ENTITIES = "*";
+  private final List<String> allowedEntityTypes;
   private final List<String> changeNotificationSkipAttributeList;
   private final EntityAttributeMapping entityAttributeMapping;
 
   public EntityAttributeChangeEvaluator(
       Config appConfig, EntityAttributeMapping entityAttributeMapping) {
+    this(appConfig, List.of(ALL_ENTITIES), entityAttributeMapping);
+  }
+
+  public EntityAttributeChangeEvaluator(
+      Config appConfig,
+      List<String> allowedEntityTypes,
+      EntityAttributeMapping entityAttributeMapping) {
     this.changeNotificationSkipAttributeList = appConfig.getStringList(SKIP_ATTRIBUTES_CONFIG_PATH);
+    this.allowedEntityTypes = allowedEntityTypes;
     this.entityAttributeMapping = entityAttributeMapping;
   }
 
   public boolean shouldSendNotification(
       RequestContext requestContext, Entity prevEntity, Entity currEntity) {
+    String entityType = prevEntity.getEntityType();
+    if (!isEntityTypesAllowed(entityType)) {
+      return false;
+    }
+
     Entity.Builder prevEntityBuilder = prevEntity.toBuilder();
     Entity.Builder currEntityBuilder = currEntity.toBuilder();
-    String entityType = prevEntityBuilder.getEntityType();
     this.changeNotificationSkipAttributeList.forEach(
         attributeId ->
             removeAttributeFromEntity(
@@ -41,23 +55,34 @@ public class EntityAttributeChangeEvaluator {
   }
 
   public boolean shouldSendNotification(
-      RequestContext requestContext, ColumnIdentifier columnIdentifier) {
+      RequestContext requestContext, String entityType, ColumnIdentifier columnIdentifier) {
+    if (!isEntityTypesAllowed(entityType)) {
+      return false;
+    }
     String attributeId = columnIdentifier.getColumnName();
     return !this.changeNotificationSkipAttributeList.contains(attributeId);
   }
 
   public boolean shouldSendNotification(
-      RequestContext requestContext, UpdateOperation updateOperation) {
+      RequestContext requestContext, String entityType, UpdateOperation updateOperation) {
+    if (!isEntityTypesAllowed(entityType)) {
+      return false;
+    }
     ColumnIdentifier columnIdentifier = updateOperation.getSetAttribute().getAttribute();
-    return this.shouldSendNotification(requestContext, columnIdentifier);
+    return this.shouldSendNotification(requestContext, entityType, columnIdentifier);
   }
 
   public boolean shouldSendNotification(
-      RequestContext requestContext, List<UpdateOperation> updateOperations) {
+      RequestContext requestContext, String entityType, List<UpdateOperation> updateOperations) {
+    if (!isEntityTypesAllowed(entityType)) {
+      return false;
+    }
     List<UpdateOperation> validUpdateOperations =
         updateOperations.stream()
             .filter(UpdateOperation::hasSetAttribute)
-            .filter(updateOperation -> this.shouldSendNotification(requestContext, updateOperation))
+            .filter(
+                updateOperation ->
+                    this.shouldSendNotification(requestContext, entityType, updateOperation))
             .collect(Collectors.toUnmodifiableList());
     return !validUpdateOperations.isEmpty();
   }
@@ -87,5 +112,9 @@ public class EntityAttributeChangeEvaluator {
       return str.substring(prefix.length());
     }
     return str;
+  }
+
+  private boolean isEntityTypesAllowed(String entityType) {
+    return allowedEntityTypes.contains("*") || allowedEntityTypes.contains(entityType);
   }
 }
