@@ -41,7 +41,7 @@ public class EntityAttributeChangeEvaluatorTest {
                 List.of(
                     TEST_ENTITY_TYPE + ".skip_attribute", TEST_ENTITY_TYPE + ".skip_attribute_1")));
     this.entityAttributeChangeEvaluator =
-        new EntityAttributeChangeEvaluator(config, List.of("*"), entityAttributeMapping);
+        new EntityAttributeChangeEvaluator(config, entityAttributeMapping);
   }
 
   @Test

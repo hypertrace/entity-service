@@ -4,8 +4,10 @@ import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.
 
 import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.Entity;
@@ -15,29 +17,28 @@ import org.hypertrace.entity.query.service.v1.UpdateOperation;
 public class EntityAttributeChangeEvaluator {
 
   private static final String SKIP_ATTRIBUTES_CONFIG_PATH = "entity.service.change.skip.attributes";
-  public static final String ALL_ENTITIES = "*";
-  private final List<String> allowedEntityTypes;
+  private static final String ENTITY_SERVICE_CHANGE_ENABLED_ENTITY_TYPES_CONFIG =
+      "entity.service.change.enabled.entity.types";
+  public static final String ALL_ENTITY_TYPES = "*";
+  private final Set<String> allowedEntityTypes;
   private final List<String> changeNotificationSkipAttributeList;
   private final EntityAttributeMapping entityAttributeMapping;
 
   public EntityAttributeChangeEvaluator(
       Config appConfig, EntityAttributeMapping entityAttributeMapping) {
-    this(appConfig, List.of(ALL_ENTITIES), entityAttributeMapping);
-  }
-
-  public EntityAttributeChangeEvaluator(
-      Config appConfig,
-      List<String> allowedEntityTypes,
-      EntityAttributeMapping entityAttributeMapping) {
     this.changeNotificationSkipAttributeList = appConfig.getStringList(SKIP_ATTRIBUTES_CONFIG_PATH);
-    this.allowedEntityTypes = allowedEntityTypes;
+    this.allowedEntityTypes =
+        appConfig.hasPath(ENTITY_SERVICE_CHANGE_ENABLED_ENTITY_TYPES_CONFIG)
+            ? new HashSet<>(
+                appConfig.getStringList(ENTITY_SERVICE_CHANGE_ENABLED_ENTITY_TYPES_CONFIG))
+            : Set.of(ALL_ENTITY_TYPES);
     this.entityAttributeMapping = entityAttributeMapping;
   }
 
   public boolean shouldSendNotification(
       RequestContext requestContext, Entity prevEntity, Entity currEntity) {
     String entityType = prevEntity.getEntityType();
-    if (!isEntityTypesAllowed(entityType)) {
+    if (!isEntityTypeAllowed(entityType)) {
       return false;
     }
 
@@ -56,7 +57,7 @@ public class EntityAttributeChangeEvaluator {
 
   public boolean shouldSendNotification(
       RequestContext requestContext, String entityType, ColumnIdentifier columnIdentifier) {
-    if (!isEntityTypesAllowed(entityType)) {
+    if (!isEntityTypeAllowed(entityType)) {
       return false;
     }
     String attributeId = columnIdentifier.getColumnName();
@@ -65,7 +66,7 @@ public class EntityAttributeChangeEvaluator {
 
   public boolean shouldSendNotification(
       RequestContext requestContext, String entityType, UpdateOperation updateOperation) {
-    if (!isEntityTypesAllowed(entityType)) {
+    if (!isEntityTypeAllowed(entityType)) {
       return false;
     }
     ColumnIdentifier columnIdentifier = updateOperation.getSetAttribute().getAttribute();
@@ -74,7 +75,7 @@ public class EntityAttributeChangeEvaluator {
 
   public boolean shouldSendNotification(
       RequestContext requestContext, String entityType, List<UpdateOperation> updateOperations) {
-    if (!isEntityTypesAllowed(entityType)) {
+    if (!isEntityTypeAllowed(entityType)) {
       return false;
     }
     List<UpdateOperation> validUpdateOperations =
@@ -114,7 +115,7 @@ public class EntityAttributeChangeEvaluator {
     return str;
   }
 
-  private boolean isEntityTypesAllowed(String entityType) {
-    return allowedEntityTypes.contains("*") || allowedEntityTypes.contains(entityType);
+  private boolean isEntityTypeAllowed(String entityType) {
+    return allowedEntityTypes.contains(ALL_ENTITY_TYPES) || allowedEntityTypes.contains(entityType);
   }
 }

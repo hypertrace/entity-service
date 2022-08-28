@@ -97,7 +97,7 @@ entityServiceConfig:
     port: 5432
     url: ""
   skipAttributes: []
-  eqsChangeEnabledEntityTypes: ["*"]
+  changeEnabledEntityTypes: ["*"]
   attributeService:
     host: attribute-service
     port: 9012
