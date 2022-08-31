@@ -10,6 +10,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -57,12 +59,15 @@ class EntityChangeEventGeneratorImplTest {
   void setup() {
     mockClock = mock(Clock.class);
     when(mockClock.millis()).thenReturn(CURRENT_TIME_MILLIS);
+    Config config =
+        ConfigFactory.parseMap(
+            Map.of(
+                "entity.service.change.skip.attributes",
+                List.of(
+                    TEST_ENTITY_TYPE + ".skip_attribute", TEST_ENTITY_TYPE + ".skip_attribute_1")));
     changeEventGenerator =
         new EntityChangeEventGeneratorImpl(
-            eventProducer,
-            List.of(TEST_ENTITY_TYPE + ".skip_attribute", TEST_ENTITY_TYPE + ".skip_attribute_1"),
-            entityAttributeMapping,
-            mockClock);
+            config, eventProducer, entityAttributeMapping, mockClock);
     requestContext = RequestContext.forTenantId(TEST_TENANT_ID);
   }
 
