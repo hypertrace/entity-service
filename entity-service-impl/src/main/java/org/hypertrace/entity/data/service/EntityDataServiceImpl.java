@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
@@ -45,6 +44,7 @@ import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityRequest;
 import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityResponse;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.data.service.v1.RelationshipsQuery;
+import org.hypertrace.entity.fetcher.EntityFetcher;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.exception.InvalidRequestException;
@@ -63,11 +63,6 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(EntityDataServiceImpl.class);
   private static final DocumentParser PARSER = new DocumentParser();
   private static final DocStoreJsonFormat.Printer PRINTER = DocStoreJsonFormat.printer();
-  private static final String EVENT_STORE = "event.store";
-  private static final String EVENT_STORE_TYPE_CONFIG = "type";
-  private static final String ENTITY_CHANGE_EVENTS_TOPIC = "entity-change-events";
-  private static final String ENTITY_CHANGE_EVENTS_PRODUCER_CONFIG =
-      "entity.change.events.producer";
 
   private final Collection entitiesCollection;
   private final Collection relationshipsCollection;
@@ -76,6 +71,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private final UpsertConditionMatcher upsertConditionMatcher = new UpsertConditionMatcher();
   private final EntityIdGenerator entityIdGenerator;
   private final EntityChangeEventGenerator entityChangeEventGenerator;
+  private final EntityFetcher entityFetcher;
 
   public EntityDataServiceImpl(
       Datastore datastore,
@@ -91,6 +87,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     this.entityNormalizer =
         new EntityNormalizer(entityTypeClient, this.entityIdGenerator, identifyingAttributeCache);
     this.entityChangeEventGenerator = entityChangeEventGenerator;
+    this.entityFetcher = new EntityFetcher(this.entitiesCollection, PARSER);
   }
 
   /**
@@ -280,11 +277,12 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    Optional<Entity> existingEntity =
-        getExistingEntity(tenantId.get(), request.getEntityType(), request.getEntityId());
     Key key =
         this.entityNormalizer.getEntityDocKey(
             tenantId.get(), request.getEntityType(), request.getEntityId());
+    Optional<Entity> existingEntity =
+        this.entityFetcher.getEntitiesByEntityIds(List.of(key.toString())).stream().findFirst();
+
     if (entitiesCollection.delete(key)) {
       responseObserver.onNext(Empty.newBuilder().build());
       responseObserver.onCompleted();
@@ -312,7 +310,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    this.doQuery(DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList()))
+    this.entityFetcher
+        .query(DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList()))
         .forEach(responseObserver::onNext);
 
     responseObserver.onCompleted();
@@ -728,20 +727,9 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
   }
 
-  private List<String> getEntityIds(java.util.Collection<Entity> entities) {
-    return entities.stream().map(Entity::getEntityId).collect(Collectors.toList());
-  }
-
   private List<Entity> getExistingEntities(java.util.Collection<Entity> entities) {
     List<String> docIds = entities.stream().map(this::getDocId).collect(Collectors.toList());
-    return doQuery(buildExistingEntitiesInQuery(docIds)).collect(Collectors.toList());
-  }
-
-  private org.hypertrace.core.documentstore.Query buildExistingEntitiesInQuery(
-      java.util.Collection<String> docIds) {
-    org.hypertrace.core.documentstore.Query query = new org.hypertrace.core.documentstore.Query();
-    query.setFilter(new Filter(Filter.Op.IN, EntityServiceConstants.ID, docIds));
-    return query;
+    return this.entityFetcher.getEntitiesByDocIds(docIds);
   }
 
   private String getDocId(Entity entity) {
@@ -751,23 +739,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   }
 
   private Optional<Entity> getExistingEntity(String tenantId, String entityType, String entityId) {
-    return this.doQuery(this.buildExistingEntityQuery(tenantId, entityType, entityId)).findFirst();
-  }
-
-  private org.hypertrace.core.documentstore.Query buildExistingEntityQuery(
-      String tenantId, String entityType, String entityId) {
-    org.hypertrace.core.documentstore.Query query = new org.hypertrace.core.documentstore.Query();
     String docId = this.entityNormalizer.getEntityDocKey(tenantId, entityType, entityId).toString();
-    query.setFilter(new Filter(Filter.Op.EQ, EntityServiceConstants.ID, docId));
-    return query;
-  }
-
-  private Stream<Entity> doQuery(org.hypertrace.core.documentstore.Query query) {
-    return Streams.stream(entitiesCollection.search(query))
-        .map(this::entityFromDocument)
-        .flatMap(Optional::stream)
-        .map(Entity::toBuilder)
-        .map(Entity.Builder::build);
+    return this.entityFetcher.getEntitiesByDocIds(List.of(docId)).stream().findFirst();
   }
 
   private Optional<Entity> entityFromDocument(Document document) {
@@ -804,6 +777,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   }
 
   static class ErrorMessages {
+
     static final String ENTITY_ID_EMPTY = "Entity ID is empty";
     static final String ENTITY_TYPE_EMPTY = "Entity Type is empty";
     static final String ENTITY_IDENTIFYING_ATTRS_EMPTY = "Entity identifying attributes are empty";
