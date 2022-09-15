@@ -8,5 +8,5 @@ dependencies {
   implementation(project(":entity-service-attribute-translator"))
   implementation(project(":entity-service-impl"))
   implementation(project(":entity-service-change-event-generator"))
-  implementation("org.hypertrace.core.documentstore:document-store:0.7.6")
+  implementation("org.hypertrace.core.documentstore:document-store:0.7.8")
 }

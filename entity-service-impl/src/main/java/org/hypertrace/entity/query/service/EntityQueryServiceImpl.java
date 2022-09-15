@@ -12,6 +12,7 @@ import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FI
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
@@ -19,10 +20,10 @@ import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -46,12 +47,14 @@ import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.query.Filter;
 import org.hypertrace.core.documentstore.query.Selection;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.EntityAttributeChangeEvaluator;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
+import org.hypertrace.entity.fetcher.EntityFetcher;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
@@ -81,6 +84,7 @@ import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
+import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.util.DocStoreConverter;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
@@ -94,6 +98,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceImpl.class);
   private static final Printer PRINTER = DocStoreJsonFormat.printer().includingDefaultValueFields();
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
+  private static final String ENTITY_SERVICE_CHANGE_ENABLED_ENTITY_TYPES_CONFIG =
+      "entity.service.change.enabled.entity.types";
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final String QUERY_AGGREGATION_ENABLED_CONFIG =
       "entity.service.config.query.aggregation.enabled";
@@ -118,12 +124,20 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final Injector injector;
   private final boolean queryAggregationEnabled;
   private final int maxEntitiesToDelete;
+  private final EntityFetcher entityFetcher;
+  private final EntityChangeEventGenerator entityChangeEventGenerator;
+  private final EntityAttributeChangeEvaluator entityAttributeChangeEvaluator;
 
   public EntityQueryServiceImpl(
-      Datastore datastore, Config config, EntityAttributeMapping entityAttributeMapping) {
+      Datastore datastore,
+      Config config,
+      EntityAttributeMapping entityAttributeMapping,
+      EntityChangeEventGenerator entityChangeEventGenerator) {
     this(
         datastore.getCollection(RAW_ENTITIES_COLLECTION),
         entityAttributeMapping,
+        entityChangeEventGenerator,
+        new EntityAttributeChangeEvaluator(config, entityAttributeMapping),
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),
@@ -134,10 +148,32 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             : 10000);
   }
 
+  public EntityQueryServiceImpl(
+      Collection entitiesCollection,
+      EntityAttributeMapping entityAttributeMapping,
+      EntityChangeEventGenerator entityChangeEventGenerator,
+      EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
+      int chunkSize,
+      boolean queryAggregationEnabled,
+      int maxEntitiesToDelete) {
+    this(
+        entitiesCollection,
+        entityAttributeMapping,
+        entityChangeEventGenerator,
+        entityAttributeChangeEvaluator,
+        new EntityFetcher(entitiesCollection, DOCUMENT_PARSER),
+        chunkSize,
+        queryAggregationEnabled,
+        maxEntitiesToDelete);
+  }
+
   @VisibleForTesting
   EntityQueryServiceImpl(
       Collection entitiesCollection,
       EntityAttributeMapping entityAttributeMapping,
+      EntityChangeEventGenerator entityChangeEventGenerator,
+      EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
+      EntityFetcher entityFetcher,
       int chunkSize,
       boolean queryAggregationEnabled,
       int maxEntitiesToDelete) {
@@ -148,6 +184,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     this.injector = Guice.createInjector(new ConverterModule(entityAttributeMapping));
     this.queryAggregationEnabled = queryAggregationEnabled;
     this.maxEntitiesToDelete = maxEntitiesToDelete;
+    this.entityChangeEventGenerator = entityChangeEventGenerator;
+    this.entityFetcher = entityFetcher;
+    this.entityAttributeChangeEvaluator = entityAttributeChangeEvaluator;
   }
 
   @Override
@@ -341,6 +380,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       JSONDocument jsonDocument = convertToJsonDocument(setAttribute.getValue());
 
       Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
+      Set<String> entityIdsForChangeNotification = new HashSet<>();
+      boolean shouldSendNotification =
+          this.entityAttributeChangeEvaluator.shouldSendNotification(
+              requestContext, request.getEntityType(), request.getOperation());
+
       for (String entityId : request.getEntityIdsList()) {
         SingleValueKey key =
             new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId);
@@ -351,9 +395,19 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           subDocument.put(subDocPath, jsonDocument);
           entitiesUpdateMap.put(key, subDocument);
         }
+        if (shouldSendNotification) {
+          entityIdsForChangeNotification.add(entityId);
+        }
       }
       try {
+        List<Entity> existingEntities =
+            this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
         entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
+
+        List<Entity> updatedEntities =
+            this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
+        this.entityChangeEventGenerator.sendChangeNotification(
+            requestContext, existingEntities, updatedEntities);
       } catch (Exception e) {
         LOG.error(
             "Failed to update entities {}, subDocPath {}, with new doc {}.",
@@ -385,7 +439,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
     Map<String, EntityUpdateInfo> entitiesMap = request.getEntitiesMap();
     try {
-      doBulkUpdate(requestContext, entitiesMap);
+      doBulkUpdate(requestContext, request.getEntityType(), entitiesMap);
       responseObserver.onCompleted();
     } catch (Exception e) {
       responseObserver.onError(
@@ -426,7 +480,24 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
               subDocPath + ARRAY_VALUE_PATH_SUFFIX,
               getMatchingOperation(request.getOperation()),
               subDocuments);
+
+      List<String> entityIdsForChangeNotifications = Lists.newArrayList();
+      boolean shouldSendNotification =
+          this.entityAttributeChangeEvaluator.shouldSendNotification(
+              requestContext, request.getEntityType(), request.getAttribute());
+      if (shouldSendNotification) {
+        entityIdsForChangeNotifications = request.getEntityIdsList();
+      }
+
+      List<Entity> existingEntities =
+          this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotifications);
       entitiesCollection.bulkOperationOnArrayValue(bulkArrayValueUpdateRequest);
+
+      List<Entity> updatedEntities =
+          this.entityFetcher.getEntitiesByEntityIds(request.getEntityIdsList());
+      this.entityChangeEventGenerator.sendChangeNotification(
+          requestContext, existingEntities, updatedEntities);
+
       responseObserver.onNext(BulkEntityArrayAttributeUpdateResponse.newBuilder().build());
       responseObserver.onCompleted();
     } catch (Exception e) {
@@ -491,18 +562,26 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   }
 
   private void doBulkUpdate(
-      RequestContext requestContext, Map<String, EntityUpdateInfo> entitiesMap) throws Exception {
+      RequestContext requestContext, String entityType, Map<String, EntityUpdateInfo> entitiesMap)
+      throws Exception {
     Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
+    Set<String> entityIdsForChangeNotification = new HashSet<>();
     for (String entityId : entitiesMap.keySet()) {
+      List<UpdateOperation> updateOperations = entitiesMap.get(entityId).getUpdateOperationList();
       Map<String, Document> transformedUpdateOperations =
-          transformUpdateOperations(
-              entitiesMap.get(entityId).getUpdateOperationList(), requestContext);
+          transformUpdateOperations(updateOperations, requestContext);
       if (transformedUpdateOperations.isEmpty()) {
         continue;
       }
       entitiesUpdateMap.put(
           new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId),
           transformedUpdateOperations);
+      boolean shouldSendNotification =
+          this.entityAttributeChangeEvaluator.shouldSendNotification(
+              requestContext, entityType, updateOperations);
+      if (shouldSendNotification) {
+        entityIdsForChangeNotification.add(entityId);
+      }
     }
 
     if (entitiesUpdateMap.isEmpty()) {
@@ -511,7 +590,13 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     try {
+      List<Entity> existingEntities =
+          this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
       entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
+      List<Entity> updatedEntities =
+          this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
+      this.entityChangeEventGenerator.sendChangeNotification(
+          requestContext, existingEntities, updatedEntities);
     } catch (Exception e) {
       LOG.error("Failed to update entities {}", entitiesMap, e);
       throw e;
@@ -573,23 +658,23 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   public void deleteEntities(
       DeleteEntitiesRequest request, StreamObserver<DeleteEntitiesResponse> responseObserver) {
     RequestContext requestContext = RequestContext.CURRENT.get();
-    List<String> entityIds;
+    List<Entity> existingEntities;
     try {
       validateDeleteEntitiesRequest(request, requestContext);
-      entityIds = getEntityIdsToDelete(requestContext, request);
+      existingEntities = getEntitiesToDelete(requestContext, request);
     } catch (Exception ex) {
       responseObserver.onError(ex);
       return;
     }
 
-    if (entityIds.size() == 0) {
+    if (existingEntities.size() == 0) {
       LOG.debug("{}. No entities found to delete", request);
       responseObserver.onNext(DeleteEntitiesResponse.newBuilder().build());
       responseObserver.onCompleted();
       return;
     }
 
-    if (entityIds.size() > maxEntitiesToDelete) {
+    if (existingEntities.size() > maxEntitiesToDelete) {
       LOG.warn(
           "{}. Number of entity ids to delete exceeds the maximum limit: Entity Ids limit exceeded",
           request);
@@ -600,11 +685,17 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
+    List<String> entityIds =
+        existingEntities.stream().map(Entity::getEntityId).collect(toUnmodifiableList());
+
     LOG.debug("Deleting entity of type: {} and ids: {}", request.getEntityType(), entityIds);
     try {
       Optional<String> tenantId = requestContext.getTenantId();
       this.entitiesCollection.delete(
           DocStoreConverter.transform(tenantId.orElseThrow(), request.getEntityType(), entityIds));
+
+      this.entityChangeEventGenerator.sendDeleteNotification(requestContext, existingEntities);
+
       responseObserver.onNext(
           DeleteEntitiesResponse.newBuilder().addAllEntityIds(entityIds).build());
       responseObserver.onCompleted();
@@ -615,42 +706,21 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
-  private List<String> getEntityIdsToDelete(
-      RequestContext requestContext, DeleteEntitiesRequest request) throws IOException {
-    EntityQueryRequest entityQueryRequest =
-        EntityQueryRequest.newBuilder()
-            .setEntityType(request.getEntityType())
-            .setFilter(request.getFilter())
-            .setLimit(maxEntitiesToDelete + 1)
-            .addSelection(
-                Expression.newBuilder()
-                    .setColumnIdentifier(
-                        ColumnIdentifier.newBuilder()
-                            .setColumnName(
-                                this.entityAttributeMapping
-                                    .getIdentifierAttributeId(request.getEntityType())
-                                    .orElseThrow())
-                            .build())
-                    .build())
-            .build();
-    try (CloseableIterator<Document> documentIterator =
-        searchDocuments(requestContext, entityQueryRequest)) {
-      final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
-      ResultSetMetadata resultSetMetadata =
-          this.buildMetadataForSelections(entityQueryRequest.getSelectionList());
-      List<String> entityIds = new ArrayList<>();
-      while (documentIterator.hasNext()) {
-        Optional<Row> row =
-            convertToRow(
-                requestContext,
-                documentIterator.next(),
-                resultSetMetadata,
-                rowConverter,
-                entityQueryRequest.getSelectionList());
-        row.ifPresent(value -> entityIds.add(value.getColumn(0).getString()));
-      }
+  private List<Entity> getEntitiesToDelete(
+      RequestContext requestContext, DeleteEntitiesRequest request) {
+    try {
+      EntityQueryRequest entityQueryRequest =
+          EntityQueryRequest.newBuilder()
+              .setEntityType(request.getEntityType())
+              .setFilter(request.getFilter())
+              .setLimit(maxEntitiesToDelete + 1)
+              .build();
 
-      return entityIds;
+      final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
+          queryConverter = getQueryConverter();
+      final org.hypertrace.core.documentstore.query.Query query;
+      query = queryConverter.convert(entityQueryRequest, requestContext);
+      return this.entityFetcher.query(query).collect(toUnmodifiableList());
     } catch (Exception ex) {
       LOG.error("Error while getting entity ids to delete", ex);
       throw Status.INVALID_ARGUMENT
