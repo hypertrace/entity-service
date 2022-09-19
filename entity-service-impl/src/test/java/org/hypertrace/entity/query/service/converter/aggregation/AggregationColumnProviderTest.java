@@ -27,7 +27,7 @@ class AggregationColumnProviderTest {
             .build();
 
     final Function function =
-        Function.newBuilder().setFunctionName("DISTINCT").addArguments(exp1).build();
+        Function.newBuilder().setFunctionName("DISTINCT_ARRAY").addArguments(exp1).build();
 
     final Expression result = aggregationColumnProvider.getAggregationColumn(function);
 
@@ -41,7 +41,7 @@ class AggregationColumnProviderTest {
 
     final Function function =
         Function.newBuilder()
-            .setFunctionName("DISTINCT")
+            .setFunctionName("DISTINCT_ARRAY")
             .addArguments(Expression.newBuilder().setColumnIdentifier(col1).build())
             .addArguments(Expression.newBuilder().setColumnIdentifier(col2).build())
             .build();
