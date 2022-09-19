@@ -4,7 +4,7 @@ import static com.google.common.base.Suppliers.memoize;
 import static java.util.Collections.unmodifiableMap;
 import static org.hypertrace.core.documentstore.expression.operators.AggregationOperator.AVG;
 import static org.hypertrace.core.documentstore.expression.operators.AggregationOperator.COUNT;
-import static org.hypertrace.core.documentstore.expression.operators.AggregationOperator.DISTINCT;
+import static org.hypertrace.core.documentstore.expression.operators.AggregationOperator.DISTINCT_ARRAY;
 import static org.hypertrace.core.documentstore.expression.operators.AggregationOperator.DISTINCT_COUNT;
 import static org.hypertrace.core.documentstore.expression.operators.AggregationOperator.MAX;
 import static org.hypertrace.core.documentstore.expression.operators.AggregationOperator.MIN;
@@ -79,7 +79,10 @@ public class AggregateExpressionConverter implements Converter<Function, Aggrega
     map.put("SUM", SUM);
     map.put("COUNT", COUNT);
     map.put("DISTINCTCOUNT", DISTINCT_COUNT);
-    map.put("DISTINCT", DISTINCT);
+    // Note: The usage of DISTINCT is deprecated and would be removed once the upstream services are
+    // migrated
+    map.put("DISTINCT", DISTINCT_ARRAY);
+    map.put("DISTINCT_ARRAY", DISTINCT_ARRAY);
 
     return unmodifiableMap(map);
   }

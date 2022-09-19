@@ -47,15 +47,15 @@ class AggregationAliasProviderTest {
 
   @Test
   void testGetAlias() throws ConversionException {
-    Function expression = aggregateExpressionBuilder.setFunctionName("DISTINCT").build();
-    assertEquals("DISTINCT_Welcome_Mars", aggregationAliasProvider.getAlias(expression));
+    Function expression = aggregateExpressionBuilder.setFunctionName("DISTINCT_ARRAY").build();
+    assertEquals("DISTINCT_ARRAY_Welcome_Mars", aggregationAliasProvider.getAlias(expression));
   }
 
   @Test
   void testGetSetAlias() throws ConversionException {
     Function expression =
         aggregateExpressionBuilder
-            .setFunctionName("DISTINCT")
+            .setFunctionName("DISTINCT_ARRAY")
             .setAlias("total_population_in_Mars")
             .build();
     assertEquals("total_population_in_Mars", aggregationAliasProvider.getAlias(expression));
