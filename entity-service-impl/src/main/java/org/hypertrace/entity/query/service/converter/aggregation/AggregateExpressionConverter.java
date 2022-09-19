@@ -79,6 +79,8 @@ public class AggregateExpressionConverter implements Converter<Function, Aggrega
     map.put("SUM", SUM);
     map.put("COUNT", COUNT);
     map.put("DISTINCTCOUNT", DISTINCT_COUNT);
+    // Note: The usage of DISTINCT is deprecated and would be removed once the upstream services are
+    // migrated
     map.put("DISTINCT", DISTINCT_ARRAY);
     map.put("DISTINCT_ARRAY", DISTINCT_ARRAY);
 
