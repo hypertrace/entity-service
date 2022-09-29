@@ -32,4 +32,5 @@ enum EntityType {
   BACKEND = 53;
   TRANSACTION = 54;
   ACTOR = 55; // identifying attribute is Actor ID
+  BACKEND_API = 56;
 }
