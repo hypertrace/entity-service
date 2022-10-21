@@ -27,5 +27,5 @@ dependencies:
     version: 0.2.29
   - name: kafka-topic-creator
     repository: "https://storage.googleapis.com/hypertrace-helm-charts"
-    version: 0.1.10
+    version: 0.2.0
     condition: kafka-topic-creator.enabled
