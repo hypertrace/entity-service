@@ -29,10 +29,18 @@ message EntityUpdateRequest {
 message BulkEntityUpdateRequest {
   string entityType = 1;
   // map of entity id, update operations corresponding to this entity id
-  map<string, EntityUpdateInfo> entities = 2;
-  message EntityUpdateInfo {
-    repeated UpdateOperation updateOperation = 1;
-  }
+  // Deprecated: Use updates instead
+  map<string, EntityUpdateInfo> entities = 2 [deprecated = true];
+  repeated BulkUpdate updates = 3;
+}
+
+message BulkUpdate {
+  Filter filter = 1;
+  EntityUpdateInfo update_info = 2;
+}
+
+message EntityUpdateInfo {
+  repeated UpdateOperation updateOperation = 1;
 }
 
 message TotalEntitiesRequest {
