@@ -40,10 +40,6 @@ message BulkUpdateEntitiesRequest {
   repeated UpdateOperation operations = 2;
 }
 
-message BulkUpdateResponse {
-
-}
-
 message TotalEntitiesRequest {
   string entityType = 1;
   Filter filter = 2;
