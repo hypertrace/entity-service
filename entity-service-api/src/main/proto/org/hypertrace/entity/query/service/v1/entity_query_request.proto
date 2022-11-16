@@ -36,7 +36,9 @@ message BulkEntityUpdateRequest {
 }
 
 message BulkUpdateEntitiesRequest {
+  // The query defining the results returned
   EntityQueryRequest query = 1;
+  // Entity type and filter for update will be fetched from the query
   repeated UpdateOperation operations = 2;
 }
 
