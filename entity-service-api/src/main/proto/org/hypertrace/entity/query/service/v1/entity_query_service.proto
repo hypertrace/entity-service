@@ -15,10 +15,8 @@ service EntityQueryService {
   rpc update (EntityUpdateRequest) returns (stream ResultSetChunk) {
   }
   rpc bulkUpdate (BulkEntityUpdateRequest) returns (stream ResultSetChunk) {
-
   }
   rpc bulkUpdateEntities (BulkUpdateEntitiesRequest) returns (stream ResultSetChunk) {
-
   }
   rpc total (TotalEntitiesRequest) returns (TotalEntitiesResponse) {
   }
