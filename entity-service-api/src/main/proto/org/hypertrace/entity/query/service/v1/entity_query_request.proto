@@ -35,22 +35,9 @@ message BulkEntityUpdateRequest {
   }
 }
 
-message BulkUpdateRequest {
-  string entity_type = 1;
-  repeated BulkUpdate updates = 2;
-
-  message BulkUpdate {
-    repeated UpdateOperation operations = 1;
-
-    oneof match_criteria {
-      Filter filter = 2;
-      IdList id_list = 3;
-    }
-  }
-
-  message IdList {
-    repeated string ids = 1;
-  }
+message BulkUpdateEntitiesRequest {
+  EntityQueryRequest query = 1;
+  repeated UpdateOperation operations = 2;
 }
 
 message BulkUpdateResponse {
