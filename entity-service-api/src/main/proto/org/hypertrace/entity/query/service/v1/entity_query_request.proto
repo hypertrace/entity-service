@@ -28,22 +28,33 @@ message EntityUpdateRequest {
 
 message BulkEntityUpdateRequest {
   string entityType = 1;
-
   // map of entity id, update operations corresponding to this entity id
-  // Useful for id based updates
   map<string, EntityUpdateInfo> entities = 2;
-
-  // Useful for filter based updates
-  repeated BulkUpdate updates = 3;
-
   message EntityUpdateInfo {
     repeated UpdateOperation updateOperation = 1;
   }
+}
+
+message BulkUpdateRequest {
+  string entity_type = 1;
+  repeated BulkUpdate updates = 2;
 
   message BulkUpdate {
-    Filter filter = 1;
-    EntityUpdateInfo update_info = 2;
+    repeated UpdateOperation operations = 1;
+
+    oneof match_criteria {
+      Filter filter = 2;
+      IdList id_list = 3;
+    }
   }
+
+  message IdList {
+    repeated string ids = 1;
+  }
+}
+
+message BulkUpdateResponse {
+
 }
 
 message TotalEntitiesRequest {
