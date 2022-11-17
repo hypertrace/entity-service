@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
+import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -138,6 +139,65 @@ public class ValueHelper {
 
       case BOOLEAN_ARRAY:
         return ConstantExpression.ofBooleans(value.getBooleanArrayList());
+
+      case STRING_MAP:
+      case UNRECOGNIZED:
+      default:
+        throw new ConversionException(
+            String.format("Unsupported value type: %s", value.getValueType()));
+    }
+  }
+
+  public SubDocumentValue convertToSubDocumentValue(final Value value) throws ConversionException {
+    switch (value.getValueType()) {
+      case STRING:
+        return SubDocumentValue.of(value.getString());
+
+      case LONG:
+        return SubDocumentValue.of(value.getLong());
+
+      case INT:
+        return SubDocumentValue.of(value.getInt());
+
+      case FLOAT:
+        return SubDocumentValue.of(value.getFloat());
+
+      case DOUBLE:
+        return SubDocumentValue.of(value.getDouble());
+
+      case BYTES:
+        return SubDocumentValue.of(new String(value.getBytes().toByteArray()));
+
+      case BOOL:
+        return SubDocumentValue.of(value.getBoolean());
+
+      case TIMESTAMP:
+        return SubDocumentValue.of(value.getTimestamp());
+
+      case STRING_ARRAY:
+        return SubDocumentValue.of(value.getStringArrayList().toArray(new String[0]));
+
+      case LONG_ARRAY:
+        return SubDocumentValue.of(value.getLongArrayList().toArray(new Long[0]));
+
+      case INT_ARRAY:
+        return SubDocumentValue.of(value.getIntArrayList().toArray(new Integer[0]));
+
+      case FLOAT_ARRAY:
+        return SubDocumentValue.of(value.getFloatArrayList().toArray(new Float[0]));
+
+      case DOUBLE_ARRAY:
+        return SubDocumentValue.of(value.getDoubleArrayList().toArray(new Double[0]));
+
+      case BYTES_ARRAY:
+        return SubDocumentValue.of(
+            value.getBytesArrayList().stream()
+                .map(ByteString::toByteArray)
+                .map(String::new)
+                .toArray(String[]::new));
+
+      case BOOLEAN_ARRAY:
+        return SubDocumentValue.of(value.getBooleanArrayList().toArray(new Boolean[0]));
 
       case STRING_MAP:
       case UNRECOGNIZED:
