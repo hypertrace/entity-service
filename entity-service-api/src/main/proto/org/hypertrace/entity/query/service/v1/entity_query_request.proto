@@ -36,9 +36,7 @@ message BulkEntityUpdateRequest {
 }
 
 message BulkUpdateEntitiesRequest {
-  // The query defining the results returned after update.
-  // Entity type and filter for update will be fetched from the query.
-  EntityQueryRequest query = 1;
+  EntityQueryRequest results_query_with_update_filter = 1;
   repeated UpdateOperation operations = 2;
 }
 
