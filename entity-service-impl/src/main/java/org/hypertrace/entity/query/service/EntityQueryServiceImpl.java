@@ -8,7 +8,7 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.core.documentstore.expression.impl.LogicalExpression.or;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
-import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.AFTER_UPDATE;
+import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
 import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
@@ -748,17 +748,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                       new UnsupportedOperationException(
                           String.format("Updating %s entities is not supported yet", entityType)));
       final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-          queryConverter =
-              injector.getInstance(
-                  com.google.inject.Key.get(
-                      new TypeLiteral<
-                          Converter<
-                              EntityQueryRequest,
-                              org.hypertrace.core.documentstore.query.Query>>() {}));
-      final Converter<UpdateOperation, SubDocumentUpdate> updateConverter =
-          injector.getInstance(
-              com.google.inject.Key.get(
-                  new TypeLiteral<Converter<UpdateOperation, SubDocumentUpdate>>() {}));
+          queryConverter = getQueryConverter();
+      final Converter<UpdateOperation, SubDocumentUpdate> updateConverter = getUpdateConverter();
 
       final Expression idSelection =
           Expression.newBuilder()
@@ -785,6 +776,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       }
 
       idsIterator.close();
+
+      if (ids.isEmpty()) {
+        // Nothing to update
+        responseObserver.onCompleted();
+        return;
+      }
 
       final List<UpdateOperation> updateOperations = request.getOperationsList();
       final boolean shouldSendNotification =
@@ -816,7 +813,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           entitiesCollection.bulkUpdate(
               idBasedUpdateQuery,
               updates,
-              UpdateOptions.builder().returnDocumentType(AFTER_UPDATE).build());
+              UpdateOptions.builder().returnDocumentType(NONE).build());
 
       if (shouldSendNotification) {
         final List<Entity> updatedEntities = this.entityFetcher.getEntitiesByEntityIds(entityIds);
@@ -834,6 +831,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
               .withDescription("Error while bulk updating entities")
               .asRuntimeException());
     }
+  }
+
+  private Converter<UpdateOperation, SubDocumentUpdate> getUpdateConverter() {
+    return injector.getInstance(
+        com.google.inject.Key.get(
+            new TypeLiteral<Converter<UpdateOperation, SubDocumentUpdate>>() {}));
   }
 
   private List<Entity> getEntitiesToDelete(
