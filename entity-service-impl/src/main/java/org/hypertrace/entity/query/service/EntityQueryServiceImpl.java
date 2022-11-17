@@ -23,6 +23,7 @@ import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -723,109 +724,43 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
-  @SuppressWarnings("Convert2Diamond")
   @Override
   public void bulkUpdateEntities(
       final BulkUpdateEntitiesRequest request,
       final StreamObserver<ResultSetChunk> responseObserver) {
-    // TODO: Add request validations
-    RequestContext requestContext = RequestContext.CURRENT.get();
-    Optional<String> tenantIdOptional = requestContext.getTenantId();
+    final RequestContext requestContext = RequestContext.CURRENT.get();
+    final Optional<String> tenantIdOptional = requestContext.getTenantId();
     if (tenantIdOptional.isEmpty()) {
-      responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
+      LOG.warn("Tenant id is missing in bulk update entities request");
+      responseObserver.onError(
+          Status.INVALID_ARGUMENT
+              .withDescription("Tenant id is missing in the request.")
+              .asException());
       return;
     }
-    final String tenantId = tenantIdOptional.orElseThrow();
+
+    if (StringUtils.isBlank(request.getResultsQueryWithUpdateFilter().getEntityType())) {
+      LOG.warn("Entity type is missing in bulk update entities request");
+      responseObserver.onError(
+          Status.INVALID_ARGUMENT
+              .withDescription("Entity type is missing in the request.")
+              .asException());
+      return;
+    }
+
+    if (request.getOperationsCount() == 0) {
+      LOG.warn("No operation specified in bulk update entities request");
+      responseObserver.onError(
+          Status.INVALID_ARGUMENT
+              .withDescription("No operation is specified in the request.")
+              .asException());
+      return;
+    }
 
     try {
-      final EntityQueryRequest queryRequest = request.getResultsQueryWithUpdateFilter();
-      final String entityType = queryRequest.getEntityType();
-      final String idAttribute =
-          entityAttributeMapping
-              .getIdentifierAttributeId(entityType)
-              .orElseThrow(
-                  () ->
-                      new UnsupportedOperationException(
-                          String.format("Updating %s entities is not supported yet", entityType)));
-      final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-          queryConverter = getQueryConverter();
-      final Converter<UpdateOperation, SubDocumentUpdate> updateConverter = getUpdateConverter();
-
-      final Expression idSelection =
-          Expression.newBuilder()
-              .setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName(idAttribute))
-              .build();
-      final EntityQueryRequest idSelectingQueryRequest =
-          queryRequest.toBuilder().clearSelection().addSelection(idSelection).build();
-      final org.hypertrace.core.documentstore.query.Query idSelectingQuery =
-          queryConverter.convert(idSelectingQueryRequest, requestContext);
-
-      final CloseableIterator<Document> idsIterator =
-          entitiesCollection.aggregate(idSelectingQuery);
-      final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
-      final ResultSetMetadata resultSetMetadata =
-          this.buildMetadataForSelections(List.of(idSelection));
-      final List<Key> ids = new ArrayList<>();
-      final List<String> entityIds = new ArrayList<>();
-
-      while (idsIterator.hasNext()) {
-        final Row row = rowConverter.convertToRow(idsIterator.next(), resultSetMetadata);
-        final String id = row.getColumn(0).getString();
-        entityIds.add(id);
-        ids.add(new SingleValueKey(tenantId, id));
-      }
-
-      idsIterator.close();
-
-      if (ids.isEmpty()) {
-        // Nothing to update
-        responseObserver.onCompleted();
-        return;
-      }
-
-      final List<UpdateOperation> updateOperations = request.getOperationsList();
-      final boolean shouldSendNotification =
-          this.entityAttributeChangeEvaluator.shouldSendNotification(
-              requestContext, entityType, updateOperations);
-
-      final org.hypertrace.core.documentstore.query.Query updateQuery =
-          queryConverter.convert(queryRequest, requestContext);
-      final org.hypertrace.core.documentstore.query.Query idBasedUpdateQuery =
-          new TransformedQueryBuilder(updateQuery)
-              .setFilter(or(ids.stream().map(KeyExpression::of).collect(toUnmodifiableList())))
-              .build();
-      final List<SubDocumentUpdate> list = new ArrayList<>();
-      for (final UpdateOperation operation : updateOperations) {
-        final SubDocumentUpdate convert = updateConverter.convert(operation, requestContext);
-        list.add(convert);
-      }
-      final List<SubDocumentUpdate> updates = unmodifiableList(list);
-
-      final List<Entity> existingEntities;
-
-      if (shouldSendNotification) {
-        existingEntities = this.entityFetcher.getEntitiesByEntityIds(entityIds);
-      } else {
-        existingEntities = null;
-      }
-
-      final CloseableIterator<Document> updateResult =
-          entitiesCollection.bulkUpdate(
-              idBasedUpdateQuery,
-              updates,
-              UpdateOptions.builder().returnDocumentType(NONE).build());
-
-      if (shouldSendNotification) {
-        final List<Entity> updatedEntities = this.entityFetcher.getEntitiesByEntityIds(entityIds);
-        if (existingEntities != null) {
-          this.entityChangeEventGenerator.sendChangeNotification(
-              requestContext, existingEntities, updatedEntities);
-        }
-      }
-
-      streamResponse(queryRequest, responseObserver, requestContext, updateResult);
+      doBulkUpdate(request, responseObserver, requestContext);
     } catch (final Exception e) {
-      LOG.error("Error while bulk updating entities for " + tenantId, e);
+      LOG.error("Error while bulk updating entities for " + tenantIdOptional.orElse(""), e);
       responseObserver.onError(
           Status.INTERNAL
               .withDescription("Error while bulk updating entities")
@@ -833,10 +768,120 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
+  private void doBulkUpdate(
+      BulkUpdateEntitiesRequest request,
+      StreamObserver<ResultSetChunk> responseObserver,
+      RequestContext requestContext)
+      throws ConversionException, IOException {
+    final EntityQueryRequest queryRequest = request.getResultsQueryWithUpdateFilter();
+    final String entityType = queryRequest.getEntityType();
+    final List<SingleValueKey> keys = getKeysToUpdate(requestContext, queryRequest);
+
+    if (keys.isEmpty()) {
+      // Nothing to update
+      responseObserver.onCompleted();
+      return;
+    }
+
+    final List<String> entityIds =
+        keys.stream().map(SingleValueKey::getValue).collect(toUnmodifiableList());
+    final List<UpdateOperation> updateOperations = request.getOperationsList();
+
+    final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
+        queryConverter = getQueryConverter();
+    final org.hypertrace.core.documentstore.query.Query updateQuery =
+        queryConverter.convert(queryRequest, requestContext);
+    final org.hypertrace.core.documentstore.query.Query idBasedUpdateQuery =
+        new TransformedQueryBuilder(updateQuery)
+            .setFilter(or(keys.stream().map(KeyExpression::of).collect(toUnmodifiableList())))
+            .build();
+    final List<SubDocumentUpdate> updates = convertUpdates(requestContext, updateOperations);
+
+    final boolean shouldSendNotification =
+        entityAttributeChangeEvaluator.shouldSendNotification(
+            requestContext, entityType, updateOperations);
+    final Optional<List<Entity>> existingEntities;
+
+    if (shouldSendNotification) {
+      existingEntities = Optional.of(entityFetcher.getEntitiesByEntityIds(entityIds));
+    } else {
+      existingEntities = Optional.empty();
+    }
+
+    final CloseableIterator<Document> updateResult =
+        entitiesCollection.bulkUpdate(
+            idBasedUpdateQuery, updates, UpdateOptions.builder().returnDocumentType(NONE).build());
+
+    if (existingEntities.isPresent()) {
+      final List<Entity> updatedEntities = entityFetcher.getEntitiesByEntityIds(entityIds);
+      entityChangeEventGenerator.sendChangeNotification(
+          requestContext, existingEntities.get(), updatedEntities);
+    }
+
+    streamResponse(queryRequest, responseObserver, requestContext, updateResult);
+  }
+
+  @SuppressWarnings("Convert2Diamond")
   private Converter<UpdateOperation, SubDocumentUpdate> getUpdateConverter() {
     return injector.getInstance(
         com.google.inject.Key.get(
             new TypeLiteral<Converter<UpdateOperation, SubDocumentUpdate>>() {}));
+  }
+
+  private List<SingleValueKey> getKeysToUpdate(
+      final RequestContext requestContext, final EntityQueryRequest queryRequest)
+      throws ConversionException, IOException {
+    final String idAttribute = getIdAttribute(queryRequest.getEntityType());
+
+    final Expression idSelection =
+        Expression.newBuilder()
+            .setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName(idAttribute))
+            .build();
+    final EntityQueryRequest idSelectingQueryRequest =
+        queryRequest.toBuilder().clearSelection().addSelection(idSelection).build();
+    final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
+        queryConverter = getQueryConverter();
+
+    final org.hypertrace.core.documentstore.query.Query idSelectingQuery =
+        queryConverter.convert(idSelectingQueryRequest, requestContext);
+
+    final CloseableIterator<Document> idsIterator = entitiesCollection.aggregate(idSelectingQuery);
+    final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
+    final ResultSetMetadata resultSetMetadata =
+        this.buildMetadataForSelections(List.of(idSelection));
+    final String tenantId = requestContext.getTenantId().orElseThrow();
+    final List<SingleValueKey> ids = new ArrayList<>();
+
+    while (idsIterator.hasNext()) {
+      final Row row = rowConverter.convertToRow(idsIterator.next(), resultSetMetadata);
+      final String id = row.getColumn(0).getString();
+      ids.add(new SingleValueKey(tenantId, id));
+    }
+
+    idsIterator.close();
+    return unmodifiableList(ids);
+  }
+
+  private List<SubDocumentUpdate> convertUpdates(
+      RequestContext requestContext, List<UpdateOperation> updateOperations)
+      throws ConversionException {
+    final List<SubDocumentUpdate> updates = new ArrayList<>();
+    final Converter<UpdateOperation, SubDocumentUpdate> updateConverter = getUpdateConverter();
+
+    for (final UpdateOperation operation : updateOperations) {
+      final SubDocumentUpdate convert = updateConverter.convert(operation, requestContext);
+      updates.add(convert);
+    }
+    return unmodifiableList(updates);
+  }
+
+  private String getIdAttribute(String entityType) {
+    return entityAttributeMapping
+        .getIdentifierAttributeId(entityType)
+        .orElseThrow(
+            () ->
+                new UnsupportedOperationException(
+                    String.format("Updating %s entities is not supported yet", entityType)));
   }
 
   private List<Entity> getEntitiesToDelete(
