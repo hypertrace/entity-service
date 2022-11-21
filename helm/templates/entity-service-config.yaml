@@ -21,7 +21,10 @@ data:
       publish.change.events = {{ .Values.entityServiceConfig.publishChangeEvents }}
       query.aggregation.enabled = {{ .Values.entityServiceConfig.queryAggregationEnabled }}
     }
-    entity.service.change.skip.attributes = {{ .Values.entityServiceConfig.skipAttributes | toJson }}
+    entity.service.change = {
+      enabled.entity.types = {{ .Values.entityServiceConfig.changeEnabledEntityTypes | toJson }}
+      skip.attributes = {{ .Values.entityServiceConfig.skipAttributes | toJson }}
+    }
     attribute.service.config = {
       host = {{ .Values.entityServiceConfig.attributeService.host }}
       port = {{ .Values.entityServiceConfig.attributeService.port }}
