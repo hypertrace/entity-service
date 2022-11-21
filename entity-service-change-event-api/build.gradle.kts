@@ -23,5 +23,6 @@ sourceSets {
 
 dependencies {
   api("com.google.protobuf:protobuf-java:3.19.1")
+  api("org.apache.kafka:kafka-clients:6.0.1-ccs")
   api(project(":entity-service-api"))
 }
