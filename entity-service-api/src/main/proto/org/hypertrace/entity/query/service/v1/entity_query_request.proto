@@ -35,8 +35,13 @@ message BulkEntityUpdateRequest {
   }
 }
 
-message BulkUpdateEntitiesRequest {
-  EntityQueryRequest results_query_with_update_filter = 1;
+message BulkUpdateAllMatchingFilterRequest {
+  string entity_type = 1;
+  repeated Update updates = 2;
+}
+
+message Update {
+  Filter filter = 1;
   repeated UpdateOperation operations = 2;
 }
 

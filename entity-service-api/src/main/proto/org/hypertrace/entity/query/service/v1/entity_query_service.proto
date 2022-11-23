@@ -15,8 +15,9 @@ service EntityQueryService {
   rpc update (EntityUpdateRequest) returns (stream ResultSetChunk) {
   }
   rpc bulkUpdate (BulkEntityUpdateRequest) returns (stream ResultSetChunk) {
+    option deprecated = true; // Use "BulkUpdateAllMatchingFilter" instead
   }
-  rpc bulkUpdateEntities (BulkUpdateEntitiesRequest) returns (stream ResultSetChunk) {
+  rpc BulkUpdateAllMatchingFilter (BulkUpdateAllMatchingFilterRequest) returns (BulkUpdateAllMatchingFilterResponse) {
   }
   rpc total (TotalEntitiesRequest) returns (TotalEntitiesResponse) {
   }

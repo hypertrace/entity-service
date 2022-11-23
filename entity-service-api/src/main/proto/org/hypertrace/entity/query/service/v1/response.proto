@@ -39,3 +39,6 @@ message TotalEntitiesResponse {
 message DeleteEntitiesResponse {
   repeated string entity_ids = 1;
 }
+
+message BulkUpdateAllMatchingFilterResponse {
+}
