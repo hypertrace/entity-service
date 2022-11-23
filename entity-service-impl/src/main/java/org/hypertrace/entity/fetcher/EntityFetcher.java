@@ -28,7 +28,8 @@ public class EntityFetcher {
   }
 
   public List<Entity> getEntitiesByDocIds(String tenantId, Collection<String> docIds) {
-    return query(buildExistingEntitiesByDocIdQuery(tenantId, docIds)).collect(Collectors.toList());
+    return query(buildExistingEntitiesByDocIdQuery(tenantId, docIds))
+        .collect(Collectors.toUnmodifiableList());
   }
 
   public List<Entity> getEntitiesByEntityIds(
