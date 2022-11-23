@@ -367,6 +367,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   private void doUpdate(RequestContext requestContext, EntityUpdateRequest request)
       throws Exception {
+    Optional<String> maybeTenantId = requestContext.getTenantId();
+    if (maybeTenantId.isEmpty()) {
+      return;
+    }
+
+    String tenantId = maybeTenantId.get();
     if (request.getOperation().hasSetAttribute()) {
       SetAttribute setAttribute = request.getOperation().getSetAttribute();
       String attributeId = setAttribute.getAttribute().getColumnName();
@@ -401,11 +407,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       }
       try {
         List<Entity> existingEntities =
-            this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
+            this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
         entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
 
         List<Entity> updatedEntities =
-            this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
+            this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
         this.entityChangeEventGenerator.sendChangeNotification(
             requestContext, existingEntities, updatedEntities);
       } catch (Exception e) {
@@ -490,11 +496,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       }
 
       List<Entity> existingEntities =
-          this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotifications);
+          this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotifications);
       entitiesCollection.bulkOperationOnArrayValue(bulkArrayValueUpdateRequest);
 
       List<Entity> updatedEntities =
-          this.entityFetcher.getEntitiesByEntityIds(request.getEntityIdsList());
+          this.entityFetcher.getEntitiesByEntityIds(tenantId, request.getEntityIdsList());
       this.entityChangeEventGenerator.sendChangeNotification(
           requestContext, existingEntities, updatedEntities);
 
@@ -564,6 +570,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private void doBulkUpdate(
       RequestContext requestContext, String entityType, Map<String, EntityUpdateInfo> entitiesMap)
       throws Exception {
+    Optional<String> maybeTenantId = requestContext.getTenantId();
+    if (maybeTenantId.isEmpty()) {
+      return;
+    }
+
+    String tenantId = maybeTenantId.get();
     Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
     Set<String> entityIdsForChangeNotification = new HashSet<>();
     for (String entityId : entitiesMap.keySet()) {
@@ -591,10 +603,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     try {
       List<Entity> existingEntities =
-          this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
+          this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
       entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
       List<Entity> updatedEntities =
-          this.entityFetcher.getEntitiesByEntityIds(entityIdsForChangeNotification);
+          this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
       this.entityChangeEventGenerator.sendChangeNotification(
           requestContext, existingEntities, updatedEntities);
     } catch (Exception e) {
