@@ -38,7 +38,7 @@ public class EntityFetcher {
       return Collections.emptyList();
     }
     return query(buildExistingEntitiesByEntityIdQuery(tenantId, entityIds))
-        .collect(Collectors.toList());
+        .collect(Collectors.toUnmodifiableList());
   }
 
   public Stream<Entity> query(org.hypertrace.core.documentstore.Query query) {
