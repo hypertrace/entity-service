@@ -1,13 +1,16 @@
 package org.hypertrace.entity.fetcher;
 
 import com.google.common.collect.Streams;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Document;
+import org.hypertrace.core.documentstore.Filter;
+import org.hypertrace.core.documentstore.Filter.Op;
+import org.hypertrace.core.documentstore.Query;
 import org.hypertrace.entity.data.service.DocumentParser;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
@@ -15,22 +18,26 @@ import org.hypertrace.entity.service.constants.EntityServiceConstants;
 public class EntityFetcher {
 
   private final DocumentParser parser;
-  private final Collection entitiesCollection;
+  private final org.hypertrace.core.documentstore.Collection entitiesCollection;
 
-  public EntityFetcher(Collection entitiesCollection, DocumentParser documentParser) {
+  public EntityFetcher(
+      org.hypertrace.core.documentstore.Collection entitiesCollection,
+      DocumentParser documentParser) {
     this.entitiesCollection = entitiesCollection;
     this.parser = documentParser;
   }
 
-  public List<Entity> getEntitiesByDocIds(java.util.Collection<String> docIds) {
-    return query(buildExistingEntitiesByDocIdQuery(docIds)).collect(Collectors.toList());
+  public List<Entity> getEntitiesByDocIds(String tenantId, Collection<String> docIds) {
+    return query(buildExistingEntitiesByDocIdQuery(tenantId, docIds)).collect(Collectors.toList());
   }
 
-  public List<Entity> getEntitiesByEntityIds(java.util.Collection<String> entityIds) {
+  public List<Entity> getEntitiesByEntityIds(
+      String tenantId, java.util.Collection<String> entityIds) {
     if (entityIds.isEmpty()) {
       return Collections.emptyList();
     }
-    return query(buildExistingEntitiesByEntityIdQuery(entityIds)).collect(Collectors.toList());
+    return query(buildExistingEntitiesByEntityIdQuery(tenantId, entityIds))
+        .collect(Collectors.toList());
   }
 
   public Stream<Entity> query(org.hypertrace.core.documentstore.Query query) {
@@ -50,22 +57,28 @@ public class EntityFetcher {
   }
 
   private org.hypertrace.core.documentstore.Query buildExistingEntitiesByDocIdQuery(
-      java.util.Collection<String> docIds) {
-    org.hypertrace.core.documentstore.Query query = new org.hypertrace.core.documentstore.Query();
+      String tenantId, Collection<String> docIds) {
+    Query query = new Query();
     query.setFilter(
-        new org.hypertrace.core.documentstore.Filter(
-            org.hypertrace.core.documentstore.Filter.Op.IN, EntityServiceConstants.ID, docIds));
+        new Filter(
+            Op.AND,
+            null,
+            null,
+            new Filter(Op.EQ, EntityServiceConstants.TENANT_ID, tenantId),
+            new Filter(Op.IN, EntityServiceConstants.ID, docIds)));
     return query;
   }
 
   private org.hypertrace.core.documentstore.Query buildExistingEntitiesByEntityIdQuery(
-      java.util.Collection<String> docIds) {
-    org.hypertrace.core.documentstore.Query query = new org.hypertrace.core.documentstore.Query();
+      String tenantId, Collection<String> docIds) {
+    Query query = new Query();
     query.setFilter(
-        new org.hypertrace.core.documentstore.Filter(
-            org.hypertrace.core.documentstore.Filter.Op.IN,
-            EntityServiceConstants.ENTITY_ID,
-            docIds));
+        new Filter(
+            Op.AND,
+            null,
+            null,
+            new Filter(Op.EQ, EntityServiceConstants.TENANT_ID, tenantId),
+            new Filter(Op.IN, EntityServiceConstants.ENTITY_ID, docIds)));
     return query;
   }
 
