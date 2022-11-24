@@ -1,8 +1,13 @@
 package org.hypertrace.entity.query.service;
 
+import static org.hypertrace.core.documentstore.expression.impl.LogicalExpression.and;
+import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
 import static org.hypertrace.entity.TestUtils.convertToCloseableIterator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -30,6 +35,14 @@ import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.Query;
 import org.hypertrace.core.documentstore.SingleValueKey;
+import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
+import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
+import org.hypertrace.core.documentstore.expression.impl.KeyExpression;
+import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
+import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
+import org.hypertrace.core.documentstore.model.options.UpdateOptions;
+import org.hypertrace.core.documentstore.model.subdoc.PrimitiveSubDocumentValue;
+import org.hypertrace.core.documentstore.model.subdoc.SubDocumentUpdate;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeChangeEvaluator;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
@@ -40,6 +53,8 @@ import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequ
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
+import org.hypertrace.entity.query.service.v1.BulkUpdateAllMatchingFilterRequest;
+import org.hypertrace.entity.query.service.v1.BulkUpdateAllMatchingFilterResponse;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
 import org.hypertrace.entity.query.service.v1.DeleteEntitiesRequest;
@@ -57,11 +72,13 @@ import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.SetAttribute;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
+import org.hypertrace.entity.query.service.v1.Update;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
+import org.hypertrace.entity.v1.entitytype.EntityType;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -79,6 +96,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 public class EntityQueryServiceImplTest {
 
   private static final String TEST_ENTITY_TYPE = "TEST_ENTITY";
+  private final String TENANT_ID = "tenant1";
   @Mock RequestContext requestContext;
   @Mock EntityAttributeMapping mockAttributeMapping;
   @Mock Collection entitiesCollection;
@@ -269,7 +287,7 @@ public class EntityQueryServiceImplTest {
         .bulkUpdateSubDocs(
             eq(
                 Map.of(
-                    new SingleValueKey("tenant1", "entity-id-1"),
+                    new SingleValueKey(TENANT_ID, "entity-id-1"),
                     Map.of(
                         "attributes.status",
                         new JSONDocument(DocStoreJsonFormat.printer().print(newStatus))))));
@@ -444,10 +462,225 @@ public class EntityQueryServiceImplTest {
           .bulkUpdateSubDocs(
               eq(
                   Map.of(
-                      new SingleValueKey("tenant1", "entity-id-1"),
+                      new SingleValueKey(TENANT_ID, "entity-id-1"),
                       Map.of(
                           "attributes.entity_id",
                           new JSONDocument(DocStoreJsonFormat.printer().print(newStatus))))));
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  @Nested
+  class BulkUpdateAllMatchingFilter {
+
+    @Test
+    void testBulkUpdateAllMatchingFilter_noTenantId() throws Exception {
+      final StreamObserver<BulkUpdateAllMatchingFilterResponse> mockResponseObserver =
+          mock(StreamObserver.class);
+      when(requestContext.getTenantId()).thenReturn(Optional.empty());
+      Context.current()
+          .withValue(RequestContext.CURRENT, requestContext)
+          .call(
+              () -> {
+                final EntityQueryServiceImpl eqs =
+                    new EntityQueryServiceImpl(
+                        entitiesCollection,
+                        mockAttributeMapping,
+                        entityChangeEventGenerator,
+                        entityAttributeChangeEvaluator,
+                        entityFetcher,
+                        1,
+                        false,
+                        1000);
+
+                eqs.bulkUpdateAllMatchingFilter(null, mockResponseObserver);
+
+                verify(mockResponseObserver, times(1))
+                    .onError(
+                        argThat(
+                            new ExceptionMessagePartialMatcher(
+                                "Tenant id is missing in the request.")));
+                return null;
+              });
+    }
+
+    @Test
+    void testBulkUpdateAllMatchingFilter_noEntityType() throws Exception {
+      final StreamObserver<BulkUpdateAllMatchingFilterResponse> mockResponseObserver =
+          mock(StreamObserver.class);
+
+      Context.current()
+          .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
+          .call(
+              () -> {
+                final EntityQueryServiceImpl eqs =
+                    new EntityQueryServiceImpl(
+                        entitiesCollection,
+                        mockAttributeMapping,
+                        entityChangeEventGenerator,
+                        entityAttributeChangeEvaluator,
+                        entityFetcher,
+                        1,
+                        false,
+                        1000);
+
+                eqs.bulkUpdateAllMatchingFilter(
+                    BulkUpdateAllMatchingFilterRequest.newBuilder().build(), mockResponseObserver);
+
+                verify(mockResponseObserver, times(1))
+                    .onError(
+                        argThat(
+                            new ExceptionMessagePartialMatcher(
+                                "Entity type is missing in the request.")));
+                return null;
+              });
+    }
+
+    @Test
+    void testBulkUpdateAllMatchingFilter_entitiesWithNoUpdateOperations() throws Exception {
+      final BulkUpdateAllMatchingFilterRequest bulkUpdateRequest =
+          BulkUpdateAllMatchingFilterRequest.newBuilder().setEntityType(TEST_ENTITY_TYPE).build();
+
+      final StreamObserver<BulkUpdateAllMatchingFilterResponse> mockResponseObserver =
+          mock(StreamObserver.class);
+
+      Context.current()
+          .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
+          .call(
+              () -> {
+                final EntityQueryServiceImpl eqs =
+                    new EntityQueryServiceImpl(
+                        entitiesCollection,
+                        mockAttributeMapping,
+                        entityChangeEventGenerator,
+                        entityAttributeChangeEvaluator,
+                        entityFetcher,
+                        1,
+                        false,
+                        1000);
+                eqs.bulkUpdateAllMatchingFilter(bulkUpdateRequest, mockResponseObserver);
+
+                verify(mockResponseObserver, times(1))
+                    .onError(
+                        argThat(
+                            new ExceptionMessagePartialMatcher(
+                                "No operation is specified in the request.")));
+                return null;
+              });
+      verify(entitiesCollection, Mockito.never()).bulkUpdate(any(), anyCollection(), any());
+    }
+
+    @Test
+    void testBulkUpdateAllMatchingFilter_success() throws Exception {
+      final Collection mockEntitiesCollection = mockEntitiesCollection();
+
+      final Builder newStatus =
+          LiteralConstant.newBuilder()
+              .setValue(Value.newBuilder().setValueType(ValueType.STRING).setString("NEW_STATUS"));
+
+      final UpdateOperation.Builder updateOperation =
+          UpdateOperation.newBuilder()
+              .setSetAttribute(
+                  SetAttribute.newBuilder()
+                      .setAttribute(ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID1))
+                      .setValue(newStatus));
+      final String entityId = "entity-id-1";
+      final BulkUpdateAllMatchingFilterRequest bulkUpdateRequest =
+          BulkUpdateAllMatchingFilterRequest.newBuilder()
+              .setEntityType(EntityType.API.name())
+              .addUpdates(
+                  Update.newBuilder()
+                      .setFilter(
+                          org.hypertrace.entity.query.service.v1.Filter.newBuilder()
+                              .setLhs(
+                                  Expression.newBuilder()
+                                      .setColumnIdentifier(
+                                          ColumnIdentifier.newBuilder().setColumnName(API_ID)))
+                              .setOperator(Operator.EQ)
+                              .setRhs(
+                                  Expression.newBuilder()
+                                      .setLiteral(
+                                          LiteralConstant.newBuilder()
+                                              .setValue(
+                                                  Value.newBuilder()
+                                                      .setValueType(ValueType.STRING)
+                                                      .setString(entityId)))))
+                      .addOperations(updateOperation))
+              .build();
+
+      final StreamObserver<BulkUpdateAllMatchingFilterResponse> mockResponseObserver =
+          mock(StreamObserver.class);
+
+      final List<Document> documents =
+          List.of(new JSONDocument("{ \"API.id\": \"" + entityId + "\" }"));
+      when(mockMappingForAttributes().getIdentifierAttributeId(EntityType.API.name()))
+          .thenReturn(Optional.of("API.id"));
+
+      final org.hypertrace.core.documentstore.query.Query query =
+          org.hypertrace.core.documentstore.query.Query.builder()
+              .addSelection(IdentifierExpression.of("entityId"), API_ID)
+              .setFilter(
+                  and(
+                      RelationalExpression.of(
+                          IdentifierExpression.of("entityId"),
+                          RelationalOperator.EQ,
+                          ConstantExpression.of(entityId)),
+                      RelationalExpression.of(
+                          IdentifierExpression.of("tenantId"),
+                          RelationalOperator.EQ,
+                          ConstantExpression.of(TENANT_ID)),
+                      RelationalExpression.of(
+                          IdentifierExpression.of("entityType"),
+                          RelationalOperator.EQ,
+                          ConstantExpression.of(EntityType.API.name()))))
+              .build();
+      when(mockEntitiesCollection.aggregate(query))
+          .thenReturn(convertToCloseableIterator(documents.iterator()));
+
+      Context.current()
+          .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
+          .call(
+              () -> {
+                final EntityQueryServiceImpl eqs =
+                    new EntityQueryServiceImpl(
+                        mockEntitiesCollection,
+                        mockMappingForAttribute1(),
+                        entityChangeEventGenerator,
+                        entityAttributeChangeEvaluator,
+                        entityFetcher,
+                        1,
+                        false,
+                        1000);
+                eqs.bulkUpdateAllMatchingFilter(bulkUpdateRequest, mockResponseObserver);
+                return null;
+              });
+
+      final ArgumentCaptor<List<SubDocumentUpdate>> valueCaptor =
+          ArgumentCaptor.forClass(List.class);
+
+      verify(mockEntitiesCollection, times(1)).aggregate(query);
+      verify(mockEntitiesCollection, times(1))
+          .bulkUpdate(
+              eq(
+                  org.hypertrace.core.documentstore.query.Query.builder()
+                      .setFilter(KeyExpression.of(new SingleValueKey(TENANT_ID, entityId)))
+                      .build()),
+              valueCaptor.capture(),
+              eq(UpdateOptions.builder().returnDocumentType(NONE).build()));
+
+      final Object capturedRaw = valueCaptor.getValue();
+
+      assertNotNull(capturedRaw);
+      assertEquals(1, ((List<?>) capturedRaw).size());
+
+      final Object firstValRaw = ((List<?>) capturedRaw).get(0);
+      assertTrue(firstValRaw instanceof SubDocumentUpdate);
+
+      final SubDocumentUpdate update = (SubDocumentUpdate) firstValRaw;
+      assertEquals("attributes.entity_id.value.string", update.getSubDocument().getPath());
+      assertEquals(
+          "NEW_STATUS",
+          ((PrimitiveSubDocumentValue) update.getSubDocumentValue()).getValue().toString());
     }
   }
 
@@ -700,7 +933,7 @@ public class EntityQueryServiceImplTest {
     BulkArrayValueUpdateRequest bulkArrayValueUpdateRequest = argumentCaptor.getValue();
     assertEquals(
         entityIds.stream()
-            .map(entityId -> new SingleValueKey("tenant1", entityId))
+            .map(entityId -> new SingleValueKey(TENANT_ID, entityId))
             .collect(Collectors.toCollection(LinkedHashSet::new)),
         bulkArrayValueUpdateRequest.getKeys());
     assertEquals(
@@ -897,7 +1130,7 @@ public class EntityQueryServiceImplTest {
       // tenant id filter
       assertEquals(Filter.Op.EQ, query.getFilter().getChildFilters()[0].getOp());
       assertEquals("tenantId", query.getFilter().getChildFilters()[0].getFieldName());
-      assertEquals("tenant1", query.getFilter().getChildFilters()[0].getValue());
+      assertEquals(TENANT_ID, query.getFilter().getChildFilters()[0].getValue());
 
       // entity type filter
       assertEquals(Filter.Op.EQ, query.getFilter().getChildFilters()[1].getOp());
@@ -954,7 +1187,7 @@ public class EntityQueryServiceImplTest {
 
   private RequestContext mockRequestContextWithTenantId() {
     // mock successful update
-    return when(requestContext.getTenantId()).thenReturn(Optional.of("tenant1")).getMock();
+    return when(requestContext.getTenantId()).thenReturn(Optional.of(TENANT_ID)).getMock();
   }
 
   private EntityAttributeMapping mockMappingForAttributes() {
@@ -988,6 +1221,20 @@ public class EntityQueryServiceImplTest {
     @Override
     public boolean matches(Exception argument) {
       return argument.getMessage().equals(expectedMessage);
+    }
+  }
+
+  static class ExceptionMessagePartialMatcher implements ArgumentMatcher<Exception> {
+
+    private final String expectedMessage;
+
+    ExceptionMessagePartialMatcher(String expectedMessage) {
+      this.expectedMessage = expectedMessage;
+    }
+
+    @Override
+    public boolean matches(Exception argument) {
+      return argument.getMessage().contains(expectedMessage);
     }
   }
 }
