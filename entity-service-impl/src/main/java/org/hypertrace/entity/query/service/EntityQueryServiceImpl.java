@@ -49,6 +49,7 @@ import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.KeyExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.documentstore.model.options.UpdateOptions;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentUpdate;
 import org.hypertrace.core.documentstore.query.Filter;
@@ -794,6 +795,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
       if (keys.isEmpty()) {
         // Nothing to update
+        LOG.info("No entity found with filter {} for updating", update.getFilter());
         continue;
       }
 
@@ -801,10 +803,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           keys.stream().map(SingleValueKey::getValue).collect(toUnmodifiableList());
       final List<UpdateOperation> updateOperations = update.getOperationsList();
 
+      final FilterTypeExpression filter = getFilterForKeys(keys);
+
       final org.hypertrace.core.documentstore.query.Query updateQuery =
-          org.hypertrace.core.documentstore.query.Query.builder()
-              .setFilter(or(keys.stream().map(KeyExpression::of).collect(toUnmodifiableList())))
-              .build();
+          org.hypertrace.core.documentstore.query.Query.builder().setFilter(filter).build();
       final List<SubDocumentUpdate> updates = convertUpdates(requestContext, updateOperations);
 
       final boolean shouldSendNotification =
@@ -830,6 +832,17 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
+  private FilterTypeExpression getFilterForKeys(List<SingleValueKey> keys) {
+    final FilterTypeExpression filter;
+
+    if (keys.size() == 1) {
+      filter = KeyExpression.of(keys.get(0));
+    } else {
+      filter = or(keys.stream().map(KeyExpression::of).collect(toUnmodifiableList()));
+    }
+    return filter;
+  }
+
   @SuppressWarnings("Convert2Diamond")
   private Converter<UpdateOperation, SubDocumentUpdate> getUpdateConverter() {
     return injector.getInstance(
@@ -848,6 +861,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             .build();
     final EntityQueryRequest entityQueryRequest =
         EntityQueryRequest.newBuilder()
+            .setEntityType(entityType)
             .setFilter(update.getFilter())
             .addSelection(idSelection)
             .build();

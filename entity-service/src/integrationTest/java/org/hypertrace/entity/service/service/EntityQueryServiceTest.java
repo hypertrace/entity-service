@@ -36,6 +36,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.hypertrace.core.attribute.service.client.AttributeServiceClient;
 import org.hypertrace.core.attribute.service.v1.AttributeCreateRequest;
@@ -46,6 +47,7 @@ import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.DatastoreProvider;
 import org.hypertrace.core.grpcutils.client.GrpcClientRequestContextUtil;
 import org.hypertrace.core.grpcutils.client.RequestContextClientCallCredsProviderFactory;
+import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.core.serviceframework.IntegrationTestServerUtil;
 import org.hypertrace.entity.constants.v1.ApiAttribute;
 import org.hypertrace.entity.constants.v1.CommonAttribute;
@@ -55,11 +57,14 @@ import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.AttributeValueMap;
 import org.hypertrace.entity.data.service.v1.Entity;
+import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc;
+import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc.EntityDataServiceBlockingStub;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
+import org.hypertrace.entity.query.service.v1.BulkUpdateAllMatchingFilterRequest;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
 import org.hypertrace.entity.query.service.v1.DeleteEntitiesRequest;
@@ -79,6 +84,7 @@ import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.SetAttribute;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
+import org.hypertrace.entity.query.service.v1.Update;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.EntityServiceDataStoreConfig;
@@ -99,6 +105,7 @@ import org.junit.jupiter.api.Test;
 public class EntityQueryServiceTest {
 
   private static EntityQueryServiceBlockingStub entityQueryServiceClient;
+  private static EntityDataServiceBlockingStub entityDataServiceStub;
   // needed to create entities
   private static EntityDataServiceClient entityDataServiceClient;
 
@@ -113,6 +120,7 @@ public class EntityQueryServiceTest {
 
   private static Map<String, String> apiAttributesMap;
   private static final Map<String, String> HEADERS = Map.of("x-tenant-id", TENANT_ID);
+  private static final RequestContext requestContext = RequestContext.forTenantId(TENANT_ID);
   // attributes defined in application.conf in attribute map
   private static final String API_ID_ATTR = "API.id";
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
@@ -145,6 +153,10 @@ public class EntityQueryServiceTest {
             .build();
     entityQueryServiceClient =
         EntityQueryServiceGrpc.newBlockingStub(channel)
+            .withCallCredentials(
+                RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
+    entityDataServiceStub =
+        EntityDataServiceGrpc.newBlockingStub(channel)
             .withCallCredentials(
                 RequestContextClientCallCredsProviderFactory.getClientCallCredsProvider().get());
     entityDataServiceClient = new EntityDataServiceClient(channel);
@@ -1343,6 +1355,153 @@ public class EntityQueryServiceTest {
         () ->
             GrpcClientRequestContextUtil.executeWithHeadersContext(
                 HEADERS, () -> entityQueryServiceClient.bulkUpdate(bulkUpdateRequest)));
+  }
+
+  @Test
+  public void testBulkUpdateAllMatchingFilter() throws InterruptedException {
+    final Entity.Builder apiEntityBuilder1 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api1")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api1"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+    apiEntityBuilder1
+        .putAttributes(
+            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
+        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+    final Entity entity1 =
+        requestContext.call(() -> entityDataServiceStub.upsert(apiEntityBuilder1.build()));
+
+    final Entity.Builder apiEntityBuilder2 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api2")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api2"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+    apiEntityBuilder2
+        .putAttributes(
+            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
+        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+    final Entity entity2 =
+        requestContext.call(() -> entityDataServiceStub.upsert(apiEntityBuilder2.build()));
+
+    // create BulkUpdate request
+    final UpdateOperation updateOperation1 =
+        UpdateOperation.newBuilder()
+            .setSetAttribute(
+                SetAttribute.newBuilder()
+                    .setAttribute(
+                        ColumnIdentifier.newBuilder().setColumnName(API_DISCOVERY_STATE_ATTR))
+                    .setValue(
+                        LiteralConstant.newBuilder()
+                            .setValue(
+                                org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                    .setString("DISCOVERED"))))
+            .build();
+    final UpdateOperation updateOperation2 =
+        UpdateOperation.newBuilder()
+            .setSetAttribute(
+                SetAttribute.newBuilder()
+                    .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_HTTP_METHOD_ATTR))
+                    .setValue(
+                        LiteralConstant.newBuilder()
+                            .setValue(
+                                org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                    .setString("POST"))))
+            .build();
+    final Update update1 =
+        Update.newBuilder()
+            .setFilter(
+                Filter.newBuilder()
+                    .setLhs(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder().setColumnName("API.id")))
+                    .setOperator(Operator.EQ)
+                    .setRhs(
+                        Expression.newBuilder()
+                            .setLiteral(
+                                LiteralConstant.newBuilder()
+                                    .setValue(
+                                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                            .setValueType(STRING)
+                                            .setString(entity1.getEntityId())))))
+            .addOperations(updateOperation1)
+            .build();
+    final Update update2 =
+        Update.newBuilder()
+            .setFilter(
+                Filter.newBuilder()
+                    .setLhs(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder().setColumnName("API.id")))
+                    .setOperator(Operator.IN)
+                    .setRhs(
+                        Expression.newBuilder()
+                            .setLiteral(
+                                LiteralConstant.newBuilder()
+                                    .setValue(
+                                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                            .setValueType(STRING_ARRAY)
+                                            .addAllStringArray(
+                                                List.of(
+                                                    entity1.getEntityId(),
+                                                    entity2.getEntityId()))))))
+            .addOperations(updateOperation2)
+            .build();
+    final BulkUpdateAllMatchingFilterRequest request =
+        BulkUpdateAllMatchingFilterRequest.newBuilder()
+            .setEntityType(EntityType.API.name())
+            .addUpdates(update1)
+            .addUpdates(update2)
+            .build();
+
+    requestContext.call(() -> entityQueryServiceClient.bulkUpdateAllMatchingFilter(request));
+    // Add a small delay for the update to reflect
+    Thread.sleep(500);
+
+    final EntityQueryRequest entityQueryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(EntityType.API.name())
+            .addSelection(createExpression(API_DISCOVERY_STATE_ATTR))
+            .addSelection(createExpression(API_HTTP_METHOD_ATTR))
+            .build();
+
+    final Iterator<ResultSetChunk> resultSetChunkIterator =
+        requestContext.call(() -> entityQueryServiceClient.execute(entityQueryRequest));
+
+    final List<String> values = new ArrayList<>();
+
+    while (resultSetChunkIterator.hasNext()) {
+      final ResultSetChunk chunk = resultSetChunkIterator.next();
+
+      for (final Row row : chunk.getRowList()) {
+        IntStream.range(0, row.getColumnCount())
+            .mapToObj(i -> row.getColumnList().get(i).getString())
+            .forEach(values::add);
+      }
+    }
+
+    assertEquals(4, values.size());
+    assertEquals("DISCOVERED", values.get(0));
+    assertEquals("POST", values.get(1));
+    assertEquals("UNDER_DISCOVERY", values.get(2));
+    assertEquals("POST", values.get(3));
   }
 
   @Test
