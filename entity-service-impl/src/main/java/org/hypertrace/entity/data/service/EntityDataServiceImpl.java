@@ -110,7 +110,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     try {
       Entity normalizedEntity = this.entityNormalizer.normalize(tenantId, request);
       java.util.Collection<Entity> existingEntityCollection =
-          getExistingEntities(List.of(normalizedEntity));
+          getExistingEntities(tenantId, List.of(normalizedEntity));
       upsertEntity(
           tenantId,
           normalizedEntity.getEntityId(),
@@ -143,7 +143,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                   Collectors.toUnmodifiableMap(
                       entity -> this.entityNormalizer.getEntityDocKey(tenantId, entity),
                       Function.identity()));
-      java.util.Collection<Entity> existingEntities = getExistingEntities(entities.values());
+      java.util.Collection<Entity> existingEntities =
+          getExistingEntities(tenantId, entities.values());
       upsertEntities(entities, entitiesCollection, responseObserver);
       entityChangeEventGenerator.sendChangeNotification(
           RequestContext.CURRENT.get(), existingEntities, entities.values());
@@ -271,17 +272,19 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
-    if (tenantId.isEmpty()) {
+    Optional<String> maybeTenantId = RequestContext.CURRENT.get().getTenantId();
+    if (maybeTenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
 
+    String tenantId = maybeTenantId.get();
     Key key =
         this.entityNormalizer.getEntityDocKey(
-            tenantId.get(), request.getEntityType(), request.getEntityId());
+            tenantId, request.getEntityType(), request.getEntityId());
     Optional<Entity> existingEntity =
-        this.entityFetcher.getEntitiesByEntityIds(List.of(key.toString())).stream().findFirst();
+        this.entityFetcher.getEntitiesByEntityIds(tenantId, List.of(key.toString())).stream()
+            .findFirst();
 
     if (entitiesCollection.delete(key)) {
       responseObserver.onNext(Empty.newBuilder().build());
@@ -727,9 +730,9 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
   }
 
-  private List<Entity> getExistingEntities(java.util.Collection<Entity> entities) {
+  private List<Entity> getExistingEntities(String tenantId, java.util.Collection<Entity> entities) {
     List<String> docIds = entities.stream().map(this::getDocId).collect(Collectors.toList());
-    return this.entityFetcher.getEntitiesByDocIds(docIds);
+    return this.entityFetcher.getEntitiesByDocIds(tenantId, docIds);
   }
 
   private String getDocId(Entity entity) {
@@ -740,7 +743,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
 
   private Optional<Entity> getExistingEntity(String tenantId, String entityType, String entityId) {
     String docId = this.entityNormalizer.getEntityDocKey(tenantId, entityType, entityId).toString();
-    return this.entityFetcher.getEntitiesByDocIds(List.of(docId)).stream().findFirst();
+    return this.entityFetcher.getEntitiesByDocIds(tenantId, List.of(docId)).stream().findFirst();
   }
 
   private Optional<Entity> entityFromDocument(Document document) {
