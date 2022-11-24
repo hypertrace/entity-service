@@ -787,6 +787,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       final BulkUpdateAllMatchingFilterRequest request, final RequestContext requestContext)
       throws ConversionException, IOException {
     final String entityType = request.getEntityType();
+    final String tenantId = requestContext.getTenantId().orElseThrow();
+
     for (final Update update : request.getUpdatesList()) {
       final List<SingleValueKey> keys = getKeysToUpdate(requestContext, entityType, update);
 
@@ -811,7 +813,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       final Optional<List<Entity>> existingEntities;
 
       if (shouldSendNotification) {
-        existingEntities = Optional.of(entityFetcher.getEntitiesByEntityIds(entityIds));
+        existingEntities = Optional.of(entityFetcher.getEntitiesByEntityIds(tenantId, entityIds));
       } else {
         existingEntities = Optional.empty();
       }
@@ -820,7 +822,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           updateQuery, updates, UpdateOptions.builder().returnDocumentType(NONE).build());
 
       if (existingEntities.isPresent()) {
-        final List<Entity> updatedEntities = entityFetcher.getEntitiesByEntityIds(entityIds);
+        final List<Entity> updatedEntities =
+            entityFetcher.getEntitiesByEntityIds(tenantId, entityIds);
         entityChangeEventGenerator.sendChangeNotification(
             requestContext, existingEntities.get(), updatedEntities);
       }
