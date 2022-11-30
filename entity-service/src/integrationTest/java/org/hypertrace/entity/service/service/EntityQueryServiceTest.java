@@ -9,6 +9,7 @@ import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 import static org.hypertrace.entity.service.client.config.EntityServiceTestConfig.getServiceConfig;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENTITY_TYPES_COLLECTION;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
+import static org.hypertrace.entity.service.constants.EntityConstants.ENTITY_ID;
 import static org.hypertrace.entity.v1.servicetype.ServiceType.HOSTNAME;
 import static org.hypertrace.entity.v1.servicetype.ServiceType.JAEGER_SERVICE;
 import static org.hypertrace.entity.v1.servicetype.ServiceType.K8S_SERVICE;
@@ -100,6 +101,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /** Test for {@link org.hypertrace.entity.query.service.client.EntityQueryServiceClient} */
 public class EntityQueryServiceTest {
@@ -1357,8 +1360,10 @@ public class EntityQueryServiceTest {
                 HEADERS, () -> entityQueryServiceClient.bulkUpdate(bulkUpdateRequest)));
   }
 
-  @Test
-  public void testBulkUpdateAllMatchingFilter() throws InterruptedException {
+  @ParameterizedTest
+  @ValueSource(strings = {"API.id", ENTITY_ID})
+  public void testBulkUpdateAllMatchingFilter(final String filterColumn)
+      throws InterruptedException {
     final Entity.Builder apiEntityBuilder1 =
         Entity.newBuilder()
             .setTenantId(TENANT_ID)
@@ -1430,7 +1435,7 @@ public class EntityQueryServiceTest {
                     .setLhs(
                         Expression.newBuilder()
                             .setColumnIdentifier(
-                                ColumnIdentifier.newBuilder().setColumnName("API.id")))
+                                ColumnIdentifier.newBuilder().setColumnName(filterColumn)))
                     .setOperator(Operator.EQ)
                     .setRhs(
                         Expression.newBuilder()
@@ -1449,7 +1454,7 @@ public class EntityQueryServiceTest {
                     .setLhs(
                         Expression.newBuilder()
                             .setColumnIdentifier(
-                                ColumnIdentifier.newBuilder().setColumnName("API.id")))
+                                ColumnIdentifier.newBuilder().setColumnName(filterColumn)))
                     .setOperator(Operator.IN)
                     .setRhs(
                         Expression.newBuilder()

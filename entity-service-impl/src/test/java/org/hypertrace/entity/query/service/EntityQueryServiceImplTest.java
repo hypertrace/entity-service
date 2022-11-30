@@ -3,6 +3,7 @@ package org.hypertrace.entity.query.service;
 import static org.hypertrace.core.documentstore.expression.impl.LogicalExpression.and;
 import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
 import static org.hypertrace.entity.TestUtils.convertToCloseableIterator;
+import static org.hypertrace.entity.service.constants.EntityConstants.ENTITY_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -595,7 +596,7 @@ public class EntityQueryServiceImplTest {
                               .setLhs(
                                   Expression.newBuilder()
                                       .setColumnIdentifier(
-                                          ColumnIdentifier.newBuilder().setColumnName(API_ID)))
+                                          ColumnIdentifier.newBuilder().setColumnName(ENTITY_ID)))
                               .setOperator(Operator.EQ)
                               .setRhs(
                                   Expression.newBuilder()
@@ -612,17 +613,17 @@ public class EntityQueryServiceImplTest {
           mock(StreamObserver.class);
 
       final List<Document> documents =
-          List.of(new JSONDocument("{ \"API.id\": \"" + entityId + "\" }"));
+          List.of(new JSONDocument("{ \"entityId\": \"" + entityId + "\" }"));
       when(mockMappingForAttributes().getIdentifierAttributeId(EntityType.API.name()))
-          .thenReturn(Optional.of("API.id"));
+          .thenReturn(Optional.of(ENTITY_ID));
 
       final org.hypertrace.core.documentstore.query.Query query =
           org.hypertrace.core.documentstore.query.Query.builder()
-              .addSelection(IdentifierExpression.of("entityId"), API_ID)
+              .addSelection(IdentifierExpression.of(ENTITY_ID), ENTITY_ID)
               .setFilter(
                   and(
                       RelationalExpression.of(
-                          IdentifierExpression.of("entityId"),
+                          IdentifierExpression.of(ENTITY_ID),
                           RelationalOperator.EQ,
                           ConstantExpression.of(entityId)),
                       RelationalExpression.of(

@@ -13,6 +13,7 @@ import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
+import static org.hypertrace.entity.service.constants.EntityConstants.ENTITY_ID;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
@@ -853,11 +854,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private List<SingleValueKey> getKeysToUpdate(
       final RequestContext requestContext, final String entityType, final Update update)
       throws ConversionException, IOException {
-    final String idAttribute = getIdAttribute(entityType);
-
     final Expression idSelection =
         Expression.newBuilder()
-            .setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName(idAttribute))
+            .setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName(ENTITY_ID))
             .build();
     final EntityQueryRequest entityQueryRequest =
         EntityQueryRequest.newBuilder()
@@ -899,15 +898,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       updates.add(convert);
     }
     return unmodifiableList(updates);
-  }
-
-  private String getIdAttribute(String entityType) {
-    return entityAttributeMapping
-        .getIdentifierAttributeId(entityType)
-        .orElseThrow(
-            () ->
-                new UnsupportedOperationException(
-                    String.format("Updating %s entities is not supported yet", entityType)));
   }
 
   private List<Entity> getEntitiesToDelete(

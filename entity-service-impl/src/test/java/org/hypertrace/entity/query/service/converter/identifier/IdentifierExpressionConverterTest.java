@@ -1,7 +1,6 @@
 package org.hypertrace.entity.query.service.converter.identifier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 import static org.mockito.quality.Strictness.LENIENT;
 
@@ -42,13 +41,13 @@ class IdentifierExpressionConverterTest {
   }
 
   @Test
-  void testConvertWithEmptySubDocPath() {
+  void testConvertWithEmptySubDocPath() throws ConversionException {
     when(attributeMapping.getDocStorePathByAttributeId(
             requestContext, columnIdentifier.getColumnName()))
         .thenReturn(Optional.empty());
-    assertThrows(
-        ConversionException.class,
-        () -> identifierExpressionConverter.convert(columnIdentifier, requestContext));
+    assertEquals(
+        IdentifierExpression.of(columnIdentifier.getColumnName()),
+        identifierExpressionConverter.convert(columnIdentifier, requestContext));
   }
 
   @Test
