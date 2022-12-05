@@ -1,5 +1,7 @@
 package org.hypertrace.entity.query.service.converter.identifier;
 
+import static org.hypertrace.entity.query.service.converter.identifier.IdentifierConverter.isPartOfAttributeMap;
+
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.AllArgsConstructor;
@@ -8,7 +10,6 @@ import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.ValueType;
-import org.hypertrace.entity.service.constants.EntityConstants;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
@@ -75,9 +76,5 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
 
   private boolean isFilterValuePrimitive(final ValueType valueType) {
     return valueHelper.isPrimitive(valueType);
-  }
-
-  private static boolean isPartOfAttributeMap(final String subDocPath) {
-    return subDocPath.startsWith(EntityConstants.ATTRIBUTES_MAP_PATH);
   }
 }

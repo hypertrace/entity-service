@@ -3,6 +3,7 @@ package org.hypertrace.entity.query.service;
 import static org.hypertrace.core.documentstore.expression.impl.LogicalExpression.and;
 import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
 import static org.hypertrace.entity.TestUtils.convertToCloseableIterator;
+import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_SET;
 import static org.hypertrace.entity.service.constants.EntityConstants.ENTITY_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -50,6 +51,7 @@ import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.fetcher.EntityFetcher;
+import org.hypertrace.entity.query.service.v1.AttributeUpdateOperation;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
@@ -579,12 +581,12 @@ public class EntityQueryServiceImplTest {
           LiteralConstant.newBuilder()
               .setValue(Value.newBuilder().setValueType(ValueType.STRING).setString("NEW_STATUS"));
 
-      final UpdateOperation.Builder updateOperation =
-          UpdateOperation.newBuilder()
-              .setSetAttribute(
-                  SetAttribute.newBuilder()
-                      .setAttribute(ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID1))
-                      .setValue(newStatus));
+      final AttributeUpdateOperation updateOperation =
+          AttributeUpdateOperation.newBuilder()
+              .setAttribute(ColumnIdentifier.newBuilder().setColumnName(ATTRIBUTE_ID1))
+              .setOperator(ATTRIBUTE_UPDATE_OPERATOR_SET)
+              .setValue(newStatus)
+              .build();
       final String entityId = "entity-id-1";
       final BulkUpdateAllMatchingFilterRequest bulkUpdateRequest =
           BulkUpdateAllMatchingFilterRequest.newBuilder()

@@ -2,6 +2,7 @@ package org.hypertrace.entity.service.service;
 
 import static java.util.stream.Collectors.toUnmodifiableMap;
 import static org.hypertrace.entity.constants.v1.ServiceAttribute.SERVICE_ATTRIBUTE_SERVICE_TYPE;
+import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_SET;
 import static org.hypertrace.entity.query.service.v1.SortOrder.ASC;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
@@ -62,6 +63,7 @@ import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc.EntityDataServiceBlockingStub;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.query.service.client.EntityQueryServiceClient;
+import org.hypertrace.entity.query.service.v1.AttributeUpdateOperation;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
@@ -1405,28 +1407,25 @@ public class EntityQueryServiceTest {
         requestContext.call(() -> entityDataServiceStub.upsert(apiEntityBuilder2.build()));
 
     // create BulkUpdate request
-    final UpdateOperation updateOperation1 =
-        UpdateOperation.newBuilder()
-            .setSetAttribute(
-                SetAttribute.newBuilder()
-                    .setAttribute(
-                        ColumnIdentifier.newBuilder().setColumnName(API_DISCOVERY_STATE_ATTR))
+    final AttributeUpdateOperation updateOperation1 =
+        AttributeUpdateOperation.newBuilder()
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_DISCOVERY_STATE_ATTR))
+            .setOperator(ATTRIBUTE_UPDATE_OPERATOR_SET)
+            .setValue(
+                LiteralConstant.newBuilder()
                     .setValue(
-                        LiteralConstant.newBuilder()
-                            .setValue(
-                                org.hypertrace.entity.query.service.v1.Value.newBuilder()
-                                    .setString("DISCOVERED"))))
+                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                            .setString("DISCOVERED")))
             .build();
-    final UpdateOperation updateOperation2 =
-        UpdateOperation.newBuilder()
-            .setSetAttribute(
-                SetAttribute.newBuilder()
-                    .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_HTTP_METHOD_ATTR))
+    final AttributeUpdateOperation updateOperation2 =
+        AttributeUpdateOperation.newBuilder()
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_HTTP_METHOD_ATTR))
+            .setOperator(ATTRIBUTE_UPDATE_OPERATOR_SET)
+            .setValue(
+                LiteralConstant.newBuilder()
                     .setValue(
-                        LiteralConstant.newBuilder()
-                            .setValue(
-                                org.hypertrace.entity.query.service.v1.Value.newBuilder()
-                                    .setString("POST"))))
+                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                            .setString("POST")))
             .build();
     final Update update1 =
         Update.newBuilder()

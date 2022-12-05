@@ -69,6 +69,7 @@ import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.converter.ConverterModule;
 import org.hypertrace.entity.query.service.converter.response.DocumentConverter;
+import org.hypertrace.entity.query.service.v1.AttributeUpdateOperation;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
@@ -802,7 +803,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
       final List<String> entityIds =
           keys.stream().map(SingleValueKey::getValue).collect(toUnmodifiableList());
-      final List<UpdateOperation> updateOperations = update.getOperationsList();
+      final List<AttributeUpdateOperation> updateOperations = update.getOperationsList();
 
       final FilterTypeExpression filter = getFilterForKeys(keys);
 
@@ -811,7 +812,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       final List<SubDocumentUpdate> updates = convertUpdates(requestContext, updateOperations);
 
       final boolean shouldSendNotification =
-          entityAttributeChangeEvaluator.shouldSendNotification(
+          entityAttributeChangeEvaluator.shouldSendNotificationForAttributeUpdates(
               requestContext, entityType, updateOperations);
       final Optional<List<Entity>> existingEntities;
 
@@ -845,10 +846,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   }
 
   @SuppressWarnings("Convert2Diamond")
-  private Converter<UpdateOperation, SubDocumentUpdate> getUpdateConverter() {
+  private Converter<AttributeUpdateOperation, SubDocumentUpdate> getUpdateConverter() {
     return injector.getInstance(
         com.google.inject.Key.get(
-            new TypeLiteral<Converter<UpdateOperation, SubDocumentUpdate>>() {}));
+            new TypeLiteral<Converter<AttributeUpdateOperation, SubDocumentUpdate>>() {}));
   }
 
   private List<SingleValueKey> getKeysToUpdate(
@@ -888,12 +889,13 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   }
 
   private List<SubDocumentUpdate> convertUpdates(
-      RequestContext requestContext, List<UpdateOperation> updateOperations)
+      final RequestContext requestContext, final List<AttributeUpdateOperation> updateOperations)
       throws ConversionException {
     final List<SubDocumentUpdate> updates = new ArrayList<>();
-    final Converter<UpdateOperation, SubDocumentUpdate> updateConverter = getUpdateConverter();
+    final Converter<AttributeUpdateOperation, SubDocumentUpdate> updateConverter =
+        getUpdateConverter();
 
-    for (final UpdateOperation operation : updateOperations) {
+    for (final AttributeUpdateOperation operation : updateOperations) {
       final SubDocumentUpdate convert = updateConverter.convert(operation, requestContext);
       updates.add(convert);
     }

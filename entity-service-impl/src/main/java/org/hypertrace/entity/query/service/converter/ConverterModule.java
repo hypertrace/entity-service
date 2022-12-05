@@ -17,11 +17,11 @@ import org.hypertrace.entity.query.service.converter.filter.FilterModule;
 import org.hypertrace.entity.query.service.converter.identifier.IdentifierModule;
 import org.hypertrace.entity.query.service.converter.response.ResponseModule;
 import org.hypertrace.entity.query.service.converter.selection.SelectionConverterModule;
+import org.hypertrace.entity.query.service.v1.AttributeUpdateOperation;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
-import org.hypertrace.entity.query.service.v1.UpdateOperation;
 
 @AllArgsConstructor
 public class ConverterModule extends AbstractModule {
@@ -42,7 +42,7 @@ public class ConverterModule extends AbstractModule {
     bind(new TypeLiteral<Converter<EntityQueryRequest, Query>>() {}).to(QueryConverter.class);
     bind(new TypeLiteral<Converter<List<Expression>, List<FromTypeExpression>>>() {})
         .to(FromClauseConverter.class);
-    bind(new TypeLiteral<Converter<UpdateOperation, SubDocumentUpdate>>() {})
+    bind(new TypeLiteral<Converter<AttributeUpdateOperation, SubDocumentUpdate>>() {})
         .to(UpdateConverter.class);
   }
 

@@ -42,7 +42,7 @@ message BulkUpdateAllMatchingFilterRequest {
 
 message Update {
   Filter filter = 1;
-  repeated UpdateOperation operations = 2;
+  repeated AttributeUpdateOperation operations = 2;
 }
 
 message TotalEntitiesRequest {
@@ -60,6 +60,19 @@ message UpdateOperation {
 message SetAttribute {
   ColumnIdentifier attribute = 1;
   LiteralConstant value = 2;
+}
+
+message AttributeUpdateOperation {
+  ColumnIdentifier attribute = 1;
+  AttributeUpdateOperator operator = 2;
+  LiteralConstant value = 3;
+
+  enum AttributeUpdateOperator {
+    ATTRIBUTE_UPDATE_OPERATION_UNSPECIFIED = 0;
+    ATTRIBUTE_UPDATE_OPERATOR_SET = 1;
+    ATTRIBUTE_UPDATE_OPERATOR_ADD_TO_LIST_IF_ABSENT = 2;
+    ATTRIBUTE_UPDATE_OPERATOR_REMOVE_ALL_FROM_LIST = 3;
+  }
 }
 
 message BulkEntityArrayAttributeUpdateRequest {
