@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.Entity;
+import org.hypertrace.entity.query.service.v1.AttributeUpdateOperation;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
 
@@ -117,5 +118,20 @@ public class EntityAttributeChangeEvaluator {
 
   private boolean isEntityTypeAllowed(String entityType) {
     return allowedEntityTypes.contains(ALL_ENTITY_TYPES) || allowedEntityTypes.contains(entityType);
+  }
+
+  public boolean shouldSendNotificationForAttributeUpdates(
+      final RequestContext requestContext,
+      final String entityType,
+      final List<AttributeUpdateOperation> updateOperations) {
+    if (!isEntityTypeAllowed(entityType)) {
+      return false;
+    }
+
+    return updateOperations.stream()
+        .map(AttributeUpdateOperation::getAttribute)
+        .anyMatch(
+            columnIdentifier ->
+                shouldSendNotification(requestContext, entityType, columnIdentifier));
   }
 }

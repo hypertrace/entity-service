@@ -7,6 +7,7 @@ import org.hypertrace.entity.constants.v1.EnumExtension;
 public class EntityConstants {
 
   public static final String ATTRIBUTES_MAP_PATH = "attributes";
+  public static final String ENTITY_ID = "entityId";
 
   public static String attributeMapPathFor(String attributeKey) {
     return String.join(".", ATTRIBUTES_MAP_PATH, attributeKey);

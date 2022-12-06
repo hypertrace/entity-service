@@ -2,14 +2,18 @@ package org.hypertrace.entity.query.service;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
+import static org.hypertrace.core.documentstore.expression.impl.LogicalExpression.or;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
+import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
 import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
+import static org.hypertrace.entity.service.constants.EntityConstants.ENTITY_ID;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
@@ -20,6 +24,7 @@ import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,7 +48,11 @@ import org.hypertrace.core.documentstore.Key;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
+import org.hypertrace.core.documentstore.expression.impl.KeyExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
+import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
+import org.hypertrace.core.documentstore.model.options.UpdateOptions;
+import org.hypertrace.core.documentstore.model.subdoc.SubDocumentUpdate;
 import org.hypertrace.core.documentstore.query.Filter;
 import org.hypertrace.core.documentstore.query.Selection;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -60,10 +69,13 @@ import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
 import org.hypertrace.entity.query.service.converter.ConverterModule;
 import org.hypertrace.entity.query.service.converter.response.DocumentConverter;
+import org.hypertrace.entity.query.service.v1.AttributeUpdateOperation;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityArrayAttributeUpdateResponse;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.BulkEntityUpdateRequest.EntityUpdateInfo;
+import org.hypertrace.entity.query.service.v1.BulkUpdateAllMatchingFilterRequest;
+import org.hypertrace.entity.query.service.v1.BulkUpdateAllMatchingFilterResponse;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
 import org.hypertrace.entity.query.service.v1.DeleteEntitiesRequest;
@@ -81,6 +93,7 @@ import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.SetAttribute;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
+import org.hypertrace.entity.query.service.v1.Update;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -199,62 +212,71 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     try (CloseableIterator<Document> documentIterator = searchDocuments(requestContext, request)) {
-      final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
-      ResultSetMetadata resultSetMetadata;
-      resultSetMetadata = this.buildMetadataForSelections(request.getSelectionList());
-
-      if (!documentIterator.hasNext()) {
-        ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
-        resultBuilder.setResultSetMetadata(resultSetMetadata);
-        resultBuilder.setIsLastChunk(true);
-        resultBuilder.setChunkId(0);
-        responseObserver.onNext(resultBuilder.build());
-        responseObserver.onCompleted();
-        return;
-      }
-
-      boolean isNewChunk = true;
-      int chunkId = 0, rowCount = 0;
-      ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
-      while (documentIterator.hasNext()) {
-        // Set metadata for new chunk
-        if (isNewChunk) {
-          resultBuilder.setResultSetMetadata(resultSetMetadata);
-          isNewChunk = false;
-        }
-
-        try {
-          Optional<Row> row =
-              convertToRow(
-                  requestContext,
-                  documentIterator.next(),
-                  resultSetMetadata,
-                  rowConverter,
-                  request.getSelectionList());
-          if (row.isPresent()) {
-            resultBuilder.addRow(row.get());
-            rowCount++;
-          }
-        } catch (final Exception e) {
-          responseObserver.onError(new ServiceException(e));
-          return;
-        }
-
-        // current chunk is complete
-        if (rowCount >= CHUNK_SIZE || !documentIterator.hasNext()) {
-          resultBuilder.setChunkId(chunkId++);
-          resultBuilder.setIsLastChunk(!documentIterator.hasNext());
-          responseObserver.onNext(resultBuilder.build());
-          resultBuilder = ResultSetChunk.newBuilder();
-          isNewChunk = true;
-          rowCount = 0;
-        }
-      }
-      responseObserver.onCompleted();
+      streamResponse(request, responseObserver, requestContext, documentIterator);
     } catch (Exception ex) {
       LOG.error("Error while executing entity query request ", ex);
       responseObserver.onError(new ServiceException(ex));
     }
+  }
+
+  private void streamResponse(
+      final EntityQueryRequest request,
+      final StreamObserver<ResultSetChunk> responseObserver,
+      final RequestContext requestContext,
+      final CloseableIterator<Document> documentIterator)
+      throws ConversionException {
+    final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
+    ResultSetMetadata resultSetMetadata;
+    resultSetMetadata = this.buildMetadataForSelections(request.getSelectionList());
+
+    if (!documentIterator.hasNext()) {
+      ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+      resultBuilder.setResultSetMetadata(resultSetMetadata);
+      resultBuilder.setIsLastChunk(true);
+      resultBuilder.setChunkId(0);
+      responseObserver.onNext(resultBuilder.build());
+      responseObserver.onCompleted();
+      return;
+    }
+
+    boolean isNewChunk = true;
+    int chunkId = 0, rowCount = 0;
+    ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+    while (documentIterator.hasNext()) {
+      // Set metadata for new chunk
+      if (isNewChunk) {
+        resultBuilder.setResultSetMetadata(resultSetMetadata);
+        isNewChunk = false;
+      }
+
+      try {
+        Optional<Row> row =
+            convertToRow(
+                requestContext,
+                documentIterator.next(),
+                resultSetMetadata,
+                rowConverter,
+                request.getSelectionList());
+        if (row.isPresent()) {
+          resultBuilder.addRow(row.get());
+          rowCount++;
+        }
+      } catch (final Exception e) {
+        responseObserver.onError(new ServiceException(e));
+        return;
+      }
+
+      // current chunk is complete
+      if (rowCount >= CHUNK_SIZE || !documentIterator.hasNext()) {
+        resultBuilder.setChunkId(chunkId++);
+        resultBuilder.setIsLastChunk(!documentIterator.hasNext());
+        responseObserver.onNext(resultBuilder.build());
+        resultBuilder = ResultSetChunk.newBuilder();
+        isNewChunk = true;
+        rowCount = 0;
+      }
+    }
+    responseObserver.onCompleted();
   }
 
   private Optional<Row> convertToRow(
@@ -718,6 +740,168 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
+  @Override
+  public void bulkUpdateAllMatchingFilter(
+      final BulkUpdateAllMatchingFilterRequest request,
+      final StreamObserver<BulkUpdateAllMatchingFilterResponse> responseObserver) {
+    final RequestContext requestContext = RequestContext.CURRENT.get();
+    final Optional<String> tenantIdOptional = requestContext.getTenantId();
+    if (tenantIdOptional.isEmpty()) {
+      LOG.warn("Tenant id is missing in bulk update entities request");
+      responseObserver.onError(
+          Status.INVALID_ARGUMENT
+              .withDescription("Tenant id is missing in the request.")
+              .asException());
+      return;
+    }
+
+    if (StringUtils.isBlank(request.getEntityType())) {
+      LOG.warn("Entity type is missing in bulk update entities request");
+      responseObserver.onError(
+          Status.INVALID_ARGUMENT
+              .withDescription("Entity type is missing in the request.")
+              .asException());
+      return;
+    }
+
+    if (request.getUpdatesCount() == 0) {
+      LOG.warn("No operation specified in bulk update entities request");
+      responseObserver.onError(
+          Status.INVALID_ARGUMENT
+              .withDescription("No operation is specified in the request.")
+              .asException());
+      return;
+    }
+
+    try {
+      doBulkUpdate(request, requestContext);
+      responseObserver.onNext(BulkUpdateAllMatchingFilterResponse.newBuilder().build());
+      responseObserver.onCompleted();
+    } catch (final Exception e) {
+      LOG.error("Error while bulk updating entities for " + tenantIdOptional.orElse(""), e);
+      responseObserver.onError(
+          Status.INTERNAL
+              .withDescription("Error while bulk updating entities")
+              .asRuntimeException());
+    }
+  }
+
+  private void doBulkUpdate(
+      final BulkUpdateAllMatchingFilterRequest request, final RequestContext requestContext)
+      throws ConversionException, IOException {
+    final String entityType = request.getEntityType();
+    final String tenantId = requestContext.getTenantId().orElseThrow();
+
+    for (final Update update : request.getUpdatesList()) {
+      final List<SingleValueKey> keys = getKeysToUpdate(requestContext, entityType, update);
+
+      if (keys.isEmpty()) {
+        // Nothing to update
+        LOG.info("No entity found with filter {} for updating", update.getFilter());
+        continue;
+      }
+
+      final List<String> entityIds =
+          keys.stream().map(SingleValueKey::getValue).collect(toUnmodifiableList());
+      final List<AttributeUpdateOperation> updateOperations = update.getOperationsList();
+
+      final FilterTypeExpression filter = getFilterForKeys(keys);
+
+      final org.hypertrace.core.documentstore.query.Query updateQuery =
+          org.hypertrace.core.documentstore.query.Query.builder().setFilter(filter).build();
+      final List<SubDocumentUpdate> updates = convertUpdates(requestContext, updateOperations);
+
+      final boolean shouldSendNotification =
+          entityAttributeChangeEvaluator.shouldSendNotificationForAttributeUpdates(
+              requestContext, entityType, updateOperations);
+      final Optional<List<Entity>> existingEntities;
+
+      if (shouldSendNotification) {
+        existingEntities = Optional.of(entityFetcher.getEntitiesByEntityIds(tenantId, entityIds));
+      } else {
+        existingEntities = Optional.empty();
+      }
+
+      entitiesCollection.bulkUpdate(
+          updateQuery, updates, UpdateOptions.builder().returnDocumentType(NONE).build());
+
+      if (existingEntities.isPresent()) {
+        final List<Entity> updatedEntities =
+            entityFetcher.getEntitiesByEntityIds(tenantId, entityIds);
+        entityChangeEventGenerator.sendChangeNotification(
+            requestContext, existingEntities.get(), updatedEntities);
+      }
+    }
+  }
+
+  private FilterTypeExpression getFilterForKeys(List<SingleValueKey> keys) {
+    final FilterTypeExpression filter;
+
+    if (keys.size() == 1) {
+      filter = KeyExpression.of(keys.get(0));
+    } else {
+      filter = or(keys.stream().map(KeyExpression::of).collect(toUnmodifiableList()));
+    }
+    return filter;
+  }
+
+  @SuppressWarnings("Convert2Diamond")
+  private Converter<AttributeUpdateOperation, SubDocumentUpdate> getUpdateConverter() {
+    return injector.getInstance(
+        com.google.inject.Key.get(
+            new TypeLiteral<Converter<AttributeUpdateOperation, SubDocumentUpdate>>() {}));
+  }
+
+  private List<SingleValueKey> getKeysToUpdate(
+      final RequestContext requestContext, final String entityType, final Update update)
+      throws ConversionException, IOException {
+    final Expression idSelection =
+        Expression.newBuilder()
+            .setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName(ENTITY_ID))
+            .build();
+    final EntityQueryRequest entityQueryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(entityType)
+            .setFilter(update.getFilter())
+            .addSelection(idSelection)
+            .build();
+    final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
+        queryConverter = getQueryConverter();
+
+    final org.hypertrace.core.documentstore.query.Query query =
+        queryConverter.convert(entityQueryRequest, requestContext);
+
+    final CloseableIterator<Document> idsIterator = entitiesCollection.aggregate(query);
+    final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
+    final ResultSetMetadata resultSetMetadata =
+        this.buildMetadataForSelections(List.of(idSelection));
+    final String tenantId = requestContext.getTenantId().orElseThrow();
+    final List<SingleValueKey> ids = new ArrayList<>();
+
+    while (idsIterator.hasNext()) {
+      final Row row = rowConverter.convertToRow(idsIterator.next(), resultSetMetadata);
+      final String id = row.getColumn(0).getString();
+      ids.add(new SingleValueKey(tenantId, id));
+    }
+
+    idsIterator.close();
+    return unmodifiableList(ids);
+  }
+
+  private List<SubDocumentUpdate> convertUpdates(
+      final RequestContext requestContext, final List<AttributeUpdateOperation> updateOperations)
+      throws ConversionException {
+    final List<SubDocumentUpdate> updates = new ArrayList<>();
+    final Converter<AttributeUpdateOperation, SubDocumentUpdate> updateConverter =
+        getUpdateConverter();
+
+    for (final AttributeUpdateOperation operation : updateOperations) {
+      final SubDocumentUpdate convert = updateConverter.convert(operation, requestContext);
+      updates.add(convert);
+    }
+    return unmodifiableList(updates);
+  }
+
   private List<Entity> getEntitiesToDelete(
       RequestContext requestContext, DeleteEntitiesRequest request) {
     try {
@@ -826,21 +1010,25 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return ResultSetMetadata.newBuilder().addAllColumnMetadata(list).build();
   }
 
+  @SuppressWarnings("Convert2Diamond")
   private AliasProvider<ColumnIdentifier> getIdentifierAliasProvider() {
     return injector.getInstance(
         com.google.inject.Key.get(new TypeLiteral<AliasProvider<ColumnIdentifier>>() {}));
   }
 
+  @SuppressWarnings("Convert2Diamond")
   private AliasProvider<Function> getAggregateExpressionAliasProvider() {
     return injector.getInstance(
         com.google.inject.Key.get(new TypeLiteral<AliasProvider<Function>>() {}));
   }
 
+  @SuppressWarnings("Convert2Diamond")
   private Converter<List<Expression>, Selection> getSelectionConverter() {
     return injector.getInstance(
         com.google.inject.Key.get(new TypeLiteral<Converter<List<Expression>, Selection>>() {}));
   }
 
+  @SuppressWarnings("Convert2Diamond")
   private Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
       getQueryConverter() {
     return injector.getInstance(
