@@ -12,6 +12,8 @@ import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType
 import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 import static org.hypertrace.entity.service.constants.EntityConstants.ENTITY_ID;
 
@@ -111,8 +113,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(EntityQueryServiceImpl.class);
   private static final Printer PRINTER = DocStoreJsonFormat.printer().includingDefaultValueFields();
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
-  private static final String ENTITY_SERVICE_CHANGE_ENABLED_ENTITY_TYPES_CONFIG =
-      "entity.service.change.enabled.entity.types";
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final String QUERY_AGGREGATION_ENABLED_CONFIG =
       "entity.service.config.query.aggregation.enabled";
@@ -129,6 +129,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                   .findFieldByNumber(VALUES_FIELD_NUMBER)
                   .getJsonName())
           .collect(joining("."));
+  private static final int MAX_STRING_LENGTH_FOR_UPDATE = 1000;
 
   private final Collection entitiesCollection;
   private final EntityQueryConverter entityQueryConverter;
@@ -773,6 +774,26 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
+    if (request.getUpdatesList().stream()
+        .map(Update::getOperationsList)
+        .flatMap(List::stream)
+        .map(AttributeUpdateOperation::getValue)
+        .map(LiteralConstant::getValue)
+        .flatMap(this::getStringStream)
+        .map(String::length)
+        .anyMatch(length -> length > MAX_STRING_LENGTH_FOR_UPDATE)) {
+      LOG.warn(
+          String.format(
+              "String update value exceeded %d characters", MAX_STRING_LENGTH_FOR_UPDATE));
+      responseObserver.onError(
+          Status.INVALID_ARGUMENT
+              .withDescription(
+                  String.format(
+                      "Update value too long (> %d characters)", MAX_STRING_LENGTH_FOR_UPDATE))
+              .asException());
+      return;
+    }
+
     try {
       doBulkUpdate(request, requestContext);
       responseObserver.onNext(BulkUpdateAllMatchingFilterResponse.newBuilder().build());
@@ -948,13 +969,13 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                 if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_ID)) {
                   result.addColumn(
                       Value.newBuilder()
-                          .setValueType(ValueType.STRING)
+                          .setValueType(STRING)
                           .setString(entity.getEntityId())
                           .build());
                 } else if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_NAME)) {
                   result.addColumn(
                       Value.newBuilder()
-                          .setValueType(ValueType.STRING)
+                          .setValueType(STRING)
                           .setString(entity.getEntityName())
                           .build());
                 } else if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_CREATED_TIME)) {
@@ -1054,5 +1075,17 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           .withDescription("Invalid deleteEntities request: Entity Type is empty")
           .asRuntimeException();
     }
+  }
+
+  private Stream<String> getStringStream(Value value) {
+    if (value.getValueType() == STRING) {
+      return Stream.of(value.getString());
+    }
+
+    if (value.getValueType() == STRING_ARRAY) {
+      return value.getStringArrayList().stream();
+    }
+
+    return Stream.of();
   }
 }

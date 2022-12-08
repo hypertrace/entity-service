@@ -2,7 +2,10 @@ package org.hypertrace.entity.service.service;
 
 import static java.util.stream.Collectors.toUnmodifiableMap;
 import static org.hypertrace.entity.constants.v1.ServiceAttribute.SERVICE_ATTRIBUTE_SERVICE_TYPE;
+import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_ADD_TO_LIST_IF_ABSENT;
+import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_REMOVE_FROM_LIST;
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_SET;
+import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_UNSET;
 import static org.hypertrace.entity.query.service.v1.SortOrder.ASC;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
@@ -38,7 +41,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.hypertrace.core.attribute.service.client.AttributeServiceClient;
 import org.hypertrace.core.attribute.service.v1.AttributeCreateRequest;
@@ -1371,6 +1373,12 @@ public class EntityQueryServiceTest {
             .setTenantId(TENANT_ID)
             .setEntityType(EntityType.API.name())
             .setEntityName("api1")
+            .putAttributes(
+                apiAttributesMap.get(API_LABELS_ATTR),
+                createStringArrayAttribute(List.of("Label1")))
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
+            .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -1379,10 +1387,7 @@ public class EntityQueryServiceTest {
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
                 createAttribute(API_TYPE));
-    apiEntityBuilder1
-        .putAttributes(
-            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
-        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+
     final Entity entity1 =
         requestContext.call(() -> entityDataServiceStub.upsert(apiEntityBuilder1.build()));
 
@@ -1391,6 +1396,12 @@ public class EntityQueryServiceTest {
             .setTenantId(TENANT_ID)
             .setEntityType(EntityType.API.name())
             .setEntityName("api2")
+            .putAttributes(
+                apiAttributesMap.get(API_LABELS_ATTR),
+                createStringArrayAttribute(List.of("Label2")))
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
+            .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -1399,12 +1410,32 @@ public class EntityQueryServiceTest {
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
                 createAttribute(API_TYPE));
-    apiEntityBuilder2
-        .putAttributes(
-            apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("UNDER_DISCOVERY"))
-        .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"));
+
     final Entity entity2 =
         requestContext.call(() -> entityDataServiceStub.upsert(apiEntityBuilder2.build()));
+
+    final Entity.Builder apiEntityBuilder3 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.API.name())
+            .setEntityName("api3")
+            .putAttributes(
+                apiAttributesMap.get(API_LABELS_ATTR),
+                createStringArrayAttribute(List.of("Label3")))
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
+            .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api3"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE));
+
+    final Entity entity3 =
+        requestContext.call(() -> entityDataServiceStub.upsert(apiEntityBuilder3.build()));
 
     // create BulkUpdate request
     final AttributeUpdateOperation updateOperation1 =
@@ -1427,6 +1458,34 @@ public class EntityQueryServiceTest {
                         org.hypertrace.entity.query.service.v1.Value.newBuilder()
                             .setString("POST")))
             .build();
+    final AttributeUpdateOperation updateOperation3 =
+        AttributeUpdateOperation.newBuilder()
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR))
+            .setOperator(ATTRIBUTE_UPDATE_OPERATOR_REMOVE_FROM_LIST)
+            .setValue(
+                LiteralConstant.newBuilder()
+                    .setValue(
+                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                            .setString("Label3")))
+            .build();
+    final AttributeUpdateOperation updateOperation4 =
+        AttributeUpdateOperation.newBuilder()
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR))
+            .setOperator(ATTRIBUTE_UPDATE_OPERATOR_ADD_TO_LIST_IF_ABSENT)
+            .setValue(
+                LiteralConstant.newBuilder()
+                    .setValue(
+                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                            .setValueType(STRING_ARRAY)
+                            .addStringArray("Label1")
+                            .addStringArray("Label4")))
+            .build();
+    final AttributeUpdateOperation updateOperation5 =
+        AttributeUpdateOperation.newBuilder()
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_DISCOVERY_STATE_ATTR))
+            .setOperator(ATTRIBUTE_UPDATE_OPERATOR_UNSET)
+            .build();
+
     final Update update1 =
         Update.newBuilder()
             .setFilter(
@@ -1445,6 +1504,7 @@ public class EntityQueryServiceTest {
                                             .setValueType(STRING)
                                             .setString(entity1.getEntityId())))))
             .addOperations(updateOperation1)
+            .addOperations(updateOperation4)
             .build();
     final Update update2 =
         Update.newBuilder()
@@ -1468,11 +1528,33 @@ public class EntityQueryServiceTest {
                                                     entity2.getEntityId()))))))
             .addOperations(updateOperation2)
             .build();
+    final Update update3 =
+        Update.newBuilder()
+            .setFilter(
+                Filter.newBuilder()
+                    .setLhs(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder().setColumnName(filterColumn)))
+                    .setOperator(Operator.EQ)
+                    .setRhs(
+                        Expression.newBuilder()
+                            .setLiteral(
+                                LiteralConstant.newBuilder()
+                                    .setValue(
+                                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                            .setValueType(STRING)
+                                            .setString(entity3.getEntityId())))))
+            .addOperations(updateOperation3)
+            .addOperations(updateOperation5)
+            .build();
+
     final BulkUpdateAllMatchingFilterRequest request =
         BulkUpdateAllMatchingFilterRequest.newBuilder()
             .setEntityType(EntityType.API.name())
             .addUpdates(update1)
             .addUpdates(update2)
+            .addUpdates(update3)
             .build();
 
     requestContext.call(() -> entityQueryServiceClient.bulkUpdateAllMatchingFilter(request));
@@ -1484,28 +1566,35 @@ public class EntityQueryServiceTest {
             .setEntityType(EntityType.API.name())
             .addSelection(createExpression(API_DISCOVERY_STATE_ATTR))
             .addSelection(createExpression(API_HTTP_METHOD_ATTR))
+            .addSelection(createExpression(API_LABELS_ATTR))
             .build();
 
     final Iterator<ResultSetChunk> resultSetChunkIterator =
         requestContext.call(() -> entityQueryServiceClient.execute(entityQueryRequest));
 
-    final List<String> values = new ArrayList<>();
+    final List<List<org.hypertrace.entity.query.service.v1.Value>> values = new ArrayList<>();
 
     while (resultSetChunkIterator.hasNext()) {
       final ResultSetChunk chunk = resultSetChunkIterator.next();
+      final List<org.hypertrace.entity.query.service.v1.Value> colValues = new ArrayList<>();
 
       for (final Row row : chunk.getRowList()) {
-        IntStream.range(0, row.getColumnCount())
-            .mapToObj(i -> row.getColumnList().get(i).getString())
-            .forEach(values::add);
+        values.add(row.getColumnList());
       }
     }
 
-    assertEquals(4, values.size());
-    assertEquals("DISCOVERED", values.get(0));
-    assertEquals("POST", values.get(1));
-    assertEquals("UNDER_DISCOVERY", values.get(2));
-    assertEquals("POST", values.get(3));
+    assertEquals(3, values.size());
+    assertEquals("DISCOVERED", values.get(0).get(0).getString());
+    assertEquals("POST", values.get(0).get(1).getString());
+    assertEquals(List.of("Label1", "Label4"), values.get(0).get(2).getStringArrayList());
+
+    assertEquals("UNDER_DISCOVERY", values.get(1).get(0).getString());
+    assertEquals("POST", values.get(1).get(1).getString());
+    assertEquals(List.of("Label2"), values.get(1).get(2).getStringArrayList());
+
+    assertEquals("", values.get(2).get(0).getString());
+    assertEquals("GET", values.get(2).get(1).getString());
+    assertEquals(List.of(), values.get(2).get(2).getStringArrayList());
   }
 
   @Test

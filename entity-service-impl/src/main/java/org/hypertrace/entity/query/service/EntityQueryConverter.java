@@ -28,7 +28,7 @@ import org.hypertrace.entity.query.service.v1.SortOrder;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 
-class EntityQueryConverter {
+public class EntityQueryConverter {
 
   private final EntityAttributeMapping attributeMapping;
 
