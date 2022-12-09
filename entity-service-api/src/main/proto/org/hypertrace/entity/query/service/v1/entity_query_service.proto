@@ -22,6 +22,7 @@ service EntityQueryService {
   rpc total (TotalEntitiesRequest) returns (TotalEntitiesResponse) {
   }
   rpc bulkUpdateEntityArrayAttribute (BulkEntityArrayAttributeUpdateRequest) returns (BulkEntityArrayAttributeUpdateResponse) {
+    option deprecated = true; // Use "BulkUpdateAllMatchingFilter" instead
   }
   rpc deleteEntities (DeleteEntitiesRequest) returns (DeleteEntitiesResponse) {
   }

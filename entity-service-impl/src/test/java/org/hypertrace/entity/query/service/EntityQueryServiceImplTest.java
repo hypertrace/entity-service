@@ -6,8 +6,6 @@ import static org.hypertrace.entity.TestUtils.convertToCloseableIterator;
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_SET;
 import static org.hypertrace.entity.service.constants.EntityConstants.ENTITY_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -43,8 +41,8 @@ import org.hypertrace.core.documentstore.expression.impl.KeyExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
 import org.hypertrace.core.documentstore.model.options.UpdateOptions;
-import org.hypertrace.core.documentstore.model.subdoc.PrimitiveSubDocumentValue;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentUpdate;
+import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeChangeEvaluator;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
@@ -668,22 +666,13 @@ public class EntityQueryServiceImplTest {
                   org.hypertrace.core.documentstore.query.Query.builder()
                       .setFilter(KeyExpression.of(new SingleValueKey(TENANT_ID, entityId)))
                       .build()),
-              valueCaptor.capture(),
+              eq(
+                  List.of(
+                      SubDocumentUpdate.of(
+                          "attributes.entity_id",
+                          SubDocumentValue.of(
+                              new JSONDocument("{\"value\":{\"string\":\"NEW_STATUS\"}}"))))),
               eq(UpdateOptions.builder().returnDocumentType(NONE).build()));
-
-      final Object capturedRaw = valueCaptor.getValue();
-
-      assertNotNull(capturedRaw);
-      assertEquals(1, ((List<?>) capturedRaw).size());
-
-      final Object firstValRaw = ((List<?>) capturedRaw).get(0);
-      assertTrue(firstValRaw instanceof SubDocumentUpdate);
-
-      final SubDocumentUpdate update = (SubDocumentUpdate) firstValRaw;
-      assertEquals("attributes.entity_id.value.string", update.getSubDocument().getPath());
-      assertEquals(
-          "NEW_STATUS",
-          ((PrimitiveSubDocumentValue) update.getSubDocumentValue()).getValue().toString());
     }
   }
 
