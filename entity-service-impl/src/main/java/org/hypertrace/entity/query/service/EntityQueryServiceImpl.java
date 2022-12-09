@@ -13,9 +13,7 @@ import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
-import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
-import static org.hypertrace.entity.service.constants.EntityConstants.ENTITY_ID;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
@@ -37,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
@@ -131,8 +128,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                   .getJsonName())
           .collect(joining("."));
   private static final int MAX_STRING_LENGTH_FOR_UPDATE = 1000;
-  private static final Predicate<Integer> MAX_LENGTH_CONDITION =
-      length -> length > MAX_STRING_LENGTH_FOR_UPDATE;
 
   private final Collection entitiesCollection;
   private final EntityQueryConverter entityQueryConverter;
@@ -777,14 +772,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
-    if (request.getUpdatesList().stream()
-        .map(Update::getOperationsList)
-        .flatMap(List::stream)
-        .map(AttributeUpdateOperation::getValue)
-        .map(LiteralConstant::getValue)
-        .flatMap(this::getStringStream)
-        .map(String::length)
-        .anyMatch(MAX_LENGTH_CONDITION)) {
+    if (anyStringUpdateViolatesLengthConstraint(request)) {
       LOG.warn(
           String.format(
               "String update value exceeded %d characters", MAX_STRING_LENGTH_FOR_UPDATE));
@@ -794,7 +782,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                   String.format(
                       "Update value too long (> %d characters)", MAX_STRING_LENGTH_FOR_UPDATE))
               .asException());
-      return;
     }
 
     try {
@@ -879,9 +866,19 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private List<SingleValueKey> getKeysToUpdate(
       final RequestContext requestContext, final String entityType, final Update update)
       throws ConversionException, IOException {
+    final Optional<String> idAttribute =
+        entityAttributeMapping.getIdentifierAttributeId(entityType);
+
+    if (idAttribute.isEmpty()) {
+      throw Status.UNIMPLEMENTED
+          .withDescription(String.format("Bulk updating %s entities is not supported", entityType))
+          .asRuntimeException();
+    }
+
     final Expression idSelection =
         Expression.newBuilder()
-            .setColumnIdentifier(ColumnIdentifier.newBuilder().setColumnName(ENTITY_ID))
+            .setColumnIdentifier(
+                ColumnIdentifier.newBuilder().setColumnName(idAttribute.orElseThrow()))
             .build();
     final EntityQueryRequest entityQueryRequest =
         EntityQueryRequest.newBuilder()
@@ -1078,6 +1075,18 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           .withDescription("Invalid deleteEntities request: Entity Type is empty")
           .asRuntimeException();
     }
+  }
+
+  private boolean anyStringUpdateViolatesLengthConstraint(
+      final BulkUpdateAllMatchingFilterRequest request) {
+    return request.getUpdatesList().stream()
+        .map(Update::getOperationsList)
+        .flatMap(List::stream)
+        .map(AttributeUpdateOperation::getValue)
+        .map(LiteralConstant::getValue)
+        .flatMap(this::getStringStream)
+        .map(String::length)
+        .anyMatch(length -> length > MAX_STRING_LENGTH_FOR_UPDATE);
   }
 
   private Stream<String> getStringStream(final Value value) {
