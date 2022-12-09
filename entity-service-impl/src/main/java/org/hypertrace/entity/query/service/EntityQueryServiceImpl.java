@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
@@ -130,6 +131,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                   .getJsonName())
           .collect(joining("."));
   private static final int MAX_STRING_LENGTH_FOR_UPDATE = 1000;
+  private static final Predicate<Integer> MAX_LENGTH_CONDITION =
+      length -> length > MAX_STRING_LENGTH_FOR_UPDATE;
 
   private final Collection entitiesCollection;
   private final EntityQueryConverter entityQueryConverter;
@@ -781,7 +784,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         .map(LiteralConstant::getValue)
         .flatMap(this::getStringStream)
         .map(String::length)
-        .anyMatch(length -> length > MAX_STRING_LENGTH_FOR_UPDATE)) {
+        .anyMatch(MAX_LENGTH_CONDITION)) {
       LOG.warn(
           String.format(
               "String update value exceeded %d characters", MAX_STRING_LENGTH_FOR_UPDATE));
@@ -1077,15 +1080,14 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
-  private Stream<String> getStringStream(Value value) {
-    if (value.getValueType() == STRING) {
-      return Stream.of(value.getString());
+  private Stream<String> getStringStream(final Value value) {
+    switch (value.getValueType()) {
+      case STRING:
+        return Stream.of(value.getString());
+      case STRING_ARRAY:
+        return value.getStringArrayList().stream();
+      default:
+        return Stream.of();
     }
-
-    if (value.getValueType() == STRING_ARRAY) {
-      return value.getStringArrayList().stream();
-    }
-
-    return Stream.of();
   }
 }
