@@ -42,8 +42,8 @@ dependencies {
   integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.37")
   integrationTestImplementation("org.testcontainers:testcontainers:1.16.1")
   integrationTestImplementation("com.github.stefanbirkner:system-lambda:1.2.0")
-  integrationTestImplementation("org.hypertrace.core.attribute.service:attribute-service-api:0.14.15")
-  integrationTestImplementation("org.hypertrace.core.attribute.service:attribute-service-client:0.14.15")
+  integrationTestImplementation("org.hypertrace.core.attribute.service:attribute-service-api:0.13.6")
+  integrationTestImplementation("org.hypertrace.core.attribute.service:attribute-service-client:0.12.5")
 }
 
 application {
@@ -129,7 +129,7 @@ tasks.register<DockerCreateContainer>("createAttributeServiceContainer") {
 }
 
 tasks.register<DockerPullImage>("pullAttributeServiceImage") {
-  image.set("hypertrace/attribute-service:0.14.15")
+  image.set("hypertrace/attribute-service:0.13.5")
 }
 
 tasks.register<DockerStopContainer>("stopAttributeServiceContainer") {
