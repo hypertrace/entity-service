@@ -26,7 +26,7 @@ import org.hypertrace.entity.change.event.v1.EntityDeleteEvent;
 import org.hypertrace.entity.change.event.v1.EntityUpdateEvent;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
-import org.hypertrace.entity.service.change.event.metric.EntityCounter;
+import org.hypertrace.entity.service.change.event.metric.EntityMetricsRegistry;
 import org.hypertrace.entity.service.change.event.util.KeyUtil;
 
 /** The interface Entity change event generator. */
@@ -42,7 +42,8 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   private final EventProducer<EntityChangeEventKey, EntityChangeEventValue>
       entityChangeEventProducer;
   private final EntityAttributeChangeEvaluator entityAttributeChangeEvaluator;
-  private final EntityCounter entityCounter = EntityCounter.getEntityCounter();
+  private final EntityMetricsRegistry entityMetricsRegistry =
+      EntityMetricsRegistry.getEntityMetricsRegistry();
   private final Clock clock;
 
   EntityChangeEventGeneratorImpl(
@@ -124,7 +125,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   private void sendCreateNotification(RequestContext requestContext, Entity createdEntity) {
     try {
-      this.entityCounter
+      this.entityMetricsRegistry
           .getCreateCounter(createdEntity.getEntityType(), createdEntity.getTenantId())
           .increment(1);
       Builder builder = EntityChangeEventValue.newBuilder();
@@ -145,7 +146,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   private void sendUpdateNotificationIfRequired(
       RequestContext requestContext, Entity prevEntity, Entity currEntity) {
     try {
-      this.entityCounter
+      this.entityMetricsRegistry
           .getUpdateCounter(currEntity.getEntityType(), currEntity.getTenantId())
           .increment(1);
       if (!this.entityAttributeChangeEvaluator.shouldSendNotification(
@@ -173,7 +174,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   private void sendDeleteNotification(RequestContext requestContext, Entity deletedEntity) {
     try {
-      this.entityCounter
+      this.entityMetricsRegistry
           .getDeleteCounter(deletedEntity.getEntityType(), deletedEntity.getTenantId())
           .increment(1);
       Builder builder = EntityChangeEventValue.newBuilder();
