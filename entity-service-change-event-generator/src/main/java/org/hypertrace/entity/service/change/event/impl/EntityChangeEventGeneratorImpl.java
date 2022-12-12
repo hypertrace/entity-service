@@ -127,7 +127,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     try {
       this.entityMetricsRegistry
           .getCreateCounter(createdEntity.getEntityType(), createdEntity.getTenantId())
-          .increment(1);
+          .increment();
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setCreateEvent(
           EntityCreateEvent.newBuilder().setCreatedEntity(createdEntity).build());
@@ -148,7 +148,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     try {
       this.entityMetricsRegistry
           .getUpdateCounter(currEntity.getEntityType(), currEntity.getTenantId())
-          .increment(1);
+          .increment();
       if (!this.entityAttributeChangeEvaluator.shouldSendNotification(
           requestContext, prevEntity, currEntity)) {
         return;
@@ -176,7 +176,7 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     try {
       this.entityMetricsRegistry
           .getDeleteCounter(deletedEntity.getEntityType(), deletedEntity.getTenantId())
-          .increment(1);
+          .increment();
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setDeleteEvent(
           EntityDeleteEvent.newBuilder().setDeletedEntity(deletedEntity).build());
