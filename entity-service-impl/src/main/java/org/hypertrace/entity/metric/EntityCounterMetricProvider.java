@@ -8,9 +8,13 @@ import lombok.AllArgsConstructor;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
 import org.hypertrace.entity.service.change.event.impl.ChangeResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class EntityCounterMetricProvider {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(EntityCounterMetricProvider.class);
+  private static final String EMPTY_STRING = "";
   private static final String ENTITIES_CREATE_COUNTER = "entities.create.counter";
   private static final String ENTITIES_UPDATE_COUNTER = "entities.update.counter";
   private static final String ENTITIES_DELETE_COUNTER = "entities.delete.counter";
@@ -21,6 +25,10 @@ public class EntityCounterMetricProvider {
 
   public void sendEntitiesMetrics(
       RequestContext requestContext, String entityType, ChangeResult changeResult) {
+    if (entityType == null) {
+      LOGGER.warn("Entity type is not defined while sending metrics {}", changeResult);
+      entityType = EMPTY_STRING;
+    }
     this.getCreateCounter(requestContext, entityType)
         .increment(changeResult.getCreatedEntity().size());
     this.getUpdateCounter(requestContext, entityType)

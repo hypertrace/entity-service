@@ -422,10 +422,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
         List<Entity> updatedEntities =
             this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
+
         ChangeResult changeResult =
             EntityChangeEvaluator.evaluateChange(existingEntities, updatedEntities);
         this.entityCounterMetricProvider.sendEntitiesMetrics(
             requestContext, request.getEntityType(), changeResult);
+        this.entityChangeEventGenerator.sendChangeNotification(requestContext, changeResult);
       } catch (Exception e) {
         LOG.error(
             "Failed to update entities {}, subDocPath {}, with new doc {}.",
@@ -513,10 +515,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
       List<Entity> updatedEntities =
           this.entityFetcher.getEntitiesByEntityIds(tenantId, request.getEntityIdsList());
+
       ChangeResult changeResult =
           EntityChangeEvaluator.evaluateChange(existingEntities, updatedEntities);
       this.entityCounterMetricProvider.sendEntitiesMetrics(
           requestContext, request.getEntityType(), changeResult);
+      this.entityChangeEventGenerator.sendChangeNotification(requestContext, changeResult);
 
       responseObserver.onNext(BulkEntityArrayAttributeUpdateResponse.newBuilder().build());
       responseObserver.onCompleted();
@@ -621,10 +625,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
       List<Entity> updatedEntities =
           this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
+
       ChangeResult changeResult =
           EntityChangeEvaluator.evaluateChange(existingEntities, updatedEntities);
       this.entityCounterMetricProvider.sendEntitiesMetrics(
           requestContext, entityType, changeResult);
+      this.entityChangeEventGenerator.sendChangeNotification(requestContext, changeResult);
     } catch (Exception e) {
       LOG.error("Failed to update entities {}", entitiesMap, e);
       throw e;
