@@ -16,6 +16,7 @@ import org.hypertrace.core.serviceframework.grpc.GrpcPlatformServiceFactory;
 import org.hypertrace.core.serviceframework.grpc.GrpcServiceContainerEnvironment;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl;
+import org.hypertrace.entity.metric.EntityCounterMetricProvider;
 import org.hypertrace.entity.query.service.EntityQueryServiceImpl;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorFactory;
@@ -47,12 +48,18 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
         grpcServiceContainerEnvironment
             .getChannelRegistry()
             .forName(grpcServiceContainerEnvironment.getInProcessChannelName());
+    EntityCounterMetricProvider entityCounterMetricProvider = new EntityCounterMetricProvider();
     return Stream.of(
             new org.hypertrace.entity.type.service.EntityTypeServiceImpl(datastore),
             new EntityTypeServiceImpl(datastore),
-            new EntityDataServiceImpl(datastore, localChannel, entityChangeEventGenerator),
+            new EntityDataServiceImpl(
+                datastore, localChannel, entityChangeEventGenerator, entityCounterMetricProvider),
             new EntityQueryServiceImpl(
-                datastore, config, entityAttributeMapping, entityChangeEventGenerator))
+                datastore,
+                config,
+                entityAttributeMapping,
+                entityChangeEventGenerator,
+                entityCounterMetricProvider))
         .map(GrpcPlatformService::new)
         .collect(Collectors.toUnmodifiableList());
   }

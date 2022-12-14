@@ -55,6 +55,7 @@ import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.fetcher.EntityFetcher;
+import org.hypertrace.entity.metric.EntityCounterMetricProvider;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
@@ -85,6 +86,8 @@ import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
+import org.hypertrace.entity.service.change.event.impl.ChangeResult;
+import org.hypertrace.entity.service.change.event.impl.EntityChangeEvaluator;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.util.DocStoreConverter;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
@@ -127,17 +130,20 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final EntityFetcher entityFetcher;
   private final EntityChangeEventGenerator entityChangeEventGenerator;
   private final EntityAttributeChangeEvaluator entityAttributeChangeEvaluator;
+  private final EntityCounterMetricProvider entityCounterMetricProvider;
 
   public EntityQueryServiceImpl(
       Datastore datastore,
       Config config,
       EntityAttributeMapping entityAttributeMapping,
-      EntityChangeEventGenerator entityChangeEventGenerator) {
+      EntityChangeEventGenerator entityChangeEventGenerator,
+      EntityCounterMetricProvider entityCounterMetricProvider) {
     this(
         datastore.getCollection(RAW_ENTITIES_COLLECTION),
         entityAttributeMapping,
         entityChangeEventGenerator,
         new EntityAttributeChangeEvaluator(config, entityAttributeMapping),
+        entityCounterMetricProvider,
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),
@@ -153,6 +159,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityAttributeMapping entityAttributeMapping,
       EntityChangeEventGenerator entityChangeEventGenerator,
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
+      EntityCounterMetricProvider entityCounterMetricProvider,
       int chunkSize,
       boolean queryAggregationEnabled,
       int maxEntitiesToDelete) {
@@ -161,6 +168,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         entityAttributeMapping,
         entityChangeEventGenerator,
         entityAttributeChangeEvaluator,
+        entityCounterMetricProvider,
         new EntityFetcher(entitiesCollection, DOCUMENT_PARSER),
         chunkSize,
         queryAggregationEnabled,
@@ -173,6 +181,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityAttributeMapping entityAttributeMapping,
       EntityChangeEventGenerator entityChangeEventGenerator,
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
+      EntityCounterMetricProvider entityCounterMetricProvider,
       EntityFetcher entityFetcher,
       int chunkSize,
       boolean queryAggregationEnabled,
@@ -187,6 +196,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     this.entityChangeEventGenerator = entityChangeEventGenerator;
     this.entityFetcher = entityFetcher;
     this.entityAttributeChangeEvaluator = entityAttributeChangeEvaluator;
+    this.entityCounterMetricProvider = entityCounterMetricProvider;
   }
 
   @Override
@@ -412,8 +422,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
         List<Entity> updatedEntities =
             this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
-        this.entityChangeEventGenerator.sendChangeNotification(
-            requestContext, existingEntities, updatedEntities);
+        ChangeResult changeResult =
+            EntityChangeEvaluator.evaluateChange(existingEntities, updatedEntities);
+        this.entityCounterMetricProvider.sendEntitiesMetrics(
+            requestContext, request.getEntityType(), changeResult);
       } catch (Exception e) {
         LOG.error(
             "Failed to update entities {}, subDocPath {}, with new doc {}.",
@@ -501,8 +513,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
       List<Entity> updatedEntities =
           this.entityFetcher.getEntitiesByEntityIds(tenantId, request.getEntityIdsList());
-      this.entityChangeEventGenerator.sendChangeNotification(
-          requestContext, existingEntities, updatedEntities);
+      ChangeResult changeResult =
+          EntityChangeEvaluator.evaluateChange(existingEntities, updatedEntities);
+      this.entityCounterMetricProvider.sendEntitiesMetrics(
+          requestContext, request.getEntityType(), changeResult);
 
       responseObserver.onNext(BulkEntityArrayAttributeUpdateResponse.newBuilder().build());
       responseObserver.onCompleted();
@@ -607,8 +621,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
       List<Entity> updatedEntities =
           this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
-      this.entityChangeEventGenerator.sendChangeNotification(
-          requestContext, existingEntities, updatedEntities);
+      ChangeResult changeResult =
+          EntityChangeEvaluator.evaluateChange(existingEntities, updatedEntities);
+      this.entityCounterMetricProvider.sendEntitiesMetrics(
+          requestContext, entityType, changeResult);
     } catch (Exception e) {
       LOG.error("Failed to update entities {}", entitiesMap, e);
       throw e;
@@ -706,7 +722,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       this.entitiesCollection.delete(
           DocStoreConverter.transform(tenantId.orElseThrow(), request.getEntityType(), entityIds));
 
-      this.entityChangeEventGenerator.sendDeleteNotification(requestContext, existingEntities);
+      ChangeResult changeResult =
+          EntityChangeEvaluator.evaluateChange(existingEntities, Collections.emptyList());
+      this.entityCounterMetricProvider.sendEntitiesMetrics(
+          requestContext, request.getEntityType(), changeResult);
+      this.entityChangeEventGenerator.sendChangeNotification(requestContext, changeResult);
 
       responseObserver.onNext(
           DeleteEntitiesResponse.newBuilder().addAllEntityIds(entityIds).build());

@@ -1,13 +1,15 @@
-package org.hypertrace.entity.service.change.event.metric;
+package org.hypertrace.entity.metric;
 
 import io.micrometer.core.instrument.Counter;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.AllArgsConstructor;
+import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
+import org.hypertrace.entity.service.change.event.impl.ChangeResult;
 
-public class EntityMetricsRegistry {
+public class EntityCounterMetricProvider {
 
   private static final String ENTITIES_CREATE_COUNTER = "entities.create.counter";
   private static final String ENTITIES_UPDATE_COUNTER = "entities.update.counter";
@@ -17,53 +19,57 @@ public class EntityMetricsRegistry {
   private static final Map<EntityTypeTenantMetricPair, Counter> typeToTenantEntityCounter =
       new ConcurrentHashMap<>();
 
-  private static final EntityMetricsRegistry ENTITY_METRICS_REGISTRY = new EntityMetricsRegistry();
-
-  // private constructor
-  private EntityMetricsRegistry() {}
-
-  public static EntityMetricsRegistry getEntityMetricsRegistry() {
-    return ENTITY_METRICS_REGISTRY;
+  public void sendEntitiesMetrics(
+      RequestContext requestContext, String entityType, ChangeResult changeResult) {
+    this.getCreateCounter(requestContext, entityType)
+        .increment(changeResult.getCreatedEntity().size());
+    this.getUpdateCounter(requestContext, entityType)
+        .increment(changeResult.getExistingToUpdatedEntitiesMap().size());
+    this.getDeleteCounter(requestContext, entityType)
+        .increment(changeResult.getDeletedEntity().size());
   }
 
-  public Counter getCreateCounter(String apiType, String tenantId) {
+  private Counter getCreateCounter(RequestContext requestContext, String entityType) {
+    String tenantId = requestContext.getTenantId().orElseThrow();
     EntityTypeTenantMetricPair typeTenantPair =
-        new EntityTypeTenantMetricPair(apiType, tenantId, ENTITIES_CREATE_COUNTER);
+        new EntityTypeTenantMetricPair(tenantId, entityType, ENTITIES_CREATE_COUNTER);
     return typeToTenantEntityCounter.computeIfAbsent(
         typeTenantPair,
         typeTenantPair1 ->
             PlatformMetricsRegistry.registerCounter(
                 ENTITIES_CREATE_COUNTER,
-                Map.of(ENTITY_TYPE_TAG, apiType, TENANT_ID_TAG, tenantId)));
+                Map.of(ENTITY_TYPE_TAG, entityType, TENANT_ID_TAG, tenantId)));
   }
 
-  public Counter getUpdateCounter(String apiType, String tenantId) {
+  private Counter getUpdateCounter(RequestContext requestContext, String entityType) {
+    String tenantId = requestContext.getTenantId().orElseThrow();
     EntityTypeTenantMetricPair typeTenantPair =
-        new EntityTypeTenantMetricPair(apiType, tenantId, ENTITIES_UPDATE_COUNTER);
+        new EntityTypeTenantMetricPair(tenantId, entityType, ENTITIES_UPDATE_COUNTER);
     return typeToTenantEntityCounter.computeIfAbsent(
         typeTenantPair,
         typeTenantPair1 ->
             PlatformMetricsRegistry.registerCounter(
                 ENTITIES_UPDATE_COUNTER,
-                Map.of(ENTITY_TYPE_TAG, apiType, TENANT_ID_TAG, tenantId)));
+                Map.of(ENTITY_TYPE_TAG, entityType, TENANT_ID_TAG, tenantId)));
   }
 
-  public Counter getDeleteCounter(String apiType, String tenantId) {
+  private Counter getDeleteCounter(RequestContext requestContext, String entityType) {
+    String tenantId = requestContext.getTenantId().orElseThrow();
     EntityTypeTenantMetricPair typeTenantPair =
-        new EntityTypeTenantMetricPair(apiType, tenantId, ENTITIES_DELETE_COUNTER);
+        new EntityTypeTenantMetricPair(tenantId, entityType, ENTITIES_DELETE_COUNTER);
     return typeToTenantEntityCounter.computeIfAbsent(
         typeTenantPair,
         typeTenantPair1 ->
             PlatformMetricsRegistry.registerCounter(
                 ENTITIES_DELETE_COUNTER,
-                Map.of(ENTITY_TYPE_TAG, apiType, TENANT_ID_TAG, tenantId)));
+                Map.of(ENTITY_TYPE_TAG, entityType, TENANT_ID_TAG, tenantId)));
   }
 
   @AllArgsConstructor
   private static class EntityTypeTenantMetricPair {
 
-    private final String entityType;
     private final String tenantId;
+    private final String entityType;
     private final String metricType;
 
     @Override

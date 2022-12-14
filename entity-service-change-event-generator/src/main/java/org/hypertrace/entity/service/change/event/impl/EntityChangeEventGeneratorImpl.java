@@ -1,15 +1,8 @@
 package org.hypertrace.entity.service.change.event.impl;
 
-import static java.util.function.Function.identity;
-
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.MapDifference;
-import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
 import java.time.Clock;
-import java.util.Collection;
-import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.hypertrace.core.eventstore.EventProducer;
 import org.hypertrace.core.eventstore.EventProducerConfig;
@@ -26,7 +19,6 @@ import org.hypertrace.entity.change.event.v1.EntityDeleteEvent;
 import org.hypertrace.entity.change.event.v1.EntityUpdateEvent;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
-import org.hypertrace.entity.service.change.event.metric.EntityMetricsRegistry;
 import org.hypertrace.entity.service.change.event.util.KeyUtil;
 
 /** The interface Entity change event generator. */
@@ -42,8 +34,6 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   private final EventProducer<EntityChangeEventKey, EntityChangeEventValue>
       entityChangeEventProducer;
   private final EntityAttributeChangeEvaluator entityAttributeChangeEvaluator;
-  private final EntityMetricsRegistry entityMetricsRegistry =
-      EntityMetricsRegistry.getEntityMetricsRegistry();
   private final Clock clock;
 
   EntityChangeEventGeneratorImpl(
@@ -74,60 +64,31 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   }
 
   @Override
-  public void sendCreateNotification(RequestContext requestContext, Collection<Entity> entities) {
-    entities.forEach(entity -> this.sendCreateNotification(requestContext, entity));
-  }
-
-  @Override
-  public void sendDeleteNotification(RequestContext requestContext, Collection<Entity> entities) {
-    entities.forEach(entity -> this.sendDeleteNotification(requestContext, entity));
-  }
-
-  @Override
-  public void sendChangeNotification(
-      RequestContext requestContext,
-      Collection<Entity> existingEntities,
-      Collection<Entity> updatedEntities) {
-    Map<String, Entity> existingEntityMap =
-        existingEntities.stream().collect(Collectors.toMap(Entity::getEntityId, identity()));
-    Map<String, Entity> upsertedEntityMap =
-        updatedEntities.stream().collect(Collectors.toMap(Entity::getEntityId, identity()));
-    MapDifference<String, Entity> mapDifference =
-        Maps.difference(existingEntityMap, upsertedEntityMap);
-
-    mapDifference
-        .entriesOnlyOnRight()
-        .entrySet()
+  public void sendChangeNotification(RequestContext requestContext, ChangeResult changeResult) {
+    changeResult
+        .getCreatedEntity()
         .forEach(
             entry -> {
-              sendCreateNotification(requestContext, entry.getValue());
+              sendCreateNotification(requestContext, entry);
             });
 
-    mapDifference
-        .entriesDiffering()
-        .entrySet()
+    changeResult
+        .getExistingToUpdatedEntitiesMap()
         .forEach(
-            entry -> {
-              MapDifference.ValueDifference<Entity> valueDifference = entry.getValue();
-              Entity prevEntity = valueDifference.leftValue();
-              Entity currEntity = valueDifference.rightValue();
-              sendUpdateNotificationIfRequired(requestContext, prevEntity, currEntity);
+            (existingEntity, updatedEntity) -> {
+              sendUpdateNotificationIfRequired(requestContext, existingEntity, updatedEntity);
             });
 
-    mapDifference
-        .entriesOnlyOnLeft()
-        .entrySet()
+    changeResult
+        .getDeletedEntity()
         .forEach(
             entry -> {
-              sendDeleteNotification(requestContext, entry.getValue());
+              sendDeleteNotification(requestContext, entry);
             });
   }
 
   private void sendCreateNotification(RequestContext requestContext, Entity createdEntity) {
     try {
-      this.entityMetricsRegistry
-          .getCreateCounter(createdEntity.getEntityType(), createdEntity.getTenantId())
-          .increment();
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setCreateEvent(
           EntityCreateEvent.newBuilder().setCreatedEntity(createdEntity).build());
@@ -146,9 +107,6 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   private void sendUpdateNotificationIfRequired(
       RequestContext requestContext, Entity prevEntity, Entity currEntity) {
     try {
-      this.entityMetricsRegistry
-          .getUpdateCounter(currEntity.getEntityType(), currEntity.getTenantId())
-          .increment();
       if (!this.entityAttributeChangeEvaluator.shouldSendNotification(
           requestContext, prevEntity, currEntity)) {
         return;
@@ -174,9 +132,6 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
 
   private void sendDeleteNotification(RequestContext requestContext, Entity deletedEntity) {
     try {
-      this.entityMetricsRegistry
-          .getDeleteCounter(deletedEntity.getEntityType(), deletedEntity.getTenantId())
-          .increment();
       Builder builder = EntityChangeEventValue.newBuilder();
       builder.setDeleteEvent(
           EntityDeleteEvent.newBuilder().setDeletedEntity(deletedEntity).build());
