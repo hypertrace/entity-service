@@ -7,6 +7,7 @@ import java.util.List;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.type.FromTypeExpression;
+import org.hypertrace.core.documentstore.model.subdoc.SubDocumentUpdate;
 import org.hypertrace.core.documentstore.query.Query;
 import org.hypertrace.core.documentstore.query.Sort;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
@@ -16,6 +17,7 @@ import org.hypertrace.entity.query.service.converter.filter.FilterModule;
 import org.hypertrace.entity.query.service.converter.identifier.IdentifierModule;
 import org.hypertrace.entity.query.service.converter.response.ResponseModule;
 import org.hypertrace.entity.query.service.converter.selection.SelectionConverterModule;
+import org.hypertrace.entity.query.service.v1.AttributeUpdateOperation;
 import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
@@ -40,6 +42,8 @@ public class ConverterModule extends AbstractModule {
     bind(new TypeLiteral<Converter<EntityQueryRequest, Query>>() {}).to(QueryConverter.class);
     bind(new TypeLiteral<Converter<List<Expression>, List<FromTypeExpression>>>() {})
         .to(FromClauseConverter.class);
+    bind(new TypeLiteral<Converter<AttributeUpdateOperation, SubDocumentUpdate>>() {})
+        .to(UpdateConverter.class);
   }
 
   @Provides

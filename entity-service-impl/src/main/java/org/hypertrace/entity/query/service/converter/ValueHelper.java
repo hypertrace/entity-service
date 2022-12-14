@@ -23,16 +23,27 @@ import static org.hypertrace.entity.query.service.v1.ValueType.TIMESTAMP;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.protobuf.ByteString;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
+import org.hypertrace.core.documentstore.Document;
+import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
+import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
+import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
+import org.hypertrace.entity.service.util.DocStoreJsonFormat;
+import org.hypertrace.entity.service.util.DocStoreJsonFormat.Printer;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
@@ -43,6 +54,7 @@ public class ValueHelper {
   public static final String VALUE_LIST_KEY = "valueList";
   public static final String VALUE_MAP_KEY = "valueMap";
 
+  private static final Printer PRINTER = DocStoreJsonFormat.printer();
   private static final String NULL_VALUE = "null";
 
   private static final Set<ValueType> PRIMITIVE_TYPES =
@@ -65,6 +77,8 @@ public class ValueHelper {
 
   private static final Supplier<Map<ValueType, ValueType>> PRIMITIVE_TO_ARRAY_MAP =
       memoize(ValueHelper::getPrimitiveToArrayMap);
+  private static final Supplier<Map<ValueType, ArrayToPrimitiveValuesConverter<?>>>
+      ARRAY_TO_PRIMITIVE_CONVERTER_MAP = memoize(ValueHelper::getArrayToPrimitiveConverterMap);
 
   private static final Supplier<Map<String, ValueType>> STRING_VALUE_TO_PRIMITIVE_TYPE_MAP =
       memoize(ValueHelper::getStringValueToPrimitiveTypeMap);
@@ -145,6 +159,27 @@ public class ValueHelper {
         throw new ConversionException(
             String.format("Unsupported value type: %s", value.getValueType()));
     }
+  }
+
+  public SubDocumentValue convertToSubDocumentValue(final Value value) throws ConversionException {
+    final ValueType type = value.getValueType();
+
+    if (isArray(type)) {
+      final List<Value> values = ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(type).apply(value);
+      final List<Document> documents = new ArrayList<>();
+
+      for (final Value singleValue : values) {
+        documents.add(convertToDocument(singleValue));
+      }
+
+      return SubDocumentValue.of(documents);
+    }
+
+    if (isPrimitive(type)) {
+      return SubDocumentValue.of(convertToDocument(value));
+    }
+
+    throw new ConversionException(String.format("Unsupported value type: %s", type));
   }
 
   public ConstantExpression convertToConstantExpression(final Value value, final int index)
@@ -259,6 +294,41 @@ public class ValueHelper {
     return unmodifiableMap(map);
   }
 
+  private static Map<ValueType, ArrayToPrimitiveValuesConverter<?>>
+      getArrayToPrimitiveConverterMap() {
+    final Map<ValueType, ArrayToPrimitiveValuesConverter<?>> map = new EnumMap<>(ValueType.class);
+
+    map.put(
+        STRING_ARRAY,
+        new ArrayToPrimitiveValuesConverter<>(
+            Value::getStringArrayList, Value.Builder::setString, STRING));
+    map.put(
+        LONG_ARRAY,
+        new ArrayToPrimitiveValuesConverter<>(
+            Value::getLongArrayList, Value.Builder::setLong, LONG));
+    map.put(
+        INT_ARRAY,
+        new ArrayToPrimitiveValuesConverter<>(Value::getIntArrayList, Value.Builder::setInt, INT));
+    map.put(
+        FLOAT_ARRAY,
+        new ArrayToPrimitiveValuesConverter<>(
+            Value::getFloatArrayList, Value.Builder::setFloat, FLOAT));
+    map.put(
+        DOUBLE_ARRAY,
+        new ArrayToPrimitiveValuesConverter<>(
+            Value::getDoubleArrayList, Value.Builder::setDouble, DOUBLE));
+    map.put(
+        BYTES_ARRAY,
+        new ArrayToPrimitiveValuesConverter<>(
+            Value::getBytesArrayList, Value.Builder::setBytes, BYTES));
+    map.put(
+        BOOLEAN_ARRAY,
+        new ArrayToPrimitiveValuesConverter<>(
+            Value::getBooleanArrayList, Value.Builder::setBoolean, BOOL));
+
+    return unmodifiableMap(map);
+  }
+
   private static Map<String, ValueType> getStringValueToPrimitiveTypeMap() {
     final Map<String, ValueType> map = new HashMap<>();
 
@@ -272,5 +342,29 @@ public class ValueHelper {
     map.put("timestamp", TIMESTAMP);
 
     return unmodifiableMap(map);
+  }
+
+  private JSONDocument convertToDocument(final Value value) throws ConversionException {
+    try {
+      return new JSONDocument(PRINTER.print(LiteralConstant.newBuilder().setValue(value)));
+    } catch (final IOException e) {
+      throw new ConversionException(e.getMessage(), e);
+    }
+  }
+
+  @AllArgsConstructor
+  private static class ArrayToPrimitiveValuesConverter<T> {
+    private final Function<Value, List<T>> arrayValueGetter;
+    private final BiFunction<Value.Builder, T, Value.Builder> primitiveSetter;
+    private final ValueType primitiveType;
+
+    List<Value> apply(final Value arrayValue) {
+      final List<T> listValue = arrayValueGetter.apply(arrayValue);
+      final Value.Builder valueBuilder = Value.newBuilder().setValueType(primitiveType);
+      return listValue.stream()
+          .map(primitive -> primitiveSetter.apply(valueBuilder, primitive))
+          .map(Value.Builder::build)
+          .collect(toUnmodifiableList());
+    }
   }
 }
