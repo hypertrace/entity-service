@@ -6,7 +6,6 @@ import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import org.hypertrace.entity.data.service.v1.Entity;
 

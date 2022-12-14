@@ -6,7 +6,6 @@ import org.hypertrace.entity.service.change.event.impl.ChangeResult;
 /** The interface Entity change event generator. */
 public interface EntityChangeEventGenerator {
 
-
   /**
    * Send notification for entities
    *

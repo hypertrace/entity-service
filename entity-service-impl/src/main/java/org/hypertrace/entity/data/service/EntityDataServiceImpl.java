@@ -97,12 +97,12 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   }
 
   /**
-   * Creates or Updates an Entity <br> If the entityId is provided it is used as is to update the
-   * Entity. If the identifying attributes are provided, then the entityId is generated from them If
-   * none of the above are provided, we error out. The ID of the entity is generated from its
-   * identifying attributes.
+   * Creates or Updates an Entity <br>
+   * If the entityId is provided it is used as is to update the Entity. If the identifying
+   * attributes are provided, then the entityId is generated from them If none of the above are
+   * provided, we error out. The ID of the entity is generated from its identifying attributes.
    *
-   * @param request          Entity to be created
+   * @param request Entity to be created
    * @param responseObserver Observer to be notified on about the Entity creation request
    */
   @Override
@@ -162,8 +162,11 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
 
       ChangeResult changeResult =
           EntityChangeEvaluator.evaluateChange(existingEntities, entities.values());
-      String entityType = request.getEntityList().stream().findAny()
-          .orElse(Entity.getDefaultInstance()).getEntityType();
+      String entityType =
+          request.getEntityList().stream()
+              .findAny()
+              .orElse(Entity.getDefaultInstance())
+              .getEntityType();
       this.entityCounterMetricProvider.sendEntitiesMetrics(
           requestContext, entityType, changeResult);
 
@@ -209,8 +212,11 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
 
       ChangeResult changeResult =
           EntityChangeEvaluator.evaluateChange(existingEntities, updatedEntities);
-      String entityType = request.getEntityList().stream().findAny()
-          .orElse(Entity.getDefaultInstance()).getEntityType();
+      String entityType =
+          request.getEntityList().stream()
+              .findAny()
+              .orElse(Entity.getDefaultInstance())
+              .getEntityType();
       this.entityCounterMetricProvider.sendEntitiesMetrics(
           requestContext, entityType, changeResult);
 
@@ -224,7 +230,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   /**
    * Get an Entity by the EntityId and EntityType
    *
-   * @param request          ID of the entity which constitutes the EntityType and EntityID(UUID)
+   * @param request ID of the entity which constitutes the EntityType and EntityID(UUID)
    * @param responseObserver Observer to be notified on about the Entity get request
    */
   @Override
@@ -254,7 +260,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   /**
    * Get an Entity by the EntityType and its identifying attributes
    *
-   * @param request          ID of the entity which constitutes the EntityType and EntityID(UUID)
+   * @param request ID of the entity which constitutes the EntityType and EntityID(UUID)
    * @param responseObserver Observer to be notified on about the Entity get request
    */
   @Override
@@ -288,7 +294,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   /**
    * Deletes an Entity by the EntityId and EntityType
    *
-   * @param request          ID of the entity to be deleted
+   * @param request ID of the entity to be deleted
    * @param responseObserver Observer to be notified on about the Entity delete request
    */
   @Override
@@ -324,8 +330,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
             this.entityCounterMetricProvider.sendEntitiesMetrics(
                 requestContext, request.getEntityType(), changeResult);
 
-            entityChangeEventGenerator.sendChangeNotification(
-                requestContext, changeResult);
+            entityChangeEventGenerator.sendChangeNotification(requestContext, changeResult);
           });
     } else {
       responseObserver.onError(new RuntimeException("Could not delete the entity."));
@@ -335,7 +340,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   /**
    * Fetch entities by applying filters
    *
-   * @param request          Query filters to be applied for filtering entities
+   * @param request Query filters to be applied for filtering entities
    * @param responseObserver Observer to be notified on about the Entity query request
    */
   @Override
@@ -436,7 +441,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       } else {
         Filter f = new Filter();
         f.setOp(Filter.Op.AND);
-        f.setChildFilters(filters.toArray(new Filter[]{}));
+        f.setChildFilters(filters.toArray(new Filter[] {}));
         docStoreQuery.setFilter(f);
       }
     }
