@@ -8,7 +8,7 @@ dependencies {
     api(project(":entity-service-api"))
     implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.3")
     implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.3")
-    implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.12.3")
+    implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.14.15")
     implementation("com.typesafe:config:1.4.2")
 
     annotationProcessor("org.projectlombok:lombok:1.18.18")
