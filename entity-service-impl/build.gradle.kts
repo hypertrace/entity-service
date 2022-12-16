@@ -16,6 +16,7 @@ dependencies {
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.7.3")
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.7.3")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.14.15")
+  implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.37")
   implementation("com.google.inject:guice:5.0.1")
 
   implementation(project(":entity-type-service-rx-client"))

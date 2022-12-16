@@ -14,6 +14,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,10 +75,8 @@ class EntityChangeEventGeneratorImplTest {
   @Test
   void sendCreateNotification() {
     List<Entity> entities = createEntities(2);
-    changeEventGenerator.sendCreateNotification(requestContext, entities);
-    InOrder inOrderVerifier = inOrder(eventProducer);
-    inOrderVerifier
-        .verify(eventProducer)
+    changeEventGenerator.sendChangeNotification(requestContext, Collections.emptyList(), entities);
+    verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(entities.get(0)),
             EntityChangeEventValue.newBuilder()
@@ -85,8 +84,8 @@ class EntityChangeEventGeneratorImplTest {
                     EntityCreateEvent.newBuilder().setCreatedEntity(entities.get(0)).build())
                 .setEventTimeMillis(CURRENT_TIME_MILLIS)
                 .build());
-    inOrderVerifier
-        .verify(eventProducer)
+
+    verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(entities.get(1)),
             EntityChangeEventValue.newBuilder()
@@ -193,6 +192,7 @@ class EntityChangeEventGeneratorImplTest {
                     .setValue(Value.newBuilder().setString("value").build())
                     .build())
             .build());
+
     changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
     verify(eventProducer, times(1))
         .send(
@@ -228,7 +228,9 @@ class EntityChangeEventGeneratorImplTest {
                     .setValue(Value.newBuilder().setString("skip_value").build())
                     .build()));
     List<Entity> updatedEntities = new ArrayList<>();
+
     updatedEntities.add(prevEntities.get(0).toBuilder().removeAttributes("attribute_key").build());
+
     changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
     verify(eventProducer, times(1))
         .send(
@@ -272,6 +274,7 @@ class EntityChangeEventGeneratorImplTest {
     // delete skip attributes only
     Entity updatedEntity =
         prevEntities.get(0).toBuilder().removeAttributes("skip_attribute").build();
+
     changeEventGenerator.sendChangeNotification(
         requestContext, prevEntities, List.of(updatedEntity));
     verify(eventProducer, never())
@@ -295,6 +298,7 @@ class EntityChangeEventGeneratorImplTest {
                     .setValue(Value.newBuilder().setString("skip_value").build())
                     .build())
             .build();
+
     changeEventGenerator.sendChangeNotification(
         requestContext, prevEntities, List.of(updatedEntity));
     verify(eventProducer, never())
@@ -318,6 +322,7 @@ class EntityChangeEventGeneratorImplTest {
                     .setValue(Value.newBuilder().setString("value").build())
                     .build())
             .build();
+
     changeEventGenerator.sendChangeNotification(
         requestContext, prevEntities, List.of(updatedEntity));
     verify(eventProducer, never())

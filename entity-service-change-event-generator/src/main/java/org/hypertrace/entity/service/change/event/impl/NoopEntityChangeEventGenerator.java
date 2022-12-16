@@ -11,11 +11,6 @@ public class NoopEntityChangeEventGenerator implements EntityChangeEventGenerato
   NoopEntityChangeEventGenerator() {}
 
   @Override
-  public void sendCreateNotification(RequestContext requestContext, Collection<Entity> entities) {
-    // No-op
-  }
-
-  @Override
   public void sendDeleteNotification(RequestContext requestContext, Collection<Entity> entities) {
     // No-op
   }

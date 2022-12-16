@@ -8,14 +8,6 @@ import org.hypertrace.entity.data.service.v1.Entity;
 public interface EntityChangeEventGenerator {
 
   /**
-   * Send create notification for newly added entities
-   *
-   * @param requestContext requestContext
-   * @param entities list of newly created entities
-   */
-  void sendCreateNotification(RequestContext requestContext, Collection<Entity> entities);
-
-  /**
    * Send delete notification for newly added entities
    *
    * @param requestContext requestContext

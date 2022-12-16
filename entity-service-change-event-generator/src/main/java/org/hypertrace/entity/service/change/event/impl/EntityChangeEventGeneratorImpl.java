@@ -1,15 +1,9 @@
 package org.hypertrace.entity.service.change.event.impl;
 
-import static java.util.function.Function.identity;
-
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.MapDifference;
-import com.google.common.collect.Maps;
 import com.typesafe.config.Config;
 import java.time.Clock;
 import java.util.Collection;
-import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.hypertrace.core.eventstore.EventProducer;
 import org.hypertrace.core.eventstore.EventProducerConfig;
@@ -68,12 +62,6 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
     this.entityChangeEventProducer = entityChangeEventProducer;
     this.entityAttributeChangeEvaluator =
         new EntityAttributeChangeEvaluator(appConfig, entityAttributeMapping);
-    ;
-  }
-
-  @Override
-  public void sendCreateNotification(RequestContext requestContext, Collection<Entity> entities) {
-    entities.forEach(entity -> this.sendCreateNotification(requestContext, entity));
   }
 
   @Override
@@ -86,38 +74,27 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
       RequestContext requestContext,
       Collection<Entity> existingEntities,
       Collection<Entity> updatedEntities) {
-    Map<String, Entity> existingEntityMap =
-        existingEntities.stream().collect(Collectors.toMap(Entity::getEntityId, identity()));
-    Map<String, Entity> upsertedEntityMap =
-        updatedEntities.stream().collect(Collectors.toMap(Entity::getEntityId, identity()));
-    MapDifference<String, Entity> mapDifference =
-        Maps.difference(existingEntityMap, upsertedEntityMap);
-
-    mapDifference
-        .entriesOnlyOnRight()
-        .entrySet()
+    ChangeResult changeResult =
+        EntityChangeEvaluator.evaluateChange(existingEntities, updatedEntities);
+    changeResult
+        .getCreatedEntity()
         .forEach(
             entry -> {
-              sendCreateNotification(requestContext, entry.getValue());
+              sendCreateNotification(requestContext, entry);
             });
 
-    mapDifference
-        .entriesDiffering()
-        .entrySet()
+    changeResult
+        .getExistingToUpdatedEntitiesMap()
         .forEach(
-            entry -> {
-              MapDifference.ValueDifference<Entity> valueDifference = entry.getValue();
-              Entity prevEntity = valueDifference.leftValue();
-              Entity currEntity = valueDifference.rightValue();
-              sendUpdateNotificationIfRequired(requestContext, prevEntity, currEntity);
+            (existingEntity, updatedEntity) -> {
+              sendUpdateNotificationIfRequired(requestContext, existingEntity, updatedEntity);
             });
 
-    mapDifference
-        .entriesOnlyOnLeft()
-        .entrySet()
+    changeResult
+        .getDeletedEntity()
         .forEach(
             entry -> {
-              sendDeleteNotification(requestContext, entry.getValue());
+              sendDeleteNotification(requestContext, entry);
             });
   }
 

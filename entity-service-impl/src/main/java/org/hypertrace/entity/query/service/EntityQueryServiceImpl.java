@@ -64,6 +64,7 @@ import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.fetcher.EntityFetcher;
+import org.hypertrace.entity.metric.EntityCounterMetricSender;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.Converter;
@@ -139,17 +140,20 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final EntityFetcher entityFetcher;
   private final EntityChangeEventGenerator entityChangeEventGenerator;
   private final EntityAttributeChangeEvaluator entityAttributeChangeEvaluator;
+  private final EntityCounterMetricSender entityCounterMetricSender;
 
   public EntityQueryServiceImpl(
       Datastore datastore,
       Config config,
       EntityAttributeMapping entityAttributeMapping,
-      EntityChangeEventGenerator entityChangeEventGenerator) {
+      EntityChangeEventGenerator entityChangeEventGenerator,
+      EntityCounterMetricSender entityCounterMetricSender) {
     this(
         datastore.getCollection(RAW_ENTITIES_COLLECTION),
         entityAttributeMapping,
         entityChangeEventGenerator,
         new EntityAttributeChangeEvaluator(config, entityAttributeMapping),
+        entityCounterMetricSender,
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),
@@ -165,6 +169,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityAttributeMapping entityAttributeMapping,
       EntityChangeEventGenerator entityChangeEventGenerator,
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
+      EntityCounterMetricSender entityCounterMetricSender,
       int chunkSize,
       boolean queryAggregationEnabled,
       int maxEntitiesToDelete) {
@@ -173,6 +178,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         entityAttributeMapping,
         entityChangeEventGenerator,
         entityAttributeChangeEvaluator,
+        entityCounterMetricSender,
         new EntityFetcher(entitiesCollection, DOCUMENT_PARSER),
         chunkSize,
         queryAggregationEnabled,
@@ -185,6 +191,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityAttributeMapping entityAttributeMapping,
       EntityChangeEventGenerator entityChangeEventGenerator,
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
+      EntityCounterMetricSender entityCounterMetricSender,
       EntityFetcher entityFetcher,
       int chunkSize,
       boolean queryAggregationEnabled,
@@ -199,6 +206,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     this.entityChangeEventGenerator = entityChangeEventGenerator;
     this.entityFetcher = entityFetcher;
     this.entityAttributeChangeEvaluator = entityAttributeChangeEvaluator;
+    this.entityCounterMetricSender = entityCounterMetricSender;
   }
 
   @Override
@@ -433,6 +441,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
         List<Entity> updatedEntities =
             this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
+
+        this.entityCounterMetricSender.sendEntitiesMetrics(
+            requestContext, request.getEntityType(), existingEntities, updatedEntities);
         this.entityChangeEventGenerator.sendChangeNotification(
             requestContext, existingEntities, updatedEntities);
       } catch (Exception e) {
@@ -522,6 +533,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
       List<Entity> updatedEntities =
           this.entityFetcher.getEntitiesByEntityIds(tenantId, request.getEntityIdsList());
+
+      this.entityCounterMetricSender.sendEntitiesMetrics(
+          requestContext, request.getEntityType(), existingEntities, updatedEntities);
       this.entityChangeEventGenerator.sendChangeNotification(
           requestContext, existingEntities, updatedEntities);
 
@@ -628,6 +642,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
       List<Entity> updatedEntities =
           this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
+
+      this.entityCounterMetricSender.sendEntitiesMetrics(
+          requestContext, entityType, existingEntities, updatedEntities);
       this.entityChangeEventGenerator.sendChangeNotification(
           requestContext, existingEntities, updatedEntities);
     } catch (Exception e) {
@@ -727,6 +744,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       this.entitiesCollection.delete(
           DocStoreConverter.transform(tenantId.orElseThrow(), request.getEntityType(), entityIds));
 
+      this.entityCounterMetricSender.sendEntitiesDeleteMetrics(
+          requestContext, request.getEntityType(), existingEntities);
       this.entityChangeEventGenerator.sendDeleteNotification(requestContext, existingEntities);
 
       responseObserver.onNext(
@@ -839,6 +858,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       if (existingEntities.isPresent()) {
         final List<Entity> updatedEntities =
             entityFetcher.getEntitiesByEntityIds(tenantId, entityIds);
+        this.entityCounterMetricSender.sendEntitiesMetrics(
+            requestContext, request.getEntityType(), existingEntities.get(), updatedEntities);
         entityChangeEventGenerator.sendChangeNotification(
             requestContext, existingEntities.get(), updatedEntities);
       }
