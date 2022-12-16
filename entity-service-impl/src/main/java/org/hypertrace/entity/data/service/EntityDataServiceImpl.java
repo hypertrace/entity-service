@@ -45,10 +45,8 @@ import org.hypertrace.entity.data.service.v1.MergeAndUpsertEntityResponse;
 import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.data.service.v1.RelationshipsQuery;
 import org.hypertrace.entity.fetcher.EntityFetcher;
-import org.hypertrace.entity.metric.EntityCounterMetricProvider;
+import org.hypertrace.entity.metric.EntityCounterMetricSender;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
-import org.hypertrace.entity.service.change.event.impl.ChangeResult;
-import org.hypertrace.entity.service.change.event.impl.EntityChangeEvaluator;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.exception.InvalidRequestException;
 import org.hypertrace.entity.service.util.DocStoreConverter;
@@ -75,13 +73,13 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private final EntityIdGenerator entityIdGenerator;
   private final EntityChangeEventGenerator entityChangeEventGenerator;
   private final EntityFetcher entityFetcher;
-  private final EntityCounterMetricProvider entityCounterMetricProvider;
+  private final EntityCounterMetricSender entityCounterMetricSender;
 
   public EntityDataServiceImpl(
       Datastore datastore,
       Channel entityTypeChannel,
       EntityChangeEventGenerator entityChangeEventGenerator,
-      EntityCounterMetricProvider entityCounterMetricProvider) {
+      EntityCounterMetricSender entityCounterMetricSender) {
     this.entitiesCollection = datastore.getCollection(RAW_ENTITIES_COLLECTION);
     this.relationshipsCollection = datastore.getCollection(ENTITY_RELATIONSHIPS_COLLECTION);
     this.enrichedEntitiesCollection = datastore.getCollection(ENRICHED_ENTITIES_COLLECTION);
@@ -93,7 +91,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         new EntityNormalizer(entityTypeClient, this.entityIdGenerator, identifyingAttributeCache);
     this.entityChangeEventGenerator = entityChangeEventGenerator;
     this.entityFetcher = new EntityFetcher(this.entitiesCollection, PARSER);
-    this.entityCounterMetricProvider = entityCounterMetricProvider;
+    this.entityCounterMetricSender = entityCounterMetricSender;
   }
 
   /**
@@ -118,20 +116,20 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       Entity normalizedEntity = this.entityNormalizer.normalize(tenantId, request);
       java.util.Collection<Entity> existingEntityCollection =
           getExistingEntities(tenantId, List.of(normalizedEntity));
+      String entityType = normalizedEntity.getEntityType();
       upsertEntity(
           tenantId,
           normalizedEntity.getEntityId(),
-          normalizedEntity.getEntityType(),
+          entityType,
           normalizedEntity,
           Entity.newBuilder(),
           entitiesCollection,
           responseObserver);
 
-      ChangeResult changeResult =
-          EntityChangeEvaluator.evaluateChange(existingEntityCollection, List.of(normalizedEntity));
-      this.entityCounterMetricProvider.sendEntitiesMetrics(
-          requestContext, request.getEntityType(), changeResult);
-      entityChangeEventGenerator.sendChangeNotification(requestContext, changeResult);
+      this.entityCounterMetricSender.sendEntitiesMetrics(
+          requestContext, entityType, existingEntityCollection, List.of(normalizedEntity));
+      entityChangeEventGenerator.sendChangeNotification(
+          requestContext, existingEntityCollection, List.of(normalizedEntity));
 
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
@@ -156,21 +154,13 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                   Collectors.toUnmodifiableMap(
                       entity -> this.entityNormalizer.getEntityDocKey(tenantId, entity),
                       Function.identity()));
-      java.util.Collection<Entity> existingEntities =
-          getExistingEntities(tenantId, entities.values());
+      List<Entity> existingEntities = getExistingEntities(tenantId, entities.values());
       upsertEntities(entities, entitiesCollection, responseObserver);
 
-      ChangeResult changeResult =
-          EntityChangeEvaluator.evaluateChange(existingEntities, entities.values());
-      String entityType =
-          request.getEntityList().stream()
-              .findAny()
-              .orElse(Entity.getDefaultInstance())
-              .getEntityType();
-      this.entityCounterMetricProvider.sendEntitiesMetrics(
-          requestContext, entityType, changeResult);
-
-      entityChangeEventGenerator.sendChangeNotification(requestContext, changeResult);
+      this.entityCounterMetricSender.sendEntitiesMetrics(
+          requestContext, existingEntities, new ArrayList<>(entities.values()));
+      this.entityChangeEventGenerator.sendChangeNotification(
+          requestContext, existingEntities, new ArrayList<>(entities.values()));
     } catch (Throwable throwable) {
       LOG.warn("Failed to upsert: {}", request, throwable);
       responseObserver.onError(throwable);
@@ -210,17 +200,10 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       existingEntities.forEach(responseObserver::onNext);
       responseObserver.onCompleted();
 
-      ChangeResult changeResult =
-          EntityChangeEvaluator.evaluateChange(existingEntities, updatedEntities);
-      String entityType =
-          request.getEntityList().stream()
-              .findAny()
-              .orElse(Entity.getDefaultInstance())
-              .getEntityType();
-      this.entityCounterMetricProvider.sendEntitiesMetrics(
-          requestContext, entityType, changeResult);
-
-      entityChangeEventGenerator.sendChangeNotification(requestContext, changeResult);
+      this.entityCounterMetricSender.sendEntitiesMetrics(
+          requestContext, existingEntities, updatedEntities);
+      this.entityChangeEventGenerator.sendChangeNotification(
+          requestContext, existingEntities, updatedEntities);
     } catch (IOException e) {
       LOG.error("Failed to bulk upsert entities", e);
       responseObserver.onError(e);
@@ -325,12 +308,9 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       responseObserver.onCompleted();
       existingEntity.ifPresent(
           entity -> {
-            ChangeResult changeResult =
-                EntityChangeEvaluator.evaluateChange(List.of(entity), Collections.emptyList());
-            this.entityCounterMetricProvider.sendEntitiesMetrics(
-                requestContext, request.getEntityType(), changeResult);
-
-            entityChangeEventGenerator.sendChangeNotification(requestContext, changeResult);
+            this.entityCounterMetricSender.sendEntitiesDeleteMetrics(
+                requestContext, request.getEntityType(), List.of(entity));
+            entityChangeEventGenerator.sendDeleteNotification(requestContext, List.of(entity));
           });
     } else {
       responseObserver.onError(new RuntimeException("Could not delete the entity."));
@@ -615,13 +595,15 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         responseObserver.onNext(
             MergeAndUpsertEntityResponse.newBuilder().setEntity(upsertedEntity).build());
         responseObserver.onCompleted();
-        ChangeResult changeResult =
-            EntityChangeEvaluator.evaluateChange(
-                existingEntity.map(List::of).orElse(Collections.emptyList()),
-                List.of(upsertedEntity));
-        this.entityCounterMetricProvider.sendEntitiesMetrics(
-            requestContext, request.getEntity().getEntityType(), changeResult);
-        entityChangeEventGenerator.sendChangeNotification(requestContext, changeResult);
+        List<Entity> existingEntities =
+            existingEntity.map(List::of).orElse(Collections.emptyList());
+        this.entityCounterMetricSender.sendEntitiesMetrics(
+            requestContext,
+            request.getEntity().getEntityType(),
+            existingEntities,
+            List.of(upsertedEntity));
+        entityChangeEventGenerator.sendChangeNotification(
+            requestContext, existingEntities, List.of(upsertedEntity));
       } catch (IOException e) {
         responseObserver.onError(e);
       }

@@ -3,6 +3,7 @@ package org.hypertrace.entity.service.change.event.impl;
 import com.google.common.annotations.VisibleForTesting;
 import com.typesafe.config.Config;
 import java.time.Clock;
+import java.util.Collection;
 import lombok.extern.slf4j.Slf4j;
 import org.hypertrace.core.eventstore.EventProducer;
 import org.hypertrace.core.eventstore.EventProducerConfig;
@@ -64,7 +65,17 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   }
 
   @Override
-  public void sendChangeNotification(RequestContext requestContext, ChangeResult changeResult) {
+  public void sendDeleteNotification(RequestContext requestContext, Collection<Entity> entities) {
+    entities.forEach(entity -> this.sendDeleteNotification(requestContext, entity));
+  }
+
+  @Override
+  public void sendChangeNotification(
+      RequestContext requestContext,
+      Collection<Entity> existingEntities,
+      Collection<Entity> updatedEntities) {
+    ChangeResult changeResult =
+        EntityChangeEvaluator.evaluateChange(existingEntities, updatedEntities);
     changeResult
         .getCreatedEntity()
         .forEach(

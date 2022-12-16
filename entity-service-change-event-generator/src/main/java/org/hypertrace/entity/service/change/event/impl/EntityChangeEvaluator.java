@@ -22,7 +22,7 @@ public class EntityChangeEvaluator {
 
     java.util.Collection<Entity> createdEntities = mapDifference.entriesOnlyOnRight().values();
 
-    Map<Entity, Entity> updatedEntitiesMap =
+    Map<Entity, Entity> existingToUpdatedEntitiesMap =
         mapDifference.entriesDiffering().entrySet().stream()
             .collect(
                 Collectors.toMap(
@@ -30,6 +30,6 @@ public class EntityChangeEvaluator {
 
     java.util.Collection<Entity> deletedEntities = mapDifference.entriesOnlyOnLeft().values();
 
-    return new ChangeResult(createdEntities, updatedEntitiesMap, deletedEntities);
+    return new ChangeResult(createdEntities, existingToUpdatedEntitiesMap, deletedEntities);
   }
 }

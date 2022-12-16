@@ -75,12 +75,8 @@ class EntityChangeEventGeneratorImplTest {
   @Test
   void sendCreateNotification() {
     List<Entity> entities = createEntities(2);
-    changeEventGenerator.sendChangeNotification(
-        requestContext,
-        new ChangeResult(entities, Collections.emptyMap(), Collections.emptyList()));
-    InOrder inOrderVerifier = inOrder(eventProducer);
-    inOrderVerifier
-        .verify(eventProducer)
+    changeEventGenerator.sendChangeNotification(requestContext, Collections.emptyList(), entities);
+    verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(entities.get(0)),
             EntityChangeEventValue.newBuilder()
@@ -88,8 +84,8 @@ class EntityChangeEventGeneratorImplTest {
                     EntityCreateEvent.newBuilder().setCreatedEntity(entities.get(0)).build())
                 .setEventTimeMillis(CURRENT_TIME_MILLIS)
                 .build());
-    inOrderVerifier
-        .verify(eventProducer)
+
+    verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(entities.get(1)),
             EntityChangeEventValue.newBuilder()
@@ -102,9 +98,7 @@ class EntityChangeEventGeneratorImplTest {
   @Test
   void sendDeleteNotification() {
     List<Entity> entities = createEntities(2);
-    changeEventGenerator.sendChangeNotification(
-        requestContext,
-        new ChangeResult(Collections.emptyList(), Collections.emptyMap(), entities));
+    changeEventGenerator.sendDeleteNotification(requestContext, entities);
     InOrder inOrderVerifier = inOrder(eventProducer);
     inOrderVerifier
         .verify(eventProducer)
@@ -139,8 +133,7 @@ class EntityChangeEventGeneratorImplTest {
                     .setValue(Value.newBuilder().setString("value").build())
                     .build())
             .build());
-    ChangeResult changeResult = EntityChangeEvaluator.evaluateChange(prevEntities, updatedEntities);
-    changeEventGenerator.sendChangeNotification(requestContext, changeResult);
+    changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
     verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(updatedEntities.get(0)),
@@ -199,8 +192,8 @@ class EntityChangeEventGeneratorImplTest {
                     .setValue(Value.newBuilder().setString("value").build())
                     .build())
             .build());
-    ChangeResult changeResult = EntityChangeEvaluator.evaluateChange(prevEntities, updatedEntities);
-    changeEventGenerator.sendChangeNotification(requestContext, changeResult);
+
+    changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
     verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(updatedEntities.get(0)),
@@ -237,8 +230,8 @@ class EntityChangeEventGeneratorImplTest {
     List<Entity> updatedEntities = new ArrayList<>();
 
     updatedEntities.add(prevEntities.get(0).toBuilder().removeAttributes("attribute_key").build());
-    ChangeResult changeResult = EntityChangeEvaluator.evaluateChange(prevEntities, updatedEntities);
-    changeEventGenerator.sendChangeNotification(requestContext, changeResult);
+
+    changeEventGenerator.sendChangeNotification(requestContext, prevEntities, updatedEntities);
     verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(updatedEntities.get(0)),
@@ -281,9 +274,9 @@ class EntityChangeEventGeneratorImplTest {
     // delete skip attributes only
     Entity updatedEntity =
         prevEntities.get(0).toBuilder().removeAttributes("skip_attribute").build();
-    ChangeResult changeResult =
-        EntityChangeEvaluator.evaluateChange(prevEntities, List.of(updatedEntity));
-    changeEventGenerator.sendChangeNotification(requestContext, changeResult);
+
+    changeEventGenerator.sendChangeNotification(
+        requestContext, prevEntities, List.of(updatedEntity));
     verify(eventProducer, never())
         .send(
             KeyUtil.getKey(updatedEntity),
@@ -305,8 +298,9 @@ class EntityChangeEventGeneratorImplTest {
                     .setValue(Value.newBuilder().setString("skip_value").build())
                     .build())
             .build();
-    changeResult = EntityChangeEvaluator.evaluateChange(prevEntities, List.of(updatedEntity));
-    changeEventGenerator.sendChangeNotification(requestContext, changeResult);
+
+    changeEventGenerator.sendChangeNotification(
+        requestContext, prevEntities, List.of(updatedEntity));
     verify(eventProducer, never())
         .send(
             KeyUtil.getKey(updatedEntity),
@@ -328,8 +322,9 @@ class EntityChangeEventGeneratorImplTest {
                     .setValue(Value.newBuilder().setString("value").build())
                     .build())
             .build();
-    changeResult = EntityChangeEvaluator.evaluateChange(prevEntities, List.of(updatedEntity));
-    changeEventGenerator.sendChangeNotification(requestContext, changeResult);
+
+    changeEventGenerator.sendChangeNotification(
+        requestContext, prevEntities, List.of(updatedEntity));
     verify(eventProducer, never())
         .send(
             KeyUtil.getKey(updatedEntity),
@@ -351,8 +346,8 @@ class EntityChangeEventGeneratorImplTest {
                     .setValue(Value.newBuilder().setString("value1").build())
                     .build())
             .build();
-    changeResult = EntityChangeEvaluator.evaluateChange(prevEntities, List.of(updatedEntity));
-    changeEventGenerator.sendChangeNotification(requestContext, changeResult);
+    changeEventGenerator.sendChangeNotification(
+        requestContext, prevEntities, List.of(updatedEntity));
     verify(eventProducer, times(1))
         .send(
             KeyUtil.getKey(updatedEntity),
