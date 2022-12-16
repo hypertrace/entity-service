@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import lombok.AllArgsConstructor;
 import lombok.Value;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
@@ -100,10 +99,8 @@ public class EntityCounterMetricSender {
                     metricIdentifier.getTenantId())));
   }
 
-  @AllArgsConstructor
   @Value
   private static class EntityMetricIdentifier {
-
     String tenantId;
     String entityType;
     String metricType;
