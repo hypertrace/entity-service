@@ -828,7 +828,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       if (keys.isEmpty()) {
         // Nothing to update
         throw new IllegalArgumentException(
-            String.format("No matching entity of type %s found for filter: %s", entityType, update.getFilter()));
+            String.format(
+                "No matching entity of type %s found for filter: %s",
+                entityType, update.getFilter()));
       }
 
       final List<String> entityIds =
