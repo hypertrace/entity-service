@@ -827,8 +827,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
       if (keys.isEmpty()) {
         // Nothing to update
-        LOG.info("No entity found with filter {} for updating", update.getFilter());
-        continue;
+        throw new IllegalArgumentException(
+            String.format("No matching entity of type %s found for filter: %s", entityType, update.getFilter()));
       }
 
       final List<String> entityIds =
