@@ -96,6 +96,7 @@ import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.Update;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
+import org.hypertrace.entity.query.service.v1.UpdateSummary;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
@@ -804,8 +805,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     try {
-      doBulkUpdate(request, requestContext);
-      responseObserver.onNext(BulkUpdateAllMatchingFilterResponse.newBuilder().build());
+      final BulkUpdateAllMatchingFilterResponse response = doBulkUpdate(request, requestContext);
+      responseObserver.onNext(response);
       responseObserver.onCompleted();
     } catch (final Exception e) {
       LOG.error("Error while bulk updating entities for " + tenantIdOptional.orElse(""), e);
@@ -816,21 +817,25 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
-  private void doBulkUpdate(
+  private BulkUpdateAllMatchingFilterResponse doBulkUpdate(
       final BulkUpdateAllMatchingFilterRequest request, final RequestContext requestContext)
       throws ConversionException, IOException {
+    final BulkUpdateAllMatchingFilterResponse.Builder responseBuilder =
+        BulkUpdateAllMatchingFilterResponse.newBuilder();
     final String entityType = request.getEntityType();
     final String tenantId = requestContext.getTenantId().orElseThrow();
 
     for (final Update update : request.getUpdatesList()) {
       final List<SingleValueKey> keys = getKeysToUpdate(requestContext, entityType, update);
+      responseBuilder.addSummaries(
+          UpdateSummary.newBuilder()
+              .addAllIds(
+                  keys.stream().map(SingleValueKey::getValue).collect(toUnmodifiableList())));
 
       if (keys.isEmpty()) {
         // Nothing to update
-        throw new IllegalArgumentException(
-            String.format(
-                "No matching entity of type %s found for filter: %s",
-                entityType, update.getFilter()));
+        LOG.info("No entity found with filter {} for updating", update.getFilter());
+        continue;
       }
 
       final List<String> entityIds =
@@ -866,6 +871,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             requestContext, existingEntities.get(), updatedEntities);
       }
     }
+
+    return responseBuilder.build();
   }
 
   private FilterTypeExpression getFilterForKeys(List<SingleValueKey> keys) {
