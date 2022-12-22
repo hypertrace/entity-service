@@ -92,12 +92,12 @@ import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.ResultSetMetadata;
 import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.SetAttribute;
-import org.hypertrace.entity.query.service.v1.SingleUpdateResponse;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.Update;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.UpdateSummary;
+import org.hypertrace.entity.query.service.v1.UpdatedEntity;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
@@ -828,7 +828,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     for (final Update update : request.getUpdatesList()) {
       final List<SingleValueKey> keys = getKeysToUpdate(requestContext, entityType, update);
-      final List<SingleUpdateResponse> responses = buildResponses(keys);
+      final List<UpdatedEntity> responses = buildResponses(keys);
       responseBuilder.addSummaries(UpdateSummary.newBuilder().addAllResponses(responses));
 
       if (keys.isEmpty()) {
@@ -885,11 +885,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return filter;
   }
 
-  private List<SingleUpdateResponse> buildResponses(final List<SingleValueKey> keys) {
+  private List<UpdatedEntity> buildResponses(final List<SingleValueKey> keys) {
     return keys.stream()
         .map(SingleValueKey::getValue)
-        .map(id -> SingleUpdateResponse.newBuilder().setId(id))
-        .map(SingleUpdateResponse.Builder::build)
+        .map(id -> UpdatedEntity.newBuilder().setId(id))
+        .map(UpdatedEntity.Builder::build)
         .collect(toUnmodifiableList());
   }
 
