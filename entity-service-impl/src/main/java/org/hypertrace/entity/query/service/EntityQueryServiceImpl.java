@@ -828,7 +828,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     for (final Update update : request.getUpdatesList()) {
       final List<SingleValueKey> keys = getKeysToUpdate(requestContext, entityType, update);
-      final List<UpdatedEntity> responses = buildResponses(keys);
+      final List<UpdatedEntity> responses = buildUpdatedEntities(keys);
       responseBuilder.addSummaries(UpdateSummary.newBuilder().addAllResponses(responses));
 
       if (keys.isEmpty()) {
@@ -885,7 +885,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return filter;
   }
 
-  private List<UpdatedEntity> buildResponses(final List<SingleValueKey> keys) {
+  private List<UpdatedEntity> buildUpdatedEntities(final List<SingleValueKey> keys) {
     return keys.stream()
         .map(SingleValueKey::getValue)
         .map(id -> UpdatedEntity.newBuilder().setId(id))
