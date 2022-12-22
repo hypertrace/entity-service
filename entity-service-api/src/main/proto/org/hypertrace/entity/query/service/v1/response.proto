@@ -45,5 +45,9 @@ message BulkUpdateAllMatchingFilterResponse {
 }
 
 message UpdateSummary {
-  repeated string ids = 1;
+  repeated SingleUpdateResponse responses = 1;
+}
+
+message SingleUpdateResponse {
+  string id = 1;
 }
