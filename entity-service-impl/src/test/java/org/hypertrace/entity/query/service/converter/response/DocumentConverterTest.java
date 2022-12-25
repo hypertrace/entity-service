@@ -6,6 +6,7 @@ import static org.hypertrace.entity.query.service.v1.ValueType.LONG_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
+import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_MAP;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.google.inject.Guice;
@@ -53,6 +54,7 @@ class DocumentConverterTest {
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.emptyList"))
             .addColumnMetadata(
                 ColumnMetadata.newBuilder().setColumnName("attributes.emptyListNested"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("ipAddressDetails"))
             .build();
 
     final Row expectedRow =
@@ -82,6 +84,7 @@ class DocumentConverterTest {
             .addColumn(Value.newBuilder().setValueType(STRING_MAP).build())
             .addColumn(Value.newBuilder().setValueType(STRING_ARRAY).build())
             .addColumn(Value.newBuilder().setValueType(STRING_ARRAY).build())
+            .addColumn(Value.newBuilder().setValueType(VALUE_MAP).build())
             .build();
 
     final Row actualRow = documentConverter.convertToRow(document, resultSetMetadata);

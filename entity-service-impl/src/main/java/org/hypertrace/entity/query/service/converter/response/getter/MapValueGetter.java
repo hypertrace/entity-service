@@ -4,14 +4,17 @@ import static java.util.Collections.emptyIterator;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUES_KEY;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUE_MAP_KEY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
+import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_MAP;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 import org.hypertrace.entity.query.service.converter.ConversionException;
+import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -19,14 +22,20 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 @Singleton
 public class MapValueGetter implements ValueGetter {
   private final ValueGetter nestedValueGetter;
+  private final List<ValueGetter> rootGetters;
   private final OneOfAccessor<Value, ValueType> valueOneOfAccessor;
+  private final ValueHelper valueHelper;
 
   @Inject
   public MapValueGetter(
       @Named("nested_value") final ValueGetter nestedValueGetter,
-      final OneOfAccessor<Value, ValueType> valueOneOfAccessor) {
+      @Named("root_getters") final List<ValueGetter> rootGetters,
+      final OneOfAccessor<Value, ValueType> valueOneOfAccessor,
+      final ValueHelper valueHelper) {
     this.nestedValueGetter = nestedValueGetter;
+    this.rootGetters = rootGetters;
     this.valueOneOfAccessor = valueOneOfAccessor;
+    this.valueHelper = valueHelper;
   }
 
   @Override
@@ -56,16 +65,57 @@ public class MapValueGetter implements ValueGetter {
 
       final String key = entry.getKey();
       final JsonNode node = entry.getValue();
+      boolean valueSet = false;
+      if (nestedValueGetter.matches(node)) {
+        final Value value = nestedValueGetter.getValue(node);
+        final ValueType type = valueHelper.getMapValueType(value.getValueType());
+        switch (type) {
+          case STRING_MAP:
+            valueBuilder.putStringMap(key, value.getString());
+            break;
 
-      if (!nestedValueGetter.matches(node)) {
+          case INT_MAP:
+            valueBuilder.putIntMap(key, value.getInt());
+            break;
+
+          case LONG_MAP:
+            valueBuilder.putLongMap(key, value.getLong());
+            break;
+
+          case FLOAT_MAP:
+            valueBuilder.putFloatMap(key, value.getFloat());
+            break;
+
+          case DOUBLE_MAP:
+            valueBuilder.putDoubleMap(key, value.getDouble());
+            break;
+
+          case BYTES_MAP:
+            valueBuilder.putBytesMap(key, value.getBytes());
+            break;
+
+          case BOOLEAN_MAP:
+            valueBuilder.putBooleanMap(key, value.getBoolean());
+            break;
+
+          default:
+            throw new ConversionException(String.format("Unknown map type: %s", type));
+        }
+        valueBuilder.setValueType(type);
+        continue;
+      }
+      for (ValueGetter getter : rootGetters) {
+        if (getter.matches(node)) {
+          final Value value = this.getValue(node);
+          valueBuilder.setValueType(VALUE_MAP);
+          valueBuilder.putValueMap(key, value);
+          valueSet = true;
+        }
+      }
+      if (!valueSet) {
         throw new ConversionException(
             String.format("Unexpected node (%s) found for key (%s)", node, key));
       }
-
-      final Value value = nestedValueGetter.getValue(node);
-      final Object objValue = valueOneOfAccessor.access(value, value.getValueType());
-
-      valueBuilder.putStringMap(key, objValue.toString());
     }
 
     return valueBuilder.build();

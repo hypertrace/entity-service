@@ -22,6 +22,14 @@ enum ValueType {
   BOOLEAN_ARRAY = 14;
   // assumes that key is always string
   STRING_MAP = 15;
+  LONG_MAP = 16;
+  INT_MAP = 17;
+  FLOAT_MAP = 18;
+  DOUBLE_MAP = 19;
+  BYTES_MAP = 20;
+  BOOLEAN_MAP = 21;
+  VALUE_MAP = 22;
+  VALUE_LIST = 23;
 }
 
 message Value {
@@ -43,4 +51,12 @@ message Value {
   repeated bytes bytes_array = 21;
   repeated bool boolean_array = 22;
   map<string, string> string_map = 23;
+  map<string, int64> long_map = 24;
+  map<string, int32> int_map = 25;
+  map<string, float> float_map = 26;
+  map<string, double> double_map = 27;
+  map<string, bool> boolean_map = 28;
+  map<string, bytes> bytes_map = 29;
+  map<string, Value> value_map = 30;
+  repeated Value value_list = 31;
 }

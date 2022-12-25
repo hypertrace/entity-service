@@ -8,16 +8,21 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import java.util.List;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.v1.Value;
 
 @Singleton
 public class ListValueGetter implements ValueGetter {
   private final ValueGetter arrayGetter;
+  private final List<ValueGetter> rootGetters;
 
   @Inject
-  public ListValueGetter(@Named("array") final ValueGetter arrayGetter) {
+  public ListValueGetter(
+      @Named("array") final ValueGetter arrayGetter,
+      @Named("root_getters") final List<ValueGetter> rootGetters) {
     this.arrayGetter = arrayGetter;
+    this.rootGetters = rootGetters;
   }
 
   @Override
@@ -42,11 +47,15 @@ public class ListValueGetter implements ValueGetter {
     if (listNode == null) {
       return Value.newBuilder().setValueType(STRING_ARRAY).build();
     }
-
-    if (!arrayGetter.matches(listNode)) {
+    for (ValueGetter getter : rootGetters) {
+      if (getter.matches(listNode)) {
+        return getter.getValue(listNode);
+      }
+    }
+    if (arrayGetter.matches(listNode)) {
+      return arrayGetter.getValue(listNode);
+    } else {
       throw new ConversionException(String.format("Expected node (%s) to be an array", listNode));
     }
-
-    return arrayGetter.getValue(listNode);
   }
 }

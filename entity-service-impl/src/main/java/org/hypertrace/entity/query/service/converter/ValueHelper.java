@@ -5,16 +5,22 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.entity.query.service.v1.ValueType.BOOL;
 import static org.hypertrace.entity.query.service.v1.ValueType.BOOLEAN_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.BOOLEAN_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.BYTES;
 import static org.hypertrace.entity.query.service.v1.ValueType.BYTES_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.BYTES_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.DOUBLE;
 import static org.hypertrace.entity.query.service.v1.ValueType.DOUBLE_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.DOUBLE_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.FLOAT;
 import static org.hypertrace.entity.query.service.v1.ValueType.FLOAT_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.FLOAT_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.INT;
 import static org.hypertrace.entity.query.service.v1.ValueType.INT_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.INT_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.LONG;
 import static org.hypertrace.entity.query.service.v1.ValueType.LONG_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.LONG_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
@@ -77,6 +83,8 @@ public class ValueHelper {
 
   private static final Supplier<Map<ValueType, ValueType>> PRIMITIVE_TO_ARRAY_MAP =
       memoize(ValueHelper::getPrimitiveToArrayMap);
+  private static final Supplier<Map<ValueType, ValueType>> PRIMITIVE_TO_MAP =
+      memoize(ValueHelper::getPrimitiveToMap);
   private static final Supplier<Map<ValueType, ArrayToPrimitiveValuesConverter<?>>>
       ARRAY_TO_PRIMITIVE_CONVERTER_MAP = memoize(ValueHelper::getArrayToPrimitiveConverterMap);
 
@@ -240,6 +248,17 @@ public class ValueHelper {
     return arrayType;
   }
 
+  public ValueType getMapValueType(final ValueType primitiveValueType) throws ConversionException {
+    final ValueType mapType = PRIMITIVE_TO_MAP.get().get(primitiveValueType);
+
+    if (mapType == null) {
+      throw new ConversionException(
+          String.format("A suitable map type not found for %s", primitiveValueType));
+    }
+
+    return mapType;
+  }
+
   public ValueType getPrimitiveValueType(final String primitiveType) throws ConversionException {
     final ValueType arrayType = STRING_VALUE_TO_PRIMITIVE_TYPE_MAP.get().get(primitiveType);
 
@@ -290,6 +309,21 @@ public class ValueHelper {
     map.put(BYTES, BYTES_ARRAY);
     map.put(BOOL, BOOLEAN_ARRAY);
     map.put(TIMESTAMP, LONG_ARRAY);
+
+    return unmodifiableMap(map);
+  }
+
+  private static Map<ValueType, ValueType> getPrimitiveToMap() {
+    final Map<ValueType, ValueType> map = new EnumMap<>(ValueType.class);
+
+    map.put(STRING, STRING_MAP);
+    map.put(LONG, LONG_MAP);
+    map.put(INT, INT_MAP);
+    map.put(FLOAT, FLOAT_MAP);
+    map.put(DOUBLE, DOUBLE_MAP);
+    map.put(BYTES, BYTES_MAP);
+    map.put(BOOL, BOOLEAN_MAP);
+    map.put(TIMESTAMP, LONG_MAP);
 
     return unmodifiableMap(map);
   }
