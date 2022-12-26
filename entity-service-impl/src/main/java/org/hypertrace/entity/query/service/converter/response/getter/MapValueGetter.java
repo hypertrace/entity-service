@@ -14,7 +14,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import org.hypertrace.entity.query.service.converter.ConversionException;
-import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -24,18 +23,15 @@ public class MapValueGetter implements ValueGetter {
   private final ValueGetter nestedValueGetter;
   private final List<ValueGetter> rootGetters;
   private final OneOfAccessor<Value, ValueType> valueOneOfAccessor;
-  private final ValueHelper valueHelper;
 
   @Inject
   public MapValueGetter(
       @Named("nested_value") final ValueGetter nestedValueGetter,
       @Named("root_getters") final List<ValueGetter> rootGetters,
-      final OneOfAccessor<Value, ValueType> valueOneOfAccessor,
-      final ValueHelper valueHelper) {
+      final OneOfAccessor<Value, ValueType> valueOneOfAccessor) {
     this.nestedValueGetter = nestedValueGetter;
     this.rootGetters = rootGetters;
     this.valueOneOfAccessor = valueOneOfAccessor;
-    this.valueHelper = valueHelper;
   }
 
   @Override
