@@ -17,7 +17,7 @@ import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.TIMESTAMP;
-import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_LIST;
+import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_MAP;
 
 import com.google.inject.Singleton;
@@ -51,7 +51,7 @@ public class ValueOneOfAccessor extends OneOfAccessorBase<Value, ValueType> {
     map.put(BOOLEAN_ARRAY, Value::getBooleanArrayList);
     map.put(STRING_MAP, Value::getStringMapMap);
     map.put(VALUE_MAP, Value::getValueMapMap);
-    map.put(VALUE_LIST, Value::getValueArrayList);
+    map.put(VALUE_ARRAY, Value::getValueArrayList);
 
     return unmodifiableMap(map);
   }

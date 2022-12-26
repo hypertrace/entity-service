@@ -22,7 +22,7 @@ enum ValueType {
   BOOLEAN_ARRAY = 14;
   STRING_MAP = 15;
   VALUE_MAP = 16;
-  VALUE_LIST = 17;
+  VALUE_ARRAY = 17;
 }
 
 message Value {

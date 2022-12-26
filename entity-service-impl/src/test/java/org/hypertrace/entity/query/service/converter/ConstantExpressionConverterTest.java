@@ -189,7 +189,7 @@ class ConstantExpressionConverterTest {
         "BOOLEAN_ARRAY",
         "STRING_MAP",
         "VALUE_MAP",
-        "VALUE_LIST"
+        "VALUE_ARRAY"
       },
       mode = Mode.EXCLUDE)
   void testConvertCoverage(final ValueType valueType) throws ConversionException {
