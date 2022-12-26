@@ -84,7 +84,17 @@ class DocumentConverterTest {
             .addColumn(Value.newBuilder().setValueType(STRING_MAP).build())
             .addColumn(Value.newBuilder().setValueType(STRING_ARRAY).build())
             .addColumn(Value.newBuilder().setValueType(STRING_ARRAY).build())
-            .addColumn(Value.newBuilder().setValueType(VALUE_MAP).build())
+            .addColumn(
+                Value.newBuilder()
+                    .setValueType(VALUE_MAP)
+                    .putValueMap(
+                        "last_activity_timestamp",
+                        Value.newBuilder()
+                            .setValueType(STRING_MAP)
+                            .putStringMap("seconds", "10")
+                            .putStringMap("nanos", "10")
+                            .build())
+                    .build())
             .build();
 
     final Row actualRow = documentConverter.convertToRow(document, resultSetMetadata);

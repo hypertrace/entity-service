@@ -68,40 +68,8 @@ public class MapValueGetter implements ValueGetter {
       boolean valueSet = false;
       if (nestedValueGetter.matches(node)) {
         final Value value = nestedValueGetter.getValue(node);
-        final ValueType type = valueHelper.getMapValueType(value.getValueType());
-        switch (type) {
-          case STRING_MAP:
-            valueBuilder.putStringMap(key, value.getString());
-            break;
-
-          case INT_MAP:
-            valueBuilder.putIntMap(key, value.getInt());
-            break;
-
-          case LONG_MAP:
-            valueBuilder.putLongMap(key, value.getLong());
-            break;
-
-          case FLOAT_MAP:
-            valueBuilder.putFloatMap(key, value.getFloat());
-            break;
-
-          case DOUBLE_MAP:
-            valueBuilder.putDoubleMap(key, value.getDouble());
-            break;
-
-          case BYTES_MAP:
-            valueBuilder.putBytesMap(key, value.getBytes());
-            break;
-
-          case BOOLEAN_MAP:
-            valueBuilder.putBooleanMap(key, value.getBoolean());
-            break;
-
-          default:
-            throw new ConversionException(String.format("Unknown map type: %s", type));
-        }
-        valueBuilder.setValueType(type);
+        Object obj = valueOneOfAccessor.access(value, value.getValueType());
+        valueBuilder.putStringMap(key, obj.toString());
         continue;
       }
       for (ValueGetter getter : rootGetters) {
@@ -110,6 +78,7 @@ public class MapValueGetter implements ValueGetter {
           valueBuilder.setValueType(VALUE_MAP);
           valueBuilder.putValueMap(key, value);
           valueSet = true;
+          break;
         }
       }
       if (!valueSet) {
