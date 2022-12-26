@@ -3,6 +3,7 @@ package org.hypertrace.entity.query.service.converter.response.getter;
 import static java.util.Collections.emptyIterator;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUES_KEY;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUE_MAP_KEY;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_MAP;
 
@@ -20,16 +21,13 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 
 @Singleton
 public class MapValueGetter implements ValueGetter {
-  private final ValueGetter nestedValueGetter;
   private final List<ValueGetter> rootGetters;
   private final OneOfAccessor<Value, ValueType> valueOneOfAccessor;
 
   @Inject
   public MapValueGetter(
-      @Named("nested_value") final ValueGetter nestedValueGetter,
       @Named("root_getters") final List<ValueGetter> rootGetters,
       final OneOfAccessor<Value, ValueType> valueOneOfAccessor) {
-    this.nestedValueGetter = nestedValueGetter;
     this.rootGetters = rootGetters;
     this.valueOneOfAccessor = valueOneOfAccessor;
   }
@@ -62,17 +60,20 @@ public class MapValueGetter implements ValueGetter {
       final String key = entry.getKey();
       final JsonNode node = entry.getValue();
       boolean valueSet = false;
-      if (nestedValueGetter.matches(node)) {
-        final Value value = nestedValueGetter.getValue(node);
-        Object obj = valueOneOfAccessor.access(value, value.getValueType());
-        valueBuilder.putStringMap(key, obj.toString());
-        continue;
-      }
       for (ValueGetter getter : rootGetters) {
         if (getter.matches(node)) {
-          final Value value = this.getValue(node);
-          valueBuilder.setValueType(VALUE_MAP);
-          valueBuilder.putValueMap(key, value);
+          final Value value = getter.getValue(node);
+          if (rootGetters.get(0).equals(getter)) {
+            Object obj = valueOneOfAccessor.access(value, value.getValueType());
+            valueBuilder.putStringMap(key, obj.toString());
+          } else {
+            if (value.getValueType() == STRING) {
+              valueBuilder.setValueType(STRING_MAP);
+            } else {
+              valueBuilder.setValueType(VALUE_MAP);
+            }
+            valueBuilder.putValueMap(key, value);
+          }
           valueSet = true;
           break;
         }

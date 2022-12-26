@@ -54,7 +54,11 @@ class DocumentConverterTest {
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.emptyList"))
             .addColumnMetadata(
                 ColumnMetadata.newBuilder().setColumnName("attributes.emptyListNested"))
-            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("ipAddressDetails"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("timestamp_2"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("countries"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("area"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("timestamp_1"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("region"))
             .build();
 
     final Row expectedRow =
@@ -93,6 +97,24 @@ class DocumentConverterTest {
                             .setValueType(STRING_MAP)
                             .putStringMap("seconds", "10")
                             .putStringMap("nanos", "10")
+                            .build())
+                    .build())
+            .addColumn(
+                Value.newBuilder()
+                    .setValueType(STRING_ARRAY)
+                    .addAllStringArray(List.of("india", "australia")))
+            .addColumn(
+                Value.newBuilder().setValueType(INT_ARRAY).addAllIntArray(List.of(1, 2)).build())
+            .addColumn(
+                Value.newBuilder().setValueType(STRING_MAP).putStringMap("seconds", "10").build())
+            .addColumn(
+                Value.newBuilder()
+                    .setValueType(VALUE_MAP)
+                    .putValueMap(
+                        "countries",
+                        Value.newBuilder()
+                            .setValueType(STRING_ARRAY)
+                            .addAllStringArray(List.of("india", "australia"))
                             .build())
                     .build())
             .build();

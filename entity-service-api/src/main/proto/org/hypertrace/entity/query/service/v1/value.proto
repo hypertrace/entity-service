@@ -20,7 +20,6 @@ enum ValueType {
   DOUBLE_ARRAY = 12;
   BYTES_ARRAY = 13;
   BOOLEAN_ARRAY = 14;
-  // assumes that key is always string
   STRING_MAP = 15;
   VALUE_MAP = 16;
   VALUE_LIST = 17;
@@ -46,5 +45,5 @@ message Value {
   repeated bool boolean_array = 22;
   map<string, string> string_map = 23;
   map<string, Value> value_map = 24;
-  repeated Value value_list = 25;
+  repeated Value value_array = 25;
 }

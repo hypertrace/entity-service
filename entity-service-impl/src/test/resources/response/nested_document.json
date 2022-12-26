@@ -1,5 +1,54 @@
 {
-  "ipAddressDetails":
+  "countries": {
+    "valueList": {
+      "values": [ "india", "australia" ]
+    }
+  },
+  "area": {
+    "valueList": {
+      "values": [ {
+        "value": {
+          "int": 1
+        }
+      },
+        {
+          "value": {
+            "int": 2
+          }
+        } ]
+    }
+  },
+  "timestamp_1": {
+    "valueList": {
+      "values": {
+          "valueMap":
+          {
+            "values":
+            {
+              "seconds":
+              {
+                "value":
+                {
+                  "long":10
+                }
+              }
+            }
+        }
+      }
+    }
+  },
+  "region": {
+    "valueMap": {
+      "values": {
+        "countries": {
+          "valueList" : {
+            "values": [ "india", "australia" ]
+          }
+        }
+      }
+    }
+  },
+  "timestamp_2":
   {
     "valueMap":
     {

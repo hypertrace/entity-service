@@ -51,7 +51,7 @@ public class ValueOneOfAccessor extends OneOfAccessorBase<Value, ValueType> {
     map.put(BOOLEAN_ARRAY, Value::getBooleanArrayList);
     map.put(STRING_MAP, Value::getStringMapMap);
     map.put(VALUE_MAP, Value::getValueMapMap);
-    map.put(VALUE_LIST, Value::getValueListList);
+    map.put(VALUE_LIST, Value::getValueArrayList);
 
     return unmodifiableMap(map);
   }
