@@ -45,7 +45,7 @@ message BulkUpdateAllMatchingFilterResponse {
 }
 
 message UpdateSummary {
-  repeated UpdatedEntity responses = 1;
+  repeated UpdatedEntity updated_entities = 1;
 }
 
 message UpdatedEntity {

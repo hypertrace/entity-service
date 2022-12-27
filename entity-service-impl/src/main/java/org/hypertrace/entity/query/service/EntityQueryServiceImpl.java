@@ -828,8 +828,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
     for (final Update update : request.getUpdatesList()) {
       final List<SingleValueKey> keys = getKeysToUpdate(requestContext, entityType, update);
-      final List<UpdatedEntity> responses = buildUpdatedEntities(keys);
-      responseBuilder.addSummaries(UpdateSummary.newBuilder().addAllResponses(responses));
+      final List<UpdatedEntity> updatedEntityResponses = buildUpdatedEntities(keys);
+      responseBuilder.addSummaries(
+          UpdateSummary.newBuilder().addAllUpdatedEntities(updatedEntityResponses));
 
       if (keys.isEmpty()) {
         // Nothing to update
