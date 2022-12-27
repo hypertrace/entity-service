@@ -18,24 +18,33 @@
         } ]
     }
   },
-  "timestamp_1": {
+  "timestamp_3": {
     "valueList": {
-      "values": {
-          "valueMap":
-          {
-            "values":
-            {
-              "seconds":
-              {
-                "value":
-                {
-                  "long":10
+      "values": [
+        {
+          "valueMap": {
+            "values": {
+              "seconds": {
+                "value": {
+                  "long": 10
                 }
               }
             }
+          }
+        },
+        {
+          "valueMap": {
+            "values": {
+              "nanos": {
+                "value": {
+                  "long": 20
+                }
+              }
+            }
+          }
         }
+        ]
       }
-    }
   },
   "region": {
     "valueMap": {

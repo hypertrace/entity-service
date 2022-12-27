@@ -6,6 +6,7 @@ import static org.hypertrace.entity.query.service.v1.ValueType.LONG_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
+import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_MAP;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -57,8 +58,8 @@ class DocumentConverterTest {
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("timestamp_2"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("countries"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("area"))
-            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("timestamp_1"))
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("region"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("timestamp_3"))
             .build();
 
     final Row expectedRow =
@@ -106,8 +107,6 @@ class DocumentConverterTest {
             .addColumn(
                 Value.newBuilder().setValueType(INT_ARRAY).addAllIntArray(List.of(1, 2)).build())
             .addColumn(
-                Value.newBuilder().setValueType(STRING_MAP).putStringMap("seconds", "10").build())
-            .addColumn(
                 Value.newBuilder()
                     .setValueType(VALUE_MAP)
                     .putValueMap(
@@ -116,6 +115,12 @@ class DocumentConverterTest {
                             .setValueType(STRING_ARRAY)
                             .addAllStringArray(List.of("india", "australia"))
                             .build())
+                    .build())
+            .addColumn(
+                Value.newBuilder()
+                    .setValueType(VALUE_ARRAY)
+                    .putStringMap("seconds", "10")
+                    .putStringMap("nanos", "20")
                     .build())
             .build();
 

@@ -47,11 +47,6 @@ public class ListValueGetter implements ValueGetter {
     if (listNode == null) {
       return Value.newBuilder().setValueType(STRING_ARRAY).build();
     }
-    for (ValueGetter getter : rootGetters) {
-      if (getter.matches(listNode)) {
-        return getter.getValue(listNode);
-      }
-    }
     if (arrayGetter.matches(listNode)) {
       return arrayGetter.getValue(listNode);
     } else {

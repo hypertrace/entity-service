@@ -3,7 +3,6 @@ package org.hypertrace.entity.query.service.converter.response.getter;
 import static java.util.Collections.emptyIterator;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUES_KEY;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUE_MAP_KEY;
-import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_MAP;
 
@@ -15,6 +14,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import org.hypertrace.entity.query.service.converter.ConversionException;
+import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -23,13 +23,16 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 public class MapValueGetter implements ValueGetter {
   private final List<ValueGetter> rootGetters;
   private final OneOfAccessor<Value, ValueType> valueOneOfAccessor;
+  private final ValueHelper valueHelper;
 
   @Inject
   public MapValueGetter(
       @Named("root_getters") final List<ValueGetter> rootGetters,
-      final OneOfAccessor<Value, ValueType> valueOneOfAccessor) {
+      final OneOfAccessor<Value, ValueType> valueOneOfAccessor,
+      ValueHelper valueHelper) {
     this.rootGetters = rootGetters;
     this.valueOneOfAccessor = valueOneOfAccessor;
+    this.valueHelper = valueHelper;
   }
 
   @Override
@@ -63,15 +66,12 @@ public class MapValueGetter implements ValueGetter {
       for (ValueGetter getter : rootGetters) {
         if (getter.matches(node)) {
           final Value value = getter.getValue(node);
-          if (rootGetters.get(0).equals(getter)) {
+          if (valueHelper.isPrimitive(value.getValueType())) {
+            valueBuilder.setValueType(STRING_MAP);
             Object obj = valueOneOfAccessor.access(value, value.getValueType());
             valueBuilder.putStringMap(key, obj.toString());
           } else {
-            if (value.getValueType() == STRING) {
-              valueBuilder.setValueType(STRING_MAP);
-            } else {
-              valueBuilder.setValueType(VALUE_MAP);
-            }
+            valueBuilder.setValueType(VALUE_MAP);
             valueBuilder.putValueMap(key, value);
           }
           valueSet = true;
