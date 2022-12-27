@@ -96,6 +96,8 @@ import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 import org.hypertrace.entity.query.service.v1.Update;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
+import org.hypertrace.entity.query.service.v1.UpdateSummary;
+import org.hypertrace.entity.query.service.v1.UpdatedEntity;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
@@ -804,8 +806,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     try {
-      doBulkUpdate(request, requestContext);
-      responseObserver.onNext(BulkUpdateAllMatchingFilterResponse.newBuilder().build());
+      final BulkUpdateAllMatchingFilterResponse response = doBulkUpdate(request, requestContext);
+      responseObserver.onNext(response);
       responseObserver.onCompleted();
     } catch (final Exception e) {
       LOG.error("Error while bulk updating entities for " + tenantIdOptional.orElse(""), e);
@@ -816,14 +818,19 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
-  private void doBulkUpdate(
+  private BulkUpdateAllMatchingFilterResponse doBulkUpdate(
       final BulkUpdateAllMatchingFilterRequest request, final RequestContext requestContext)
       throws ConversionException, IOException {
+    final BulkUpdateAllMatchingFilterResponse.Builder responseBuilder =
+        BulkUpdateAllMatchingFilterResponse.newBuilder();
     final String entityType = request.getEntityType();
     final String tenantId = requestContext.getTenantId().orElseThrow();
 
     for (final Update update : request.getUpdatesList()) {
       final List<SingleValueKey> keys = getKeysToUpdate(requestContext, entityType, update);
+      final List<UpdatedEntity> updatedEntityResponses = buildUpdatedEntities(keys);
+      responseBuilder.addSummaries(
+          UpdateSummary.newBuilder().addAllUpdatedEntities(updatedEntityResponses));
 
       if (keys.isEmpty()) {
         // Nothing to update
@@ -864,9 +871,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             requestContext, existingEntities.get(), updatedEntities);
       }
     }
+
+    return responseBuilder.build();
   }
 
-  private FilterTypeExpression getFilterForKeys(List<SingleValueKey> keys) {
+  private FilterTypeExpression getFilterForKeys(final List<SingleValueKey> keys) {
     final FilterTypeExpression filter;
 
     if (keys.size() == 1) {
@@ -875,6 +884,14 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       filter = or(keys.stream().map(KeyExpression::of).collect(toUnmodifiableList()));
     }
     return filter;
+  }
+
+  private List<UpdatedEntity> buildUpdatedEntities(final List<SingleValueKey> keys) {
+    return keys.stream()
+        .map(SingleValueKey::getValue)
+        .map(id -> UpdatedEntity.newBuilder().setId(id))
+        .map(UpdatedEntity.Builder::build)
+        .collect(toUnmodifiableList());
   }
 
   @SuppressWarnings("Convert2Diamond")

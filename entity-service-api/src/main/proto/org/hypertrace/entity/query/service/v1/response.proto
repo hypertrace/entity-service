@@ -41,4 +41,13 @@ message DeleteEntitiesResponse {
 }
 
 message BulkUpdateAllMatchingFilterResponse {
+  repeated UpdateSummary summaries = 1;
+}
+
+message UpdateSummary {
+  repeated UpdatedEntity updated_entities = 1;
+}
+
+message UpdatedEntity {
+  string id = 1;
 }
