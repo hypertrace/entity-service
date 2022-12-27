@@ -6,6 +6,8 @@ import static org.hypertrace.entity.query.service.v1.ValueType.LONG_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
+import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_MAP;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.google.inject.Guice;
@@ -53,6 +55,11 @@ class DocumentConverterTest {
             .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("attributes.emptyList"))
             .addColumnMetadata(
                 ColumnMetadata.newBuilder().setColumnName("attributes.emptyListNested"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("timestamp_2"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("countries"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("area"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("region"))
+            .addColumnMetadata(ColumnMetadata.newBuilder().setColumnName("timestamp_3"))
             .build();
 
     final Row expectedRow =
@@ -82,6 +89,47 @@ class DocumentConverterTest {
             .addColumn(Value.newBuilder().setValueType(STRING_MAP).build())
             .addColumn(Value.newBuilder().setValueType(STRING_ARRAY).build())
             .addColumn(Value.newBuilder().setValueType(STRING_ARRAY).build())
+            .addColumn(
+                Value.newBuilder()
+                    .setValueType(VALUE_MAP)
+                    .putValueMap(
+                        "last_activity_timestamp",
+                        Value.newBuilder()
+                            .setValueType(STRING_MAP)
+                            .putStringMap("seconds", "10")
+                            .putStringMap("nanos", "10")
+                            .build())
+                    .build())
+            .addColumn(
+                Value.newBuilder()
+                    .setValueType(STRING_ARRAY)
+                    .addAllStringArray(List.of("india", "australia")))
+            .addColumn(
+                Value.newBuilder().setValueType(INT_ARRAY).addAllIntArray(List.of(1, 2)).build())
+            .addColumn(
+                Value.newBuilder()
+                    .setValueType(VALUE_MAP)
+                    .putValueMap(
+                        "countries",
+                        Value.newBuilder()
+                            .setValueType(STRING_ARRAY)
+                            .addAllStringArray(List.of("india", "australia"))
+                            .build())
+                    .build())
+            .addColumn(
+                Value.newBuilder()
+                    .setValueType(VALUE_ARRAY)
+                    .addAllValueArray(
+                        List.of(
+                            Value.newBuilder()
+                                .setValueType(STRING_MAP)
+                                .putStringMap("seconds", "10")
+                                .build(),
+                            Value.newBuilder()
+                                .setValueType(STRING_MAP)
+                                .putStringMap("nanos", "20")
+                                .build()))
+                    .build())
             .build();
 
     final Row actualRow = documentConverter.convertToRow(document, resultSetMetadata);
