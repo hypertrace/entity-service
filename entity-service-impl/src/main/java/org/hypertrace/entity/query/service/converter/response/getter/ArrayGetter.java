@@ -18,27 +18,16 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.hypertrace.entity.query.service.converter.ConversionException;
-import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 
 @Singleton
 public class ArrayGetter implements ValueGetter {
-  private final ValueGetter nestedValueGetter;
-  private final ValueGetter directValueGetter;
   private final List<ValueGetter> rootGetters;
-  private final ValueHelper valueHelper;
 
   @Inject
-  public ArrayGetter(
-      @Named("nested_value") final ValueGetter nestedValueGetter,
-      @Named("direct_value") final ValueGetter directValueGetter,
-      @Named("root_getters") final List<ValueGetter> rootGetters,
-      final ValueHelper valueHelper) {
-    this.nestedValueGetter = nestedValueGetter;
-    this.directValueGetter = directValueGetter;
+  public ArrayGetter(@Named("root_getters") final List<ValueGetter> rootGetters) {
     this.rootGetters = rootGetters;
-    this.valueHelper = valueHelper;
   }
 
   @Override
@@ -111,52 +100,16 @@ public class ArrayGetter implements ValueGetter {
         break;
 
       case INT_ARRAY:
-        values.stream().map(Value::getIntArrayList).forEach(valueBuilder::addAllIntArray);
-        valueBuilder.setValueType(VALUE_ARRAY);
-        break;
-
       case LONG_ARRAY:
-        values.stream().map(Value::getLongArrayList).forEach(valueBuilder::addAllLongArray);
-        valueBuilder.setValueType(VALUE_ARRAY);
-        break;
-
       case STRING_ARRAY:
-        values.stream().map(Value::getStringArrayList).forEach(valueBuilder::addAllStringArray);
-        valueBuilder.setValueType(VALUE_ARRAY);
-        break;
-
       case FLOAT_ARRAY:
-        values.stream().map(Value::getFloatArrayList).forEach(valueBuilder::addAllFloatArray);
-        valueBuilder.setValueType(VALUE_ARRAY);
-        break;
-
       case DOUBLE_ARRAY:
-        values.stream().map(Value::getDoubleArrayList).forEach(valueBuilder::addAllDoubleArray);
-        valueBuilder.setValueType(VALUE_ARRAY);
-        break;
-
       case BYTES_ARRAY:
-        values.stream().map(Value::getBytesArrayList).forEach(valueBuilder::addAllBytesArray);
-        valueBuilder.setValueType(VALUE_ARRAY);
-        break;
-
       case BOOLEAN_ARRAY:
-        values.stream().map(Value::getBooleanArrayList).forEach(valueBuilder::addAllBooleanArray);
-        valueBuilder.setValueType(VALUE_ARRAY);
-        break;
-
       case STRING_MAP:
-        values.stream().map(Value::getStringMapMap).forEach(valueBuilder::putAllStringMap);
-        valueBuilder.setValueType(VALUE_ARRAY);
-        break;
-
       case VALUE_MAP:
-        values.stream().map(Value::getValueMapMap).forEach(valueBuilder::putAllValueMap);
-        valueBuilder.setValueType(VALUE_ARRAY);
-        break;
-
       case VALUE_ARRAY:
-        values.stream().map(Value::getValueArrayList).forEach(valueBuilder::addAllValueArray);
+        valueBuilder.addAllValueArray(values);
         valueBuilder.setValueType(VALUE_ARRAY);
         break;
 

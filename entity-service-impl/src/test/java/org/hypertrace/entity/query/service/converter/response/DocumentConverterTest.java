@@ -119,8 +119,16 @@ class DocumentConverterTest {
             .addColumn(
                 Value.newBuilder()
                     .setValueType(VALUE_ARRAY)
-                    .putStringMap("seconds", "10")
-                    .putStringMap("nanos", "20")
+                    .addAllValueArray(
+                        List.of(
+                            Value.newBuilder()
+                                .setValueType(STRING_MAP)
+                                .putStringMap("seconds", "10")
+                                .build(),
+                            Value.newBuilder()
+                                .setValueType(STRING_MAP)
+                                .putStringMap("nanos", "20")
+                                .build()))
                     .build())
             .build();
 

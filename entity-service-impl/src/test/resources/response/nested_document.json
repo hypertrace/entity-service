@@ -1,7 +1,9 @@
 {
-  "countries": {
-    "valueList": {
-      "values": [ "india", "australia" ]
+  "countries":
+  {
+    "valueList":
+    {
+      "values": [{"value": {"string": "india"}},{"value": {"string": "australia"}}]
     }
   },
   "area": {
@@ -46,12 +48,17 @@
         ]
       }
   },
-  "region": {
-    "valueMap": {
-      "values": {
-        "countries": {
-          "valueList" : {
-            "values": [ "india", "australia" ]
+  "region":
+  {
+    "valueMap":
+    {
+      "values":
+      {
+        "countries":
+        {
+          "valueList":
+          {
+            "values": [{"value": {"string": "india"}},{"value": {"string": "australia"}}]
           }
         }
       }
