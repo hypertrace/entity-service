@@ -60,10 +60,11 @@ public class ArrayGetter implements ValueGetter {
       }
     }
 
-    final ValueType type = values.stream().map(Value::getValueType).findFirst().orElse(STRING);
+    final ValueType containingType =
+        values.stream().map(Value::getValueType).findFirst().orElse(STRING);
 
     final Value.Builder valueBuilder = Value.newBuilder();
-    switch (type) {
+    switch (containingType) {
       case STRING:
         values.stream().map(Value::getString).forEach(valueBuilder::addStringArray);
         valueBuilder.setValueType(STRING_ARRAY);
@@ -114,7 +115,7 @@ public class ArrayGetter implements ValueGetter {
         break;
 
       default:
-        throw new ConversionException(String.format("Unknown array type: %s", type));
+        throw new ConversionException(String.format("Unknown array type: %s", containingType));
     }
 
     return valueBuilder.build();

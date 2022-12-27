@@ -1,14 +1,24 @@
 {
-  "countries":
-  {
-    "valueList":
-    {
-      "values": [{"value": {"string": "india"}},{"value": {"string": "australia"}}]
+  "countries": {
+    "valueList": {
+      "values": [
+        {
+          "value": {
+            "string": "india"
+          }
+        },
+        {
+          "value": {
+            "string": "australia"
+          }
+        }
+      ]
     }
   },
   "area": {
     "valueList": {
-      "values": [ {
+      "values": [
+        {
         "value": {
           "int": 1
         }
@@ -17,10 +27,12 @@
           "value": {
             "int": 2
           }
-        } ]
+        }
+      ]
     }
   },
-  "timestamp_3": {
+  "timestamp_3":
+  {
     "valueList": {
       "values": [
         {
@@ -48,45 +60,41 @@
         ]
       }
   },
-  "region":
-  {
-    "valueMap":
-    {
-      "values":
-      {
-        "countries":
-        {
-          "valueList":
-          {
-            "values": [{"value": {"string": "india"}},{"value": {"string": "australia"}}]
+  "region": {
+    "valueMap": {
+      "values": {
+        "countries": {
+          "valueList": {
+            "values": [
+              {
+                "value": {
+                  "string": "india"
+                }
+              },
+              {
+                "value": {
+                  "string": "australia"
+                }
+              }
+            ]
           }
         }
       }
     }
   },
-  "timestamp_2":
-  {
-    "valueMap":
-    {
-      "values":
-      {
-        "last_activity_timestamp":
-        {
-          "valueMap":
-          {
-            "values":
-            {
-              "seconds":
-              {
-                "value":
-                {
+  "timestamp_2": {
+    "valueMap": {
+      "values": {
+        "last_activity_timestamp": {
+          "valueMap": {
+            "values": {
+              "seconds": {
+                "value": {
                   "long":10
                 }
               },
-              "nanos":
-              {
-                "value":
-                {
+              "nanos": {
+                "value": {
                   "int":10
                 }
               }
