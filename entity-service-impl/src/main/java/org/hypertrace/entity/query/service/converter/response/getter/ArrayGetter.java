@@ -1,6 +1,14 @@
 package org.hypertrace.entity.query.service.converter.response.getter;
 
+import static org.hypertrace.entity.query.service.v1.ValueType.BOOLEAN_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.BYTES_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.DOUBLE_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.FLOAT_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.INT_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.LONG_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_ARRAY;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
@@ -10,24 +18,16 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.hypertrace.entity.query.service.converter.ConversionException;
-import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 
 @Singleton
 public class ArrayGetter implements ValueGetter {
-  private final ValueGetter nestedValueGetter;
-  private final ValueGetter directValueGetter;
-  private final ValueHelper valueHelper;
+  private final List<ValueGetter> rootGetters;
 
   @Inject
-  public ArrayGetter(
-      @Named("nested_value") final ValueGetter nestedValueGetter,
-      @Named("direct_value") final ValueGetter directValueGetter,
-      final ValueHelper valueHelper) {
-    this.nestedValueGetter = nestedValueGetter;
-    this.directValueGetter = directValueGetter;
-    this.valueHelper = valueHelper;
+  public ArrayGetter(@Named("root_getters") final List<ValueGetter> rootGetters) {
+    this.rootGetters = rootGetters;
   }
 
   @Override
@@ -43,57 +43,79 @@ public class ArrayGetter implements ValueGetter {
 
     while (elements.hasNext()) {
       final JsonNode node = elements.next();
+      boolean valueSet = false;
 
-      final Value value;
-
-      if (nestedValueGetter.matches(node)) {
-        value = nestedValueGetter.getValue(node);
-      } else if (directValueGetter.matches(node)) {
-        value = directValueGetter.getValue(node);
-      } else {
-        throw new ConversionException(String.format("Unexpected node (%s) found", node));
+      for (ValueGetter getter : rootGetters) {
+        if (getter.matches(node)) {
+          final Value value;
+          value = getter.getValue(node);
+          values.add(value);
+          valueSet = true;
+          break;
+        }
       }
 
-      values.add(value);
+      if (!valueSet) {
+        throw new ConversionException(String.format("Unexpected node (%s) found", node));
+      }
     }
 
-    final ValueType primitiveType =
+    final ValueType containingType =
         values.stream().map(Value::getValueType).findFirst().orElse(STRING);
-    final ValueType type = valueHelper.getArrayValueType(primitiveType);
 
-    final Value.Builder valueBuilder = Value.newBuilder().setValueType(type);
-
-    switch (type) {
-      case STRING_ARRAY:
+    final Value.Builder valueBuilder = Value.newBuilder();
+    switch (containingType) {
+      case STRING:
         values.stream().map(Value::getString).forEach(valueBuilder::addStringArray);
+        valueBuilder.setValueType(STRING_ARRAY);
+        break;
+
+      case INT:
+        values.stream().map(Value::getInt).forEach(valueBuilder::addIntArray);
+        valueBuilder.setValueType(INT_ARRAY);
+        break;
+
+      case LONG:
+        values.stream().map(Value::getLong).forEach(valueBuilder::addLongArray);
+        valueBuilder.setValueType(LONG_ARRAY);
+        break;
+
+      case FLOAT:
+        values.stream().map(Value::getFloat).forEach(valueBuilder::addFloatArray);
+        valueBuilder.setValueType(FLOAT_ARRAY);
+        break;
+
+      case DOUBLE:
+        values.stream().map(Value::getDouble).forEach(valueBuilder::addDoubleArray);
+        valueBuilder.setValueType(DOUBLE_ARRAY);
+        break;
+
+      case BYTES:
+        values.stream().map(Value::getBytes).forEach(valueBuilder::addBytesArray);
+        valueBuilder.setValueType(BYTES_ARRAY);
+        break;
+
+      case BOOL:
+        values.stream().map(Value::getBoolean).forEach(valueBuilder::addBooleanArray);
+        valueBuilder.setValueType(BOOLEAN_ARRAY);
         break;
 
       case INT_ARRAY:
-        values.stream().map(Value::getInt).forEach(valueBuilder::addIntArray);
-        break;
-
       case LONG_ARRAY:
-        values.stream().map(Value::getLong).forEach(valueBuilder::addLongArray);
-        break;
-
+      case STRING_ARRAY:
       case FLOAT_ARRAY:
-        values.stream().map(Value::getFloat).forEach(valueBuilder::addFloatArray);
-        break;
-
       case DOUBLE_ARRAY:
-        values.stream().map(Value::getDouble).forEach(valueBuilder::addDoubleArray);
-        break;
-
       case BYTES_ARRAY:
-        values.stream().map(Value::getBytes).forEach(valueBuilder::addBytesArray);
-        break;
-
       case BOOLEAN_ARRAY:
-        values.stream().map(Value::getBoolean).forEach(valueBuilder::addBooleanArray);
+      case STRING_MAP:
+      case VALUE_MAP:
+      case VALUE_ARRAY:
+        valueBuilder.addAllValueArray(values);
+        valueBuilder.setValueType(VALUE_ARRAY);
         break;
 
       default:
-        throw new ConversionException(String.format("Unknown array type: %s", type));
+        throw new ConversionException(String.format("Unknown array type: %s", containingType));
     }
 
     return valueBuilder.build();
