@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
 import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
@@ -27,6 +28,8 @@ public interface EdsClient {
   List<Entity> getEntitiesByName(String tenantId, String entityType, String entityName);
 
   Entity getById(String tenantId, String entityId);
+
+  Entity getById(String tenantId, ByIdRequest byIdRequest);
 
   List<Entity> query(String tenantId, Query query);
 

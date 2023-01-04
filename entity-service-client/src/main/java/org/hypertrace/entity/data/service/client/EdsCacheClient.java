@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
 import org.hypertrace.entity.data.service.client.exception.NotFoundException;
+import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
 import org.hypertrace.entity.data.service.v1.EnrichedEntities;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
@@ -77,7 +78,13 @@ public class EdsCacheClient implements EdsClient {
                 CacheLoader.asyncReloading(
                     new CacheLoader<>() {
                       public Entity load(@Nonnull EdsCacheKey key) throws Exception {
-                        Entity entity = client.getById(key.tenantId, key.entityId);
+                        Entity entity =
+                            client.getById(
+                                key.tenantId,
+                                ByIdRequest.newBuilder()
+                                    .setEntityType(key.entityType)
+                                    .setEntityId(key.entityId)
+                                    .build());
                         if (entity == null) {
                           throw new NotFoundException("Entity not found");
                         }
@@ -158,6 +165,18 @@ public class EdsCacheClient implements EdsClient {
   @Override
   public Entity getById(String tenantId, String entityId) {
     EdsCacheKey key = new EdsCacheKey(tenantId, entityId);
+    try {
+      return entityCache.get(key);
+    } catch (ExecutionException e) {
+      LOG.debug("Failed to fetch entity of tenantId: {}, entityId: {}", key.tenantId, key.entityId);
+      return null;
+    }
+  }
+
+  @Override
+  public Entity getById(String tenantId, ByIdRequest byIdRequest) {
+    EdsCacheKey key =
+        new EdsCacheKey(tenantId, byIdRequest.getEntityId(), byIdRequest.getEntityType());
     try {
       return entityCache.get(key);
     } catch (ExecutionException e) {
