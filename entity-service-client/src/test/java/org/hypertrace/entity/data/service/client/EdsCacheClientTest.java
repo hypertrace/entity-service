@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.Map;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
+import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
 import org.hypertrace.entity.data.service.v1.EnrichedEntity;
 import org.hypertrace.entity.data.service.v1.Entity;
@@ -181,12 +182,13 @@ public class EdsCacheClientTest {
             .putAllIdentifyingAttributes(identifyingAttributesMap)
             .build();
 
-    when(entityDataServiceClient.getById(anyString(), anyString())).thenReturn(entity);
+    when(entityDataServiceClient.getById(anyString(), any(ByIdRequest.class))).thenReturn(entity);
 
     edsCacheClient.getById(tenantId, entityId);
     edsCacheClient.getById(tenantId, entityId);
 
-    verify(entityDataServiceClient, times(1)).getById("tenant", "entity-12346");
+    verify(entityDataServiceClient, times(1))
+        .getById("tenant", ByIdRequest.newBuilder().setEntityId("entity-12346").build());
   }
 
   @Test
@@ -194,7 +196,7 @@ public class EdsCacheClientTest {
     String tenantId = "tenant";
     String entityId = "entity-12346";
 
-    when(entityDataServiceClient.getById(anyString(), anyString())).thenReturn(null);
+    when(entityDataServiceClient.getById(anyString(), any(ByIdRequest.class))).thenReturn(null);
 
     Entity entity = edsCacheClient.getById(tenantId, entityId);
     Assertions.assertNull(entity);
@@ -202,6 +204,7 @@ public class EdsCacheClientTest {
     entity = edsCacheClient.getById(tenantId, entityId);
     Assertions.assertNull(entity);
 
-    verify(entityDataServiceClient, times(2)).getById("tenant", "entity-12346");
+    verify(entityDataServiceClient, times(2))
+        .getById("tenant", ByIdRequest.newBuilder().setEntityId("entity-12346").build());
   }
 }

@@ -120,6 +120,14 @@ public class EntityDataServiceClient implements EdsClient {
     return entity.equals(Entity.getDefaultInstance()) ? null : entity;
   }
 
+  @Override
+  public Entity getById(String tenantId, ByIdRequest byIdRequest) {
+    Entity entity = execute(tenantId, () -> blockingStub.getById(byIdRequest));
+
+    // Handle this here, so that callers can just do a null check
+    return entity.equals(Entity.getDefaultInstance()) ? null : entity;
+  }
+
   @VisibleForTesting
   public List<Entity> query(String tenantId, Query query) {
     return execute(tenantId, () -> Lists.newArrayList(blockingStub.query(query)));
