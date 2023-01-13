@@ -47,9 +47,9 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
 
   private static final Set<ValueType> ALL_SUPPORTED_TYPES =
       Set.of(STRING, LONG, INT, FLOAT, DOUBLE, BYTES, BOOL, STRING_ARRAY);
+  private static final Set<ValueType> ARRAY_TYPES = Set.of(STRING_ARRAY);
   private static final Set<ValueType> PRIMITIVE_TYPES =
       Set.of(STRING, LONG, INT, FLOAT, DOUBLE, BYTES, BOOL);
-  private static final Set<ValueType> ARRAY_TYPES = Set.of(STRING_ARRAY);
 
   private static final Map<AttributeUpdateOperator, AttributeOperationMetadata> OPERATOR_MAP =
       Map.ofEntries(
@@ -110,18 +110,10 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
     final String suffixedSubDocPath;
 
     if (entityAttributeMapping.isMultiValued(context, id)) {
-      validateDataType(
-          "ARRAY",
-          operation.getOperator(),
-          value.getValueType(),
-          metadata.allowedValueTypesForMultiValuedAttribute());
+      metadata.validateDataTypeForMultiValuedAttribute(value.getValueType());
       suffixedSubDocPath = DOT_JOINER.join(subDocPath, VALUE_LIST_KEY, VALUES_KEY);
     } else {
-      validateDataType(
-          "PRIMITIVE",
-          operation.getOperator(),
-          value.getValueType(),
-          metadata.allowedValueTypesForSingleValuedAttribute());
+      metadata.validateDataTypeForSingleValuedAttribute(value.getValueType());
       suffixedSubDocPath = subDocPath;
     }
 
@@ -138,19 +130,6 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
     return updateBuilder.build();
   }
 
-  private void validateDataType(
-      final String lhsType,
-      final AttributeUpdateOperator operator,
-      final ValueType valueType,
-      final Set<ValueType> allowedValueTypes)
-      throws ConversionException {
-    if (!allowedValueTypes.contains(valueType)) {
-      throw new ConversionException(
-          String.format(
-              "Invalid data type: [LHS=%s, OPERATOR=%s, RHS=%s]", lhsType, operator, valueType));
-    }
-  }
-
   @lombok.Value
   @Accessors(fluent = true)
   @Builder
@@ -158,5 +137,23 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
     UpdateOperator operator;
     Set<ValueType> allowedValueTypesForMultiValuedAttribute;
     Set<ValueType> allowedValueTypesForSingleValuedAttribute;
+
+    void validateDataTypeForMultiValuedAttribute(final ValueType valueType)
+        throws ConversionException {
+      if (!allowedValueTypesForMultiValuedAttribute.contains(valueType)) {
+        throw new ConversionException(
+            String.format(
+                "Invalid data type: [LHS=ARRAY, OPERATOR=%s, RHS=%s]", operator, valueType));
+      }
+    }
+
+    void validateDataTypeForSingleValuedAttribute(final ValueType valueType)
+        throws ConversionException {
+      if (!allowedValueTypesForSingleValuedAttribute.contains(valueType)) {
+        throw new ConversionException(
+            String.format(
+                "Invalid data type: [LHS=PRIMITIVE, OPERATOR=%s, RHS=%s]", operator, valueType));
+      }
+    }
   }
 }
