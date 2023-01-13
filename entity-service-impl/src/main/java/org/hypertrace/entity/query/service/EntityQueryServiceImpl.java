@@ -6,7 +6,6 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
-import static org.hypertrace.core.documentstore.expression.impl.LogicalExpression.or;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
 import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
 import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
@@ -876,14 +875,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   }
 
   private FilterTypeExpression getFilterForKeys(final List<SingleValueKey> keys) {
-    final FilterTypeExpression filter;
-
-    if (keys.size() == 1) {
-      filter = KeyExpression.of(keys.get(0));
-    } else {
-      filter = or(keys.stream().map(KeyExpression::of).collect(toUnmodifiableList()));
-    }
-    return filter;
+    return KeyExpression.of(keys.stream().map(key -> (Key) key).collect(toUnmodifiableList()));
   }
 
   private List<UpdatedEntity> buildUpdatedEntities(final List<SingleValueKey> keys) {
