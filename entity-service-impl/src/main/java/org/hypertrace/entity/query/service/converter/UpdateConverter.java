@@ -1,7 +1,12 @@
 package org.hypertrace.entity.query.service.converter;
 
-import static java.util.Collections.emptySet;
 import static java.util.Map.entry;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_BOOL;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_BYTES;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_DOUBLE;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_INT64;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY;
 import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.ADD_TO_LIST_IF_ABSENT;
 import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.REMOVE_ALL_FROM_LIST;
 import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.SET;
@@ -27,8 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import javax.inject.Inject;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.experimental.Accessors;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocument;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentUpdate;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentUpdate.SubDocumentUpdateBuilder;
@@ -45,42 +49,28 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 public class UpdateConverter implements Converter<AttributeUpdateOperation, SubDocumentUpdate> {
   private static final Joiner DOT_JOINER = Joiner.on(".");
 
-  private static final Set<ValueType> ALL_SUPPORTED_TYPES =
-      Set.of(STRING, LONG, INT, FLOAT, DOUBLE, BYTES, BOOL, STRING_ARRAY);
-  private static final Set<ValueType> ARRAY_TYPES = Set.of(STRING_ARRAY);
-  private static final Set<ValueType> PRIMITIVE_TYPES =
-      Set.of(STRING, LONG, INT, FLOAT, DOUBLE, BYTES, BOOL);
-
-  private static final Map<AttributeUpdateOperator, AttributeOperationMetadata> OPERATOR_MAP =
+  private static final Map<ValueType, AttributeKind> VALUE_TYPE_TO_ATTRIBUTE_KIND_MAP =
       Map.ofEntries(
-          entry(
-              ATTRIBUTE_UPDATE_OPERATOR_SET,
-              AttributeOperationMetadata.builder()
-                  .operator(SET)
-                  .allowedValueTypesForSingleValuedAttribute(PRIMITIVE_TYPES)
-                  .allowedValueTypesForMultiValuedAttribute(ARRAY_TYPES)
-                  .build()),
-          entry(
-              ATTRIBUTE_UPDATE_OPERATOR_UNSET,
-              AttributeOperationMetadata.builder()
-                  .operator(UNSET)
-                  .allowedValueTypesForSingleValuedAttribute(ALL_SUPPORTED_TYPES)
-                  .allowedValueTypesForMultiValuedAttribute(ALL_SUPPORTED_TYPES)
-                  .build()),
-          entry(
-              ATTRIBUTE_UPDATE_OPERATOR_ADD_TO_LIST_IF_ABSENT,
-              AttributeOperationMetadata.builder()
-                  .operator(ADD_TO_LIST_IF_ABSENT)
-                  .allowedValueTypesForSingleValuedAttribute(emptySet())
-                  .allowedValueTypesForMultiValuedAttribute(ALL_SUPPORTED_TYPES)
-                  .build()),
-          entry(
-              ATTRIBUTE_UPDATE_OPERATOR_REMOVE_FROM_LIST,
-              AttributeOperationMetadata.builder()
-                  .operator(REMOVE_ALL_FROM_LIST)
-                  .allowedValueTypesForSingleValuedAttribute(emptySet())
-                  .allowedValueTypesForMultiValuedAttribute(ALL_SUPPORTED_TYPES)
-                  .build()));
+          entry(STRING, TYPE_STRING),
+          entry(LONG, TYPE_INT64),
+          entry(INT, TYPE_INT64),
+          entry(FLOAT, TYPE_DOUBLE),
+          entry(DOUBLE, TYPE_DOUBLE),
+          entry(BYTES, TYPE_BYTES),
+          entry(BOOL, TYPE_BOOL),
+          entry(STRING_ARRAY, TYPE_STRING_ARRAY));
+
+  private static final Map<AttributeUpdateOperator, UpdateOperator> OPERATOR_MAP =
+      Map.ofEntries(
+          entry(ATTRIBUTE_UPDATE_OPERATOR_SET, SET),
+          entry(ATTRIBUTE_UPDATE_OPERATOR_UNSET, UNSET),
+          entry(ATTRIBUTE_UPDATE_OPERATOR_ADD_TO_LIST_IF_ABSENT, ADD_TO_LIST_IF_ABSENT),
+          entry(ATTRIBUTE_UPDATE_OPERATOR_REMOVE_FROM_LIST, REMOVE_ALL_FROM_LIST));
+
+  private static final Set<AttributeUpdateOperator> ARRAY_OPERATORS =
+      Set.of(
+          ATTRIBUTE_UPDATE_OPERATOR_ADD_TO_LIST_IF_ABSENT,
+          ATTRIBUTE_UPDATE_OPERATOR_REMOVE_FROM_LIST);
 
   private final EntityAttributeMapping entityAttributeMapping;
   private final ValueHelper valueHelper;
@@ -89,31 +79,39 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
   public SubDocumentUpdate convert(
       final AttributeUpdateOperation operation, final RequestContext context)
       throws ConversionException {
-    final AttributeOperationMetadata metadata = OPERATOR_MAP.get(operation.getOperator());
+    final UpdateOperator operator = OPERATOR_MAP.get(operation.getOperator());
 
-    if (metadata == null) {
+    if (operator == null) {
       throw new ConversionException(
           String.format("Operator %s is not supported yet", operation.getOperator()));
     }
 
     final String id = operation.getAttribute().getColumnName();
-    final Optional<String> pathOptional =
-        entityAttributeMapping.getDocStorePathByAttributeId(context, id);
+    final Optional<AttributeKind> attributeKindOptional =
+        entityAttributeMapping.getAttributeKind(context, id);
 
-    if (pathOptional.isEmpty()) {
+    if (attributeKindOptional.isEmpty()) {
       throw new ConversionException(String.format("Cannot update non-attribute value for %s", id));
     }
 
-    final String subDocPath = pathOptional.orElseThrow();
-    final UpdateOperator operator = metadata.operator();
+    final AttributeKind attributeKind = attributeKindOptional.orElseThrow();
+    // Validate if the operator is applicable for the LHS type
+    validateOperator(attributeKind, operation.getOperator());
+
     final Value value = operation.getValue().getValue();
+    // Validate if the LHS and the RHS are of same type
+    validateDataType(attributeKind, operation.getOperator(), value.getValueType());
+
+    final Optional<String> pathOptional =
+        entityAttributeMapping.getDocStorePathByAttributeId(context, id);
+
+    final String subDocPath = pathOptional.orElseThrow();
     final String suffixedSubDocPath;
 
-    if (entityAttributeMapping.isMultiValued(context, id)) {
-      metadata.validateDataTypeForMultiValuedAttribute(value.getValueType());
+    if (entityAttributeMapping.isMultiValued(attributeKind)) {
       suffixedSubDocPath = DOT_JOINER.join(subDocPath, VALUE_LIST_KEY, VALUES_KEY);
     } else {
-      metadata.validateDataTypeForSingleValuedAttribute(value.getValueType());
+
       suffixedSubDocPath = subDocPath;
     }
 
@@ -130,30 +128,32 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
     return updateBuilder.build();
   }
 
-  @lombok.Value
-  @Accessors(fluent = true)
-  @Builder
-  private static class AttributeOperationMetadata {
-    UpdateOperator operator;
-    Set<ValueType> allowedValueTypesForMultiValuedAttribute;
-    Set<ValueType> allowedValueTypesForSingleValuedAttribute;
-
-    void validateDataTypeForMultiValuedAttribute(final ValueType valueType)
-        throws ConversionException {
-      if (!allowedValueTypesForMultiValuedAttribute.contains(valueType)) {
-        throw new ConversionException(
-            String.format(
-                "Invalid data type: [LHS=ARRAY, OPERATOR=%s, RHS=%s]", operator, valueType));
-      }
+  private void validateDataType(
+      final AttributeKind attributeKind,
+      final AttributeUpdateOperator operator,
+      final ValueType valueType)
+      throws ConversionException {
+    if (operator == ATTRIBUTE_UPDATE_OPERATOR_UNSET) {
+      // value type is immaterial in the case of UNSET operation
+      return;
     }
 
-    void validateDataTypeForSingleValuedAttribute(final ValueType valueType)
-        throws ConversionException {
-      if (!allowedValueTypesForSingleValuedAttribute.contains(valueType)) {
-        throw new ConversionException(
-            String.format(
-                "Invalid data type: [LHS=PRIMITIVE, OPERATOR=%s, RHS=%s]", operator, valueType));
-      }
+    if (!attributeKind.equals(VALUE_TYPE_TO_ATTRIBUTE_KIND_MAP.get(valueType))) {
+      throw new ConversionException(
+          String.format(
+              "Mismatching value type (%s) for attribute of type %s", valueType, attributeKind));
+    }
+  }
+
+  private void validateOperator(
+      final AttributeKind attributeKind, final AttributeUpdateOperator operator)
+      throws ConversionException {
+    if (!entityAttributeMapping.isMultiValued(attributeKind)
+        && ARRAY_OPERATORS.contains(operator)) {
+      throw new ConversionException(
+          String.format(
+              "Cannot perform array operation (%s) on an attribute of type %s",
+              operator, attributeKind));
     }
   }
 }

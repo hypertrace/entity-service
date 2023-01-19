@@ -271,10 +271,40 @@ public class EntityQueryServiceTest {
             .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
             .build();
 
+    final AttributeMetadata discoveryStateAttribute =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("Discovery State")
+            .addSources(AttributeSource.EDS)
+            .setFqn(API_DISCOVERY_STATE_ATTR)
+            .setGroupable(false)
+            .setId(API_DISCOVERY_STATE_ATTR)
+            .setKey("apiDiscoveryState")
+            .setScopeString("API")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING)
+            .setScope(AttributeScope.API)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
+
+    final AttributeMetadata httpMethod =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("HTTP Method")
+            .addSources(AttributeSource.EDS)
+            .setFqn(API_HTTP_METHOD_ATTR)
+            .setGroupable(false)
+            .setId(API_HTTP_METHOD_ATTR)
+            .setKey("httpMethod")
+            .setScopeString("API")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING)
+            .setScope(AttributeScope.API)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
+
     AttributeCreateRequest request =
         AttributeCreateRequest.newBuilder()
             .addAttributes(labelsAttribute)
             .addAttributes(httpUrlAttribute)
+            .addAttributes(discoveryStateAttribute)
+            .addAttributes(httpMethod)
             .build();
     AttributeServiceClient attributeServiceClient = new AttributeServiceClient(channel);
     attributeServiceClient.create(TENANT_ID, request);
@@ -1466,7 +1496,8 @@ public class EntityQueryServiceTest {
                 LiteralConstant.newBuilder()
                     .setValue(
                         org.hypertrace.entity.query.service.v1.Value.newBuilder()
-                            .setString("Label3")))
+                            .setValueType(STRING_ARRAY)
+                            .addStringArray("Label3")))
             .build();
     final AttributeUpdateOperation updateOperation4 =
         AttributeUpdateOperation.newBuilder()
