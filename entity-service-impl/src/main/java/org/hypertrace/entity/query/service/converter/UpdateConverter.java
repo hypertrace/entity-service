@@ -28,7 +28,6 @@ import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 
 import com.google.common.base.Joiner;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import javax.inject.Inject;
 import lombok.AllArgsConstructor;
@@ -87,14 +86,13 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
     }
 
     final String id = operation.getAttribute().getColumnName();
-    final Optional<AttributeKind> attributeKindOptional =
-        entityAttributeMapping.getAttributeKind(context, id);
-
-    if (attributeKindOptional.isEmpty()) {
-      throw new ConversionException(String.format("Cannot update non-attribute value for %s", id));
-    }
-
-    final AttributeKind attributeKind = attributeKindOptional.orElseThrow();
+    final AttributeKind attributeKind =
+        entityAttributeMapping
+            .getAttributeKind(context, id)
+            .orElseThrow(
+                () ->
+                    new ConversionException(
+                        String.format("Cannot update non-attribute value for %s", id)));
     // Validate if the operator is applicable for the LHS type
     validateOperator(attributeKind, operation.getOperator());
 
@@ -102,16 +100,13 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
     // Validate if the LHS and the RHS are of same type
     validateDataType(attributeKind, operation.getOperator(), value.getValueType());
 
-    final Optional<String> pathOptional =
-        entityAttributeMapping.getDocStorePathByAttributeId(context, id);
-
-    final String subDocPath = pathOptional.orElseThrow();
+    final String subDocPath =
+        entityAttributeMapping.getDocStorePathByAttributeId(context, id).orElseThrow();
     final String suffixedSubDocPath;
 
     if (entityAttributeMapping.isMultiValued(attributeKind)) {
       suffixedSubDocPath = DOT_JOINER.join(subDocPath, VALUE_LIST_KEY, VALUES_KEY);
     } else {
-
       suffixedSubDocPath = subDocPath;
     }
 

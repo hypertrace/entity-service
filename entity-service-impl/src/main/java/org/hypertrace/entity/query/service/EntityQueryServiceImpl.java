@@ -813,7 +813,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       responseObserver.onError(
           Status.INTERNAL
               .withDescription("Error while bulk updating entities")
-              .asRuntimeException());
+              .asRuntimeException(requestContext.buildTrailers()));
     }
   }
 

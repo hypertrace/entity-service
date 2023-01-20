@@ -5,7 +5,6 @@ import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_BOOL_A
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_DOUBLE_ARRAY;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_INT64_ARRAY;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY;
-import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP;
 
 import com.typesafe.config.Config;
 import java.util.Map;
@@ -29,8 +28,7 @@ public class EntityAttributeMapping {
   private static final String ATTRIBUTE_PATH = "attribute";
   private static final String NAME_PATH = "name";
   private static final Set<AttributeKind> MULTI_VALUED_ATTRIBUTE_KINDS =
-      Set.of(
-          TYPE_STRING_ARRAY, TYPE_INT64_ARRAY, TYPE_DOUBLE_ARRAY, TYPE_BOOL_ARRAY, TYPE_STRING_MAP);
+      Set.of(TYPE_STRING_ARRAY, TYPE_INT64_ARRAY, TYPE_DOUBLE_ARRAY, TYPE_BOOL_ARRAY);
 
   private final CachingAttributeClient attributeClient;
   private final Map<String, AttributeMetadataIdentifier> explicitAttributeIdByAttributeMetadata;
