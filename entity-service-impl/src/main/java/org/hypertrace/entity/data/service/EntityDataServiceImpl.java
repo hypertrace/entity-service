@@ -11,6 +11,7 @@ import com.google.protobuf.GeneratedMessageV3;
 import com.google.protobuf.Message;
 import com.google.protobuf.ServiceException;
 import io.grpc.Channel;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.hypertrace.core.documentstore.Collection;
@@ -46,6 +48,7 @@ import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.data.service.v1.RelationshipsQuery;
 import org.hypertrace.entity.fetcher.EntityFetcher;
 import org.hypertrace.entity.metric.EntityCounterMetricSender;
+import org.hypertrace.entity.rateLimiter.EntityRateLimiter;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.exception.InvalidRequestException;
@@ -74,12 +77,14 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private final EntityChangeEventGenerator entityChangeEventGenerator;
   private final EntityFetcher entityFetcher;
   private final EntityCounterMetricSender entityCounterMetricSender;
+  private final EntityRateLimiter entityRateLimiter;
 
   public EntityDataServiceImpl(
       Datastore datastore,
       Channel entityTypeChannel,
       EntityChangeEventGenerator entityChangeEventGenerator,
-      EntityCounterMetricSender entityCounterMetricSender) {
+      EntityCounterMetricSender entityCounterMetricSender,
+      EntityRateLimiter entityRateLimiter) {
     this.entitiesCollection = datastore.getCollection(RAW_ENTITIES_COLLECTION);
     this.relationshipsCollection = datastore.getCollection(ENTITY_RELATIONSHIPS_COLLECTION);
     this.enrichedEntitiesCollection = datastore.getCollection(ENRICHED_ENTITIES_COLLECTION);
@@ -92,6 +97,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     this.entityChangeEventGenerator = entityChangeEventGenerator;
     this.entityFetcher = new EntityFetcher(this.entitiesCollection, PARSER);
     this.entityCounterMetricSender = entityCounterMetricSender;
+    this.entityRateLimiter = entityRateLimiter;
   }
 
   /**
@@ -116,6 +122,15 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       Entity normalizedEntity = this.entityNormalizer.normalize(tenantId, request);
       java.util.Collection<Entity> existingEntityCollection =
           getExistingEntities(tenantId, List.of(normalizedEntity));
+      if (entityRateLimiter.isRateLimited(
+          requestContext, existingEntityCollection, List.of(normalizedEntity))) {
+        responseObserver.onError(
+            Status.FAILED_PRECONDITION
+                .withDescription("Entities creation has reached the rate limit.")
+                .asRuntimeException());
+        return;
+      }
+
       String entityType = normalizedEntity.getEntityType();
       upsertEntity(
           tenantId,
@@ -155,6 +170,15 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                       entity -> this.entityNormalizer.getEntityDocKey(tenantId, entity),
                       Function.identity()));
       List<Entity> existingEntities = getExistingEntities(tenantId, entities.values());
+      if (entityRateLimiter.isRateLimited(
+          requestContext, existingEntities, new ArrayList<>(entities.values()))) {
+        responseObserver.onError(
+            Status.FAILED_PRECONDITION
+                .withDescription("Entities creation has reached the rate limit.")
+                .asRuntimeException());
+        return;
+      }
+
       upsertEntities(entities, entitiesCollection, responseObserver);
 
       this.entityCounterMetricSender.sendEntitiesMetrics(
@@ -188,22 +212,23 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         documentMap.put(key, doc);
       }
 
-      List<Entity> existingEntities =
-          Streams.stream(entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap))
-              .flatMap(
-                  document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
-              .map(Entity::toBuilder)
-              .map(builder -> builder.setTenantId(tenantId))
-              .map(Entity.Builder::build)
-              .collect(Collectors.toList());
+      List<Entity> existingEntities = getExistingEntities(tenantId, documentMap.keySet());
+      if (entityRateLimiter.isRateLimited(requestContext, existingEntities, updatedEntities)) {
+        responseObserver.onError(
+            Status.FAILED_PRECONDITION
+                .withDescription("Entities creation has reached the rate limit.")
+                .asRuntimeException());
+        return;
+      }
 
-      existingEntities.forEach(responseObserver::onNext);
-      responseObserver.onCompleted();
-
+      entitiesCollection.bulkUpsert(documentMap);
       this.entityCounterMetricSender.sendEntitiesMetrics(
           requestContext, existingEntities, updatedEntities);
       this.entityChangeEventGenerator.sendChangeNotification(
           requestContext, existingEntities, updatedEntities);
+
+      existingEntities.forEach(responseObserver::onNext);
+      responseObserver.onCompleted();
     } catch (IOException e) {
       LOG.error("Failed to bulk upsert entities", e);
       responseObserver.onError(e);
@@ -591,12 +616,22 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
               .map(Builder::build)
               .orElse(receivedEntity);
       try {
+        List<Entity> existingEntities =
+            existingEntity.map(List::of).orElse(Collections.emptyList());
+        if (entityRateLimiter.isRateLimited(
+            requestContext, existingEntities, List.of(entityToUpsert))) {
+          responseObserver.onError(
+              Status.FAILED_PRECONDITION
+                  .withDescription("Entities creation has reached the rate limit.")
+                  .asRuntimeException());
+          return;
+        }
+
         Entity upsertedEntity = this.upsertEntity(tenantId, entityToUpsert);
         responseObserver.onNext(
             MergeAndUpsertEntityResponse.newBuilder().setEntity(upsertedEntity).build());
         responseObserver.onCompleted();
-        List<Entity> existingEntities =
-            existingEntity.map(List::of).orElse(Collections.emptyList());
+
         this.entityCounterMetricSender.sendEntitiesMetrics(
             requestContext,
             request.getEntity().getEntityType(),
@@ -752,6 +787,11 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       responseObserver.onNext((T) builder.build());
       responseObserver.onCompleted();
     }
+  }
+
+  private List<Entity> getExistingEntities(String tenantId, Set<Key> entityKeys) {
+    List<String> docIds = entityKeys.stream().map(Key::toString).collect(Collectors.toList());
+    return this.entityFetcher.getEntitiesByDocIds(tenantId, docIds);
   }
 
   private List<Entity> getExistingEntities(String tenantId, java.util.Collection<Entity> entities) {

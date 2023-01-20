@@ -18,6 +18,7 @@ import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl;
 import org.hypertrace.entity.metric.EntityCounterMetricSender;
 import org.hypertrace.entity.query.service.EntityQueryServiceImpl;
+import org.hypertrace.entity.rateLimiter.EntityRateLimiter;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorFactory;
 import org.hypertrace.entity.type.service.v2.EntityTypeServiceImpl;
@@ -49,11 +50,17 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
             .getChannelRegistry()
             .forName(grpcServiceContainerEnvironment.getInProcessChannelName());
     EntityCounterMetricSender entityCounterMetricSender = new EntityCounterMetricSender();
+    EntityRateLimiter entityRateLimiter =
+        new EntityRateLimiter(config, datastore, entityAttributeMapping);
     return Stream.of(
             new org.hypertrace.entity.type.service.EntityTypeServiceImpl(datastore),
             new EntityTypeServiceImpl(datastore),
             new EntityDataServiceImpl(
-                datastore, localChannel, entityChangeEventGenerator, entityCounterMetricSender),
+                datastore,
+                localChannel,
+                entityChangeEventGenerator,
+                entityCounterMetricSender,
+                entityRateLimiter),
             new EntityQueryServiceImpl(
                 datastore,
                 config,
