@@ -812,15 +812,13 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     } catch (final StatusException e) {
       LOG.warn(
           String.format(
-              "Error while bulk updating entities with request %s for %s",
-              request, tenantIdOptional.orElse("")),
+              "Error while bulk updating entities with request %s for %s", request, requestContext),
           e);
       responseObserver.onError(e);
     } catch (final Exception e) {
       LOG.warn(
           String.format(
-              "Error while bulk updating entities with request %s for %s",
-              request, tenantIdOptional.orElse("")),
+              "Error while bulk updating entities with request %s for %s", request, requestContext),
           e);
       responseObserver.onError(
           Status.INTERNAL
