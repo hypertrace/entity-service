@@ -3,11 +3,13 @@ package org.hypertrace.entity.rateLimiter;
 import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Lists;
 import com.typesafe.config.Config;
+import java.time.Clock;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -34,14 +36,19 @@ import org.hypertrace.entity.service.util.DocStoreConverter;
 public class EntityRateLimiter {
 
   private static final String DOT = ".";
+  private static final String CREATED_TIME_FIELD_NAME = "createdTime";
   private final org.hypertrace.core.documentstore.Collection entitiesCollection;
   private final LoadingCache<RateLimitKey, Long> windowEntitiesCount;
   private final LoadingCache<RateLimitKey, Long> globalEntitiesCount;
   private final EntityAttributeMapping entityAttributeMapping;
   private final EntityRateLimiterConfig entityRateLimiterConfig;
+  private final Clock clock;
 
   public EntityRateLimiter(
-      Config config, Datastore datastore, EntityAttributeMapping entityAttributeMapping) {
+      Config config,
+      Datastore datastore,
+      EntityAttributeMapping entityAttributeMapping,
+      Clock clock) {
     this.entityRateLimiterConfig = new EntityRateLimiterConfig(config);
     this.entitiesCollection = datastore.getCollection(RAW_ENTITIES_COLLECTION);
     this.entityAttributeMapping = entityAttributeMapping;
@@ -53,7 +60,7 @@ public class EntityRateLimiter {
             .expireAfterWrite(windowRateLimiterCacheConfig.getExpiryDuration())
             .maximumSize(windowRateLimiterCacheConfig.getMaxSize())
             .recordStats()
-            .build(CacheLoader.from(this::loadTimeRangeBasedEntitiesCount));
+            .build(CacheLoader.from(this::loadWindowEntitiesCount));
     EntityRateLimiterCacheConfig globalRateLimiterCacheConfig =
         entityRateLimiterConfig.getGlobalRateLimiterCacheConfig();
     this.globalEntitiesCount =
@@ -63,11 +70,42 @@ public class EntityRateLimiter {
             .maximumSize(globalRateLimiterCacheConfig.getMaxSize())
             .recordStats()
             .build(CacheLoader.from(this::loadGlobalEntitiesCount));
+    this.clock = clock;
 
     PlatformMetricsRegistry.registerCache(
         this.getClass().getName() + DOT + "entitiesCount",
         globalEntitiesCount,
         Collections.emptyMap());
+  }
+
+  @VisibleForTesting
+  EntityRateLimiter(
+      org.hypertrace.core.documentstore.Collection entitiesCollection,
+      EntityAttributeMapping entityAttributeMapping,
+      EntityRateLimiterConfig entityRateLimiterConfig,
+      Clock clock) {
+    this.entitiesCollection = entitiesCollection;
+    EntityRateLimiterCacheConfig windowRateLimiterCacheConfig =
+        entityRateLimiterConfig.getWindowRateLimiterCacheConfig();
+    this.windowEntitiesCount =
+        CacheBuilder.newBuilder()
+            .refreshAfterWrite(windowRateLimiterCacheConfig.getRefreshDuration())
+            .expireAfterWrite(windowRateLimiterCacheConfig.getExpiryDuration())
+            .maximumSize(windowRateLimiterCacheConfig.getMaxSize())
+            .recordStats()
+            .build(CacheLoader.from(this::loadWindowEntitiesCount));
+    EntityRateLimiterCacheConfig globalRateLimiterCacheConfig =
+        entityRateLimiterConfig.getGlobalRateLimiterCacheConfig();
+    this.globalEntitiesCount =
+        CacheBuilder.newBuilder()
+            .refreshAfterWrite(globalRateLimiterCacheConfig.getRefreshDuration())
+            .expireAfterWrite(globalRateLimiterCacheConfig.getExpiryDuration())
+            .maximumSize(globalRateLimiterCacheConfig.getMaxSize())
+            .recordStats()
+            .build(CacheLoader.from(this::loadGlobalEntitiesCount));
+    this.entityAttributeMapping = entityAttributeMapping;
+    this.entityRateLimiterConfig = entityRateLimiterConfig;
+    this.clock = clock;
   }
 
   public boolean isRateLimited(
@@ -92,82 +130,22 @@ public class EntityRateLimiter {
   }
 
   private Long loadGlobalEntitiesCount(RateLimitKey rateLimitKey) {
-    List<AttributeFilter> childFilters =
-        Lists.newArrayList(
-            AttributeFilter.newBuilder()
-                .setName("attributes.api_discovery_state")
-                .setOperator(Operator.NEQ)
-                .setAttributeValue(
-                    AttributeValue.newBuilder()
-                        .setValue(
-                            org.hypertrace.entity.data.service.v1.Value.newBuilder()
-                                .setString("MERGED")
-                                .build())
-                        .build())
-                .build());
+    Optional<AttributeFilter> defaultAttributeFilter =
+        this.entityRateLimiterConfig.getDefaultAttributeFilter(rateLimitKey.getEntityType());
 
+    List<AttributeFilter> childFilters = Lists.newArrayList();
+    defaultAttributeFilter.ifPresent(childFilters::add);
     addEnvironmentFilter(rateLimitKey, childFilters);
-    org.hypertrace.core.documentstore.Query query =
-        DocStoreConverter.transform(
-            rateLimitKey.getTenantId(),
-            org.hypertrace.entity.data.service.v1.Query.newBuilder()
-                .setFilter(
-                    AttributeFilter.newBuilder()
-                        .setOperator(Operator.AND)
-                        .addAllChildFilter(childFilters)
-                        .build())
-                .setEntityType(rateLimitKey.getEntityType())
-                .build(),
-            Collections.emptyList());
-
-    long total = entitiesCollection.total(query);
-    log.info("Global entities count query {} {} {}", rateLimitKey, query, total);
-    return total;
+    return entitiesCollection.total(
+        buildQuery(rateLimitKey.getTenantId(), rateLimitKey.getEntityType(), childFilters));
   }
 
-  private void addEnvironmentFilter(RateLimitKey rateLimitKey, List<AttributeFilter> childFilters) {
-    Optional<String> environmentAttributeId =
-        this.entityRateLimiterConfig.getEnvironmentAttributeId(rateLimitKey.getEntityType());
-    if (environmentAttributeId.isPresent()) {
-      Optional<AttributeMetadataIdentifier> attributeMetadata =
-          this.entityAttributeMapping.getAttributeMetadataByAttributeId(
-              RequestContext.forTenantId(rateLimitKey.getTenantId()), environmentAttributeId.get());
-      if (attributeMetadata.isPresent() && rateLimitKey.getEnvironment().isPresent()) {
-        childFilters.add(
-            AttributeFilter.newBuilder()
-                .setName(attributeMetadata.get().getDocStorePath())
-                .setOperator(Operator.EQ)
-                .setAttributeValue(
-                    AttributeValue.newBuilder()
-                        .setValue(
-                            org.hypertrace.entity.data.service.v1.Value.newBuilder()
-                                .setString(rateLimitKey.getEnvironment().get())
-                                .build())
-                        .build())
-                .build());
-      }
-    }
-  }
-
-  private Long loadTimeRangeBasedEntitiesCount(RateLimitKey rateLimitKey) {
-    long timestamp =
-        System.currentTimeMillis() - entityRateLimiterConfig.getWindowDuration().toMillis();
-
+  private Long loadWindowEntitiesCount(RateLimitKey rateLimitKey) {
+    long timestamp = this.clock.millis() - entityRateLimiterConfig.getWindowDuration().toMillis();
     List<AttributeFilter> childFilters =
         Lists.newArrayList(
             AttributeFilter.newBuilder()
-                .setName("attributes.api_discovery_state")
-                .setOperator(Operator.NEQ)
-                .setAttributeValue(
-                    AttributeValue.newBuilder()
-                        .setValue(
-                            org.hypertrace.entity.data.service.v1.Value.newBuilder()
-                                .setString("MERGED")
-                                .build())
-                        .build())
-                .build(),
-            AttributeFilter.newBuilder()
-                .setName("createdTime")
+                .setName(CREATED_TIME_FIELD_NAME)
                 .setOperator(Operator.GT)
                 .setAttributeValue(
                     AttributeValue.newBuilder()
@@ -177,24 +155,13 @@ public class EntityRateLimiter {
                                 .build())
                         .build())
                 .build());
+
+    Optional<AttributeFilter> defaultAttributeFilter =
+        this.entityRateLimiterConfig.getDefaultAttributeFilter(rateLimitKey.getEntityType());
+    defaultAttributeFilter.ifPresent(childFilters::add);
     addEnvironmentFilter(rateLimitKey, childFilters);
-
-    org.hypertrace.core.documentstore.Query query =
-        DocStoreConverter.transform(
-            rateLimitKey.getTenantId(),
-            org.hypertrace.entity.data.service.v1.Query.newBuilder()
-                .setFilter(
-                    AttributeFilter.newBuilder()
-                        .setOperator(Operator.AND)
-                        .addAllChildFilter(childFilters)
-                        .build())
-                .setEntityType(rateLimitKey.getEntityType())
-                .build(),
-            Collections.emptyList());
-
-    long total = entitiesCollection.total(query);
-    log.info("Time range entities count query {} {} {}", rateLimitKey, query, total);
-    return total;
+    return entitiesCollection.total(
+        buildQuery(rateLimitKey.getTenantId(), rateLimitKey.getEntityType(), childFilters));
   }
 
   private boolean evaluateLimits(
@@ -226,14 +193,9 @@ public class EntityRateLimiter {
       boolean isGlobalEntitiesLimitBreached =
           rateLimitConfig.get().getGlobalEntitiesLimit() < (globalCount + entities.size());
       boolean isTimeRangeLimitBreached =
-          rateLimitConfig.get().getTimeRangeEntitiesLimit() < (windowEntitiesCount + entities.size());
-      if (isGlobalEntitiesLimitBreached) {
-        log.info("Global limit breached");
-      }
+          rateLimitConfig.get().getTimeRangeEntitiesLimit()
+              < (windowEntitiesCount + entities.size());
 
-      if (isTimeRangeLimitBreached) {
-        log.info("Time Range Limit breached");
-      }
       return isGlobalEntitiesLimitBreached || isTimeRangeLimitBreached;
     } catch (ExecutionException e) {
       log.error("Error while evaluating rate limits {}", requestContext, e);
@@ -241,10 +203,48 @@ public class EntityRateLimiter {
     return false;
   }
 
+  private org.hypertrace.core.documentstore.Query buildQuery(
+      String tenantId, String entityType, List<AttributeFilter> filters) {
+    return DocStoreConverter.transform(
+        tenantId,
+        org.hypertrace.entity.data.service.v1.Query.newBuilder()
+            .setFilter(
+                AttributeFilter.newBuilder()
+                    .setOperator(Operator.AND)
+                    .addAllChildFilter(filters)
+                    .build())
+            .setEntityType(entityType)
+            .build(),
+        Collections.emptyList());
+  }
+
+  private void addEnvironmentFilter(RateLimitKey rateLimitKey, List<AttributeFilter> childFilters) {
+    Optional<String> environmentAttributeId =
+        this.entityRateLimiterConfig.getEnvironmentAttributeId(rateLimitKey.getEntityType());
+    if (environmentAttributeId.isPresent()) {
+      Optional<AttributeMetadataIdentifier> attributeMetadata =
+          this.entityAttributeMapping.getAttributeMetadataByAttributeId(
+              RequestContext.forTenantId(rateLimitKey.getTenantId()), environmentAttributeId.get());
+      if (attributeMetadata.isPresent() && rateLimitKey.getEnvironment().isPresent()) {
+        childFilters.add(
+            AttributeFilter.newBuilder()
+                .setName(attributeMetadata.get().getDocStorePath())
+                .setOperator(Operator.EQ)
+                .setAttributeValue(
+                    AttributeValue.newBuilder()
+                        .setValue(
+                            org.hypertrace.entity.data.service.v1.Value.newBuilder()
+                                .setString(rateLimitKey.getEnvironment().get())
+                                .build())
+                        .build())
+                .build());
+      }
+    }
+  }
+
   private Optional<String> getEnvironment(RequestContext requestContext, Entity entity) {
     Optional<String> environmentAttributeId =
-        this.entityRateLimiterConfig.getEnvironmentAttributeId(
-        entity.getEntityType());
+        this.entityRateLimiterConfig.getEnvironmentAttributeId(entity.getEntityType());
     if (environmentAttributeId.isEmpty()) {
       return Optional.empty();
     }

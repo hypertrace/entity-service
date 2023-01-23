@@ -125,7 +125,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       if (entityRateLimiter.isRateLimited(
           requestContext, existingEntityCollection, List.of(normalizedEntity))) {
         responseObserver.onError(
-            Status.FAILED_PRECONDITION
+            Status.RESOURCE_EXHAUSTED
                 .withDescription("Entities creation has reached the rate limit.")
                 .asRuntimeException());
         return;
@@ -173,7 +173,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       if (entityRateLimiter.isRateLimited(
           requestContext, existingEntities, new ArrayList<>(entities.values()))) {
         responseObserver.onError(
-            Status.FAILED_PRECONDITION
+            Status.RESOURCE_EXHAUSTED
                 .withDescription("Entities creation has reached the rate limit.")
                 .asRuntimeException());
         return;
@@ -215,7 +215,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       List<Entity> existingEntities = getExistingEntities(tenantId, documentMap.keySet());
       if (entityRateLimiter.isRateLimited(requestContext, existingEntities, updatedEntities)) {
         responseObserver.onError(
-            Status.FAILED_PRECONDITION
+            Status.RESOURCE_EXHAUSTED
                 .withDescription("Entities creation has reached the rate limit.")
                 .asRuntimeException());
         return;
@@ -621,7 +621,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         if (entityRateLimiter.isRateLimited(
             requestContext, existingEntities, List.of(entityToUpsert))) {
           responseObserver.onError(
-              Status.FAILED_PRECONDITION
+              Status.RESOURCE_EXHAUSTED
                   .withDescription("Entities creation has reached the rate limit.")
                   .asRuntimeException());
           return;

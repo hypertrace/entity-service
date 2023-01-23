@@ -51,7 +51,7 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
             .forName(grpcServiceContainerEnvironment.getInProcessChannelName());
     EntityCounterMetricSender entityCounterMetricSender = new EntityCounterMetricSender();
     EntityRateLimiter entityRateLimiter =
-        new EntityRateLimiter(config, datastore, entityAttributeMapping);
+        new EntityRateLimiter(config, datastore, entityAttributeMapping, Clock.systemUTC());
     return Stream.of(
             new org.hypertrace.entity.type.service.EntityTypeServiceImpl(datastore),
             new EntityTypeServiceImpl(datastore),
