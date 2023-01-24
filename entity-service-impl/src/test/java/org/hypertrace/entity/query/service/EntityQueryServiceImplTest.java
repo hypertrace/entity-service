@@ -1,5 +1,6 @@
 package org.hypertrace.entity.query.service;
 
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING;
 import static org.hypertrace.core.documentstore.expression.impl.LogicalExpression.and;
 import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
 import static org.hypertrace.entity.TestUtils.convertToCloseableIterator;
@@ -1206,6 +1207,8 @@ public class EntityQueryServiceImplTest {
   }
 
   private EntityAttributeMapping mockMappingForAttributes() {
+    when(mockAttributeMapping.getAttributeKind(requestContext, API_ID))
+        .thenReturn(Optional.of(TYPE_STRING));
     return when(this.mockMappingForAttribute1()
             .getDocStorePathByAttributeId(requestContext, API_ID))
         .thenReturn(Optional.of(EDS_API_ID_COLUMN_NAME))
@@ -1213,12 +1216,17 @@ public class EntityQueryServiceImplTest {
   }
 
   private EntityAttributeMapping mockMappingForAttribute1() {
+    when(mockAttributeMapping.getAttributeKind(requestContext, ATTRIBUTE_ID1))
+        .thenReturn(Optional.of(TYPE_STRING));
+    when(mockAttributeMapping.isMultiValued(TYPE_STRING)).thenReturn(false);
     return when(mockAttributeMapping.getDocStorePathByAttributeId(requestContext, ATTRIBUTE_ID1))
         .thenReturn(Optional.of(EDS_COLUMN_NAME1))
         .getMock();
   }
 
   private EntityAttributeMapping mockMappingForAttributes1And2() {
+    when(mockAttributeMapping.getAttributeKind(requestContext, ATTRIBUTE_ID2))
+        .thenReturn(Optional.of(TYPE_STRING));
     return when(this.mockMappingForAttribute1()
             .getDocStorePathByAttributeId(requestContext, ATTRIBUTE_ID2))
         .thenReturn(Optional.of(EDS_COLUMN_NAME2))

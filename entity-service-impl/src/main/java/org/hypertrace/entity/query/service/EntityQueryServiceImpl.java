@@ -22,6 +22,7 @@ import com.google.inject.TypeLiteral;
 import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
 import io.grpc.Status;
+import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -808,18 +809,27 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       final BulkUpdateAllMatchingFilterResponse response = doBulkUpdate(request, requestContext);
       responseObserver.onNext(response);
       responseObserver.onCompleted();
+    } catch (final StatusException e) {
+      LOG.warn(
+          String.format(
+              "Error while bulk updating entities with request %s for %s", request, requestContext),
+          e);
+      responseObserver.onError(e);
     } catch (final Exception e) {
-      LOG.error("Error while bulk updating entities for " + tenantIdOptional.orElse(""), e);
+      LOG.warn(
+          String.format(
+              "Error while bulk updating entities with request %s for %s", request, requestContext),
+          e);
       responseObserver.onError(
           Status.INTERNAL
               .withDescription("Error while bulk updating entities")
-              .asRuntimeException());
+              .asRuntimeException(requestContext.buildTrailers()));
     }
   }
 
   private BulkUpdateAllMatchingFilterResponse doBulkUpdate(
       final BulkUpdateAllMatchingFilterRequest request, final RequestContext requestContext)
-      throws ConversionException, IOException {
+      throws ConversionException, IOException, StatusException {
     final BulkUpdateAllMatchingFilterResponse.Builder responseBuilder =
         BulkUpdateAllMatchingFilterResponse.newBuilder();
     final String entityType = request.getEntityType();
@@ -941,15 +951,22 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   private List<SubDocumentUpdate> convertUpdates(
       final RequestContext requestContext, final List<AttributeUpdateOperation> updateOperations)
-      throws ConversionException {
+      throws StatusException {
     final List<SubDocumentUpdate> updates = new ArrayList<>();
     final Converter<AttributeUpdateOperation, SubDocumentUpdate> updateConverter =
         getUpdateConverter();
 
-    for (final AttributeUpdateOperation operation : updateOperations) {
-      final SubDocumentUpdate convert = updateConverter.convert(operation, requestContext);
-      updates.add(convert);
+    try {
+      for (final AttributeUpdateOperation operation : updateOperations) {
+        final SubDocumentUpdate convert = updateConverter.convert(operation, requestContext);
+        updates.add(convert);
+      }
+    } catch (final ConversionException e) {
+      throw Status.INVALID_ARGUMENT
+          .withDescription("Could not convert update request: " + e.getMessage())
+          .asException(requestContext.buildTrailers());
     }
+
     return unmodifiableList(updates);
   }
 
