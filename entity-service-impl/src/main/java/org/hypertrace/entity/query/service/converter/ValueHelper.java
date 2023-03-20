@@ -346,7 +346,8 @@ public class ValueHelper {
 
   private JSONDocument convertToDocument(final Value value) throws ConversionException {
     try {
-      return new JSONDocument(PRINTER.print(LiteralConstant.newBuilder().setValue(value)));
+      return new JSONDocument(
+          PRINTER.print(LiteralConstant.newBuilder().setValue(value.toBuilder().clearValueType())));
     } catch (final IOException e) {
       throw new ConversionException(e.getMessage(), e);
     }
