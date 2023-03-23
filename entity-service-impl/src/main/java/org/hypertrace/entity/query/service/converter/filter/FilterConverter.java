@@ -28,10 +28,10 @@ public class FilterConverter implements Converter<EntityQueryRequest, Filter> {
     } else {
       final Converter<org.hypertrace.entity.query.service.v1.Filter, ? extends FilterTypeExpression>
           filterConverter = filterConverterFactory.getFilterConverter(filter.getOperator());
-      final FilterTypeExpression filteringExpression =
+      final FilterTypeExpression filterTypeExpression =
           filterConverter.convert(filter, requestContext);
       allFilters =
-          extraFiltersApplier.addExtraFilters(filteringExpression, request, requestContext);
+          extraFiltersApplier.addExtraFilters(filterTypeExpression, request, requestContext);
     }
 
     return Filter.builder().expression(allFilters).build();

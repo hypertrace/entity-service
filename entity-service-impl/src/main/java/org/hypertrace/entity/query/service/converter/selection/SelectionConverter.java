@@ -48,10 +48,10 @@ public class SelectionConverter implements Converter<List<Expression>, Selection
         selectionFactory.getConverter(valueCase);
     final AliasProvider<T> aliasProvider = selectionFactory.getAliasProvider(valueCase);
 
-    final SelectTypeExpression selectingExpression =
+    final SelectTypeExpression selectTypeExpression =
         converter.convert(innerExpression, requestContext);
     final String alias = aliasProvider.getAlias(innerExpression);
 
-    return SelectionSpec.of(selectingExpression, alias);
+    return SelectionSpec.of(selectTypeExpression, alias);
   }
 }
