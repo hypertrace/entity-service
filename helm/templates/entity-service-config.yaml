@@ -37,22 +37,22 @@ data:
       }
     }
   {{- if .Values.attributes }}
-  entity.service.attributeMap = [
+    entity.service.attributeMap = [
   {{- range $i, $v := .Values.attributes }}
   {{- if gt $i 0 }},{{- end}}
-  {
-    "scope": {{ $v.scope | quote }},
-    "name": {{ $v.name | quote }},
-    "subDocPath": {{ $v.subDocPath | quote }}
-  }
+      {
+        "scope": {{ $v.scope | quote }},
+        "name": {{ $v.name | quote }},
+        "subDocPath": {{ $v.subDocPath | quote }}
+      }
   {{- end }}
   {{- range $i, $v := .Values.extraAttributes }}
   {{- if or ($.Values.attributes) (gt $i 0) }},{{- end}}
-  {
-    "scope": {{ $v.scope | quote }},
-    "name": {{ $v.name | quote }},
-    "subDocPath": {{ $v.subDocPath | quote }}
-  }
+      {
+        "scope": {{ $v.scope | quote }},
+        "name": {{ $v.name | quote }},
+        "subDocPath": {{ $v.subDocPath | quote }}
+      }
   {{- end }}
-]
+    ]
   {{- end -}}
