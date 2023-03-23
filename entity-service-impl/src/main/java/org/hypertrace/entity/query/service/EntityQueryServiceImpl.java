@@ -208,12 +208,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
         queryConverter = getQueryConverter();
     final org.hypertrace.core.documentstore.query.Query query;
-    final Iterator<Document> documentIterator;
+    final CloseableIterator<Document> documentIterator;
 
     try {
       query = queryConverter.convert(request, requestContext);
       documentIterator = entitiesCollection.aggregate(query);
-      streamResponse(request, responseObserver, requestContext, documentIterator);
+      streamResponse(request, responseObserver, documentIterator);
     } catch (Exception ex) {
       LOG.error("Error while executing entity query request ", ex);
       responseObserver.onError(new ServiceException(ex));
@@ -223,8 +223,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private void streamResponse(
       final EntityQueryRequest request,
       final StreamObserver<ResultSetChunk> responseObserver,
-      final RequestContext requestContext,
-      final Iterator<Document> documentIterator)
+      final CloseableIterator<Document> documentIterator)
       throws ConversionException {
     final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
     ResultSetMetadata resultSetMetadata =
