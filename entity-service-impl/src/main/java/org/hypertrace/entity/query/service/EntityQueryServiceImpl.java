@@ -8,13 +8,10 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
 import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
-import static org.hypertrace.entity.attribute.translator.EntityAttributeMapping.ENTITY_ATTRIBUTE_DOC_PREFIX;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
-import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -85,7 +82,6 @@ import org.hypertrace.entity.query.service.v1.EntityQueryRequest;
 import org.hypertrace.entity.query.service.v1.EntityQueryServiceGrpc.EntityQueryServiceImplBase;
 import org.hypertrace.entity.query.service.v1.EntityUpdateRequest;
 import org.hypertrace.entity.query.service.v1.Expression;
-import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
 import org.hypertrace.entity.query.service.v1.Function;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.ResultSetChunk;
@@ -99,7 +95,6 @@ import org.hypertrace.entity.query.service.v1.UpdateOperation;
 import org.hypertrace.entity.query.service.v1.UpdateSummary;
 import org.hypertrace.entity.query.service.v1.UpdatedEntity;
 import org.hypertrace.entity.query.service.v1.Value;
-import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.constants.EntityServiceConstants;
 import org.hypertrace.entity.service.util.DocStoreConverter;
@@ -115,8 +110,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final Printer PRINTER = DocStoreJsonFormat.printer().includingDefaultValueFields();
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
-  private static final String QUERY_AGGREGATION_ENABLED_CONFIG =
-      "entity.service.config.query.aggregation.enabled";
   private static final String ENTITY_IDS_DELETE_LIMIT_CONFIG = "entity.delete.limit";
 
   private static final int DEFAULT_CHUNK_SIZE = 10_000;
@@ -137,7 +130,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final EntityAttributeMapping entityAttributeMapping;
   private final int CHUNK_SIZE;
   private final Injector injector;
-  private final boolean queryAggregationEnabled;
   private final int maxEntitiesToDelete;
   private final EntityFetcher entityFetcher;
   private final EntityChangeEventGenerator entityChangeEventGenerator;
@@ -159,8 +151,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),
-        config.hasPath(QUERY_AGGREGATION_ENABLED_CONFIG)
-            && config.getBoolean(QUERY_AGGREGATION_ENABLED_CONFIG),
         config.hasPath(ENTITY_IDS_DELETE_LIMIT_CONFIG)
             ? config.getInt(ENTITY_IDS_DELETE_LIMIT_CONFIG)
             : 10000);
@@ -173,7 +163,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
       EntityCounterMetricSender entityCounterMetricSender,
       int chunkSize,
-      boolean queryAggregationEnabled,
       int maxEntitiesToDelete) {
     this(
         entitiesCollection,
@@ -183,11 +172,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         entityCounterMetricSender,
         new EntityFetcher(entitiesCollection, DOCUMENT_PARSER),
         chunkSize,
-        queryAggregationEnabled,
         maxEntitiesToDelete);
   }
 
-  @VisibleForTesting
   EntityQueryServiceImpl(
       Collection entitiesCollection,
       EntityAttributeMapping entityAttributeMapping,
@@ -196,14 +183,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityCounterMetricSender entityCounterMetricSender,
       EntityFetcher entityFetcher,
       int chunkSize,
-      boolean queryAggregationEnabled,
       int maxEntitiesToDelete) {
     this.entitiesCollection = entitiesCollection;
     this.entityAttributeMapping = entityAttributeMapping;
     this.entityQueryConverter = new EntityQueryConverter(entityAttributeMapping);
     this.CHUNK_SIZE = chunkSize;
     this.injector = Guice.createInjector(new ConverterModule(entityAttributeMapping));
-    this.queryAggregationEnabled = queryAggregationEnabled;
     this.maxEntitiesToDelete = maxEntitiesToDelete;
     this.entityChangeEventGenerator = entityChangeEventGenerator;
     this.entityFetcher = entityFetcher;
@@ -220,8 +205,15 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
-    try (CloseableIterator<Document> documentIterator = searchDocuments(requestContext, request)) {
-      streamResponse(request, responseObserver, requestContext, documentIterator);
+    final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
+        queryConverter = getQueryConverter();
+    final org.hypertrace.core.documentstore.query.Query query;
+    final CloseableIterator<Document> documentIterator;
+
+    try {
+      query = queryConverter.convert(request, requestContext);
+      documentIterator = entitiesCollection.aggregate(query);
+      streamResponse(request, responseObserver, documentIterator);
     } catch (Exception ex) {
       LOG.error("Error while executing entity query request ", ex);
       responseObserver.onError(new ServiceException(ex));
@@ -231,12 +223,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private void streamResponse(
       final EntityQueryRequest request,
       final StreamObserver<ResultSetChunk> responseObserver,
-      final RequestContext requestContext,
       final CloseableIterator<Document> documentIterator)
       throws ConversionException {
     final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
-    ResultSetMetadata resultSetMetadata;
-    resultSetMetadata = this.buildMetadataForSelections(request.getSelectionList());
+    ResultSetMetadata resultSetMetadata =
+        this.buildMetadataForSelections(request.getSelectionList());
 
     if (!documentIterator.hasNext()) {
       ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
@@ -259,17 +250,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       }
 
       try {
-        Optional<Row> row =
-            convertToRow(
-                requestContext,
-                documentIterator.next(),
-                resultSetMetadata,
-                rowConverter,
-                request.getSelectionList());
-        if (row.isPresent()) {
-          resultBuilder.addRow(row.get());
-          rowCount++;
-        }
+        final Row row = rowConverter.convertToRow(documentIterator.next(), resultSetMetadata);
+        resultBuilder.addRow(row);
+        rowCount++;
       } catch (final Exception e) {
         responseObserver.onError(new ServiceException(e));
         return;
@@ -286,58 +269,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       }
     }
     responseObserver.onCompleted();
-  }
-
-  private Optional<Row> convertToRow(
-      RequestContext requestContext,
-      Document document,
-      ResultSetMetadata resultSetMetadata,
-      DocumentConverter rowConverter,
-      List<Expression> selectionList)
-      throws ConversionException {
-    final Row row;
-    if (queryAggregationEnabled) {
-      row = rowConverter.convertToRow(document, resultSetMetadata);
-      return Optional.of(row);
-    } else {
-      Optional<Entity> entity = DOCUMENT_PARSER.parseOrLog(document, Entity.newBuilder());
-
-      if (entity.isPresent()) {
-        row = convertToEntityQueryResult(requestContext, entity.get(), selectionList);
-        return Optional.of(row);
-      }
-    }
-    return Optional.empty();
-  }
-
-  private CloseableIterator<Document> searchDocuments(
-      RequestContext requestContext, EntityQueryRequest request) throws ConversionException {
-    final CloseableIterator<Document> documentIterator;
-    if (queryAggregationEnabled) {
-      final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
-          queryConverter = getQueryConverter();
-      final org.hypertrace.core.documentstore.query.Query query;
-
-      query = queryConverter.convert(request, requestContext);
-      documentIterator = entitiesCollection.aggregate(query);
-    } else {
-      // TODO: Optimize this later. For now converting to EDS Query and then again to DocStore
-      // Query.
-      Query query = entityQueryConverter.convertToEDSQuery(requestContext, request);
-      /**
-       * {@link EntityQueryRequest} selections need to treated differently, since they don't
-       * transform one to one to {@link org.hypertrace.entity.data.service.v1.EntityDataRequest}
-       * selections
-       */
-      List<String> docStoreSelections =
-          entityQueryConverter.convertSelectionsToDocStoreSelections(
-              requestContext, request.getSelectionList());
-      documentIterator =
-          entitiesCollection.search(
-              DocStoreConverter.transform(
-                  requestContext.getTenantId().orElseThrow(), query, docStoreSelections));
-    }
-    return documentIterator;
   }
 
   private ResultSetChunk convertDocumentsToResultSetChunk(
@@ -991,62 +922,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           .withDescription("Error while getting entity ids to delete")
           .asRuntimeException();
     }
-  }
-
-  @Deprecated(
-      since =
-          "Will be removed when Collection.find() and Collection.aggregate() are implemented for "
-              + "Postgres and the 'queryAggregationEnabled' helm-value is enabled",
-      forRemoval = true)
-  private Row convertToEntityQueryResult(
-      RequestContext requestContext, Entity entity, List<Expression> selections) {
-    Row.Builder result = Row.newBuilder();
-    selections.stream()
-        .filter(expression -> expression.getValueCase() == ValueCase.COLUMNIDENTIFIER)
-        .forEach(
-            expression -> {
-              String columnName = expression.getColumnIdentifier().getColumnName();
-              String edsSubDocPath =
-                  entityAttributeMapping
-                      .getDocStorePathByAttributeId(requestContext, columnName)
-                      .orElse(null);
-              if (edsSubDocPath != null) {
-                // Map the attr name to corresponding Attribute Key in EDS and get the EDS
-                // AttributeValue
-                if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_ID)) {
-                  result.addColumn(
-                      Value.newBuilder()
-                          .setValueType(STRING)
-                          .setString(entity.getEntityId())
-                          .build());
-                } else if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_NAME)) {
-                  result.addColumn(
-                      Value.newBuilder()
-                          .setValueType(STRING)
-                          .setString(entity.getEntityName())
-                          .build());
-                } else if (edsSubDocPath.equals(EntityServiceConstants.ENTITY_CREATED_TIME)) {
-                  result.addColumn(
-                      Value.newBuilder()
-                          .setValueType(ValueType.LONG)
-                          .setLong(entity.getCreatedTime())
-                          .build());
-                } else if (edsSubDocPath.startsWith(ENTITY_ATTRIBUTE_DOC_PREFIX)) {
-                  // Convert EDS AttributeValue to Gateway Value
-                  AttributeValue attributeValue =
-                      entity.getAttributesMap().get(edsSubDocPath.split("\\.")[1]);
-                  result.addColumn(
-                      EntityQueryConverter.convertAttributeValueToQueryValue(attributeValue));
-                } else {
-                  LOG.error(
-                      "Unable to add column {} for sub doc path {}", columnName, edsSubDocPath);
-                }
-              } else {
-                LOG.warn("columnName {} missing in attrNameToEDSAttrMap", columnName);
-                result.addColumn(Value.getDefaultInstance());
-              }
-            });
-    return result.build();
   }
 
   private ResultSetMetadata buildMetadataForSelections(List<Expression> selections)

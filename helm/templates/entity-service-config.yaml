@@ -19,7 +19,6 @@ data:
         }
       }
       publish.change.events = {{ .Values.entityServiceConfig.publishChangeEvents }}
-      query.aggregation.enabled = {{ .Values.entityServiceConfig.queryAggregationEnabled }}
     }
     entity.service.change = {
       enabled.entity.types = {{ .Values.entityServiceConfig.changeEnabledEntityTypes | toJson }}

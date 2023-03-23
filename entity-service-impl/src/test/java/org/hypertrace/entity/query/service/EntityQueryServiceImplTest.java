@@ -133,7 +133,6 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       entityFetcher,
                       1,
-                      false,
                       1000);
 
               eqs.update(null, mockResponseObserver);
@@ -162,7 +161,6 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       entityFetcher,
                       1,
-                      false,
                       1000);
 
               eqs.update(EntityUpdateRequest.newBuilder().build(), mockResponseObserver);
@@ -192,7 +190,6 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       entityFetcher,
                       1,
-                      false,
                       1000);
 
               eqs.update(
@@ -224,7 +221,6 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       entityFetcher,
                       1,
-                      false,
                       1000);
 
               eqs.update(
@@ -285,7 +281,6 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       entityFetcher,
                       1,
-                      false,
                       1000);
               eqs.update(updateRequest, mockResponseObserver);
               return null;
@@ -321,7 +316,6 @@ public class EntityQueryServiceImplTest {
                         new EntityCounterMetricSender(),
                         entityFetcher,
                         1,
-                        false,
                         1000);
 
                 eqs.bulkUpdate(null, mockResponseObserver);
@@ -351,7 +345,6 @@ public class EntityQueryServiceImplTest {
                         new EntityCounterMetricSender(),
                         entityFetcher,
                         1,
-                        false,
                         1000);
 
                 eqs.bulkUpdate(BulkEntityUpdateRequest.newBuilder().build(), mockResponseObserver);
@@ -381,7 +374,6 @@ public class EntityQueryServiceImplTest {
                         new EntityCounterMetricSender(),
                         entityFetcher,
                         1,
-                        false,
                         1000);
 
                 eqs.bulkUpdate(
@@ -420,7 +412,6 @@ public class EntityQueryServiceImplTest {
                         new EntityCounterMetricSender(),
                         entityFetcher,
                         1,
-                        false,
                         1000);
                 eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
                 return null;
@@ -465,7 +456,6 @@ public class EntityQueryServiceImplTest {
                         new EntityCounterMetricSender(),
                         entityFetcher,
                         1,
-                        false,
                         1000);
                 eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
                 return null;
@@ -504,7 +494,6 @@ public class EntityQueryServiceImplTest {
                         new EntityCounterMetricSender(),
                         entityFetcher,
                         1,
-                        false,
                         1000);
 
                 eqs.bulkUpdateAllMatchingFilter(null, mockResponseObserver);
@@ -536,7 +525,6 @@ public class EntityQueryServiceImplTest {
                         new EntityCounterMetricSender(),
                         entityFetcher,
                         1,
-                        false,
                         1000);
 
                 eqs.bulkUpdateAllMatchingFilter(
@@ -572,7 +560,6 @@ public class EntityQueryServiceImplTest {
                         new EntityCounterMetricSender(),
                         entityFetcher,
                         1,
-                        false,
                         1000);
                 eqs.bulkUpdateAllMatchingFilter(bulkUpdateRequest, mockResponseObserver);
 
@@ -666,7 +653,6 @@ public class EntityQueryServiceImplTest {
                         new EntityCounterMetricSender(),
                         entityFetcher,
                         1,
-                        false,
                         1000);
                 eqs.bulkUpdateAllMatchingFilter(bulkUpdateRequest, mockResponseObserver);
                 return null;
@@ -708,7 +694,6 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       entityFetcher,
                       1,
-                      false,
                       1000);
 
               eqs.execute(null, mockResponseObserver);
@@ -758,8 +743,6 @@ public class EntityQueryServiceImplTest {
             new JSONDocument("{\"entityId\": [1, 2]}"));
     when(mockEntitiesCollection.aggregate(any()))
         .thenReturn(convertToCloseableIterator(docs.iterator()));
-    when(mockEntitiesCollection.search(any()))
-        .thenReturn(convertToCloseableIterator(docs.iterator()));
     EntityQueryRequest request =
         EntityQueryRequest.newBuilder()
             .setEntityType(TEST_ENTITY_TYPE)
@@ -785,15 +768,13 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       1,
-                      false,
                       1000);
 
               eqs.execute(request, mockResponseObserver);
               return null;
             });
 
-    verify(mockEntitiesCollection, times(0)).aggregate(any());
-    verify(mockEntitiesCollection, times(1)).search(any());
+    verify(mockEntitiesCollection, times(1)).aggregate(any());
     verify(mockResponseObserver, times(3)).onNext(any());
     verify(mockResponseObserver, times(1)).onCompleted();
   }
@@ -851,9 +832,6 @@ public class EntityQueryServiceImplTest {
             new JSONDocument("{\"entityId\": [1, 2]}"));
     when(mockEntitiesCollection.aggregate(any()))
         .thenReturn(convertToCloseableIterator(docs.iterator()));
-    when(mockEntitiesCollection.search(any()))
-        .thenReturn(convertToCloseableIterator(docs.iterator()));
-
     EntityQueryRequest request =
         EntityQueryRequest.newBuilder()
             .setEntityType(TEST_ENTITY_TYPE)
@@ -879,15 +857,13 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       2,
-                      false,
                       1000);
 
               eqs.execute(request, mockResponseObserver);
               return null;
             });
 
-    verify(mockEntitiesCollection, times(0)).aggregate(any());
-    verify(mockEntitiesCollection, times(1)).search(any());
+    verify(mockEntitiesCollection, times(1)).aggregate(any());
     verify(mockResponseObserver, times(2)).onNext(any());
     verify(mockResponseObserver, times(1)).onCompleted();
   }
@@ -933,7 +909,6 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       entityFetcher,
                       1,
-                      false,
                       1000);
               eqs.bulkUpdateEntityArrayAttribute(request, mockResponseObserver);
               return null;
@@ -1005,7 +980,6 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       entityFetcher,
                       100,
-                      false,
                       1000);
 
               eqs.deleteEntities(request, mockResponseObserver);
@@ -1048,9 +1022,6 @@ public class EntityQueryServiceImplTest {
                     + "}"));
     when(mockEntitiesCollection.aggregate(any()))
         .thenReturn(convertToCloseableIterator(docs.iterator()));
-    when(mockEntitiesCollection.search(any()))
-        .thenReturn(convertToCloseableIterator(docs.iterator()));
-
     EntityQueryRequest request =
         EntityQueryRequest.newBuilder()
             .setEntityType(TEST_ENTITY_TYPE)
@@ -1080,7 +1051,6 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       entityFetcher,
                       100,
-                      false,
                       1000);
 
               eqs.execute(request, mockResponseObserver);
@@ -1126,7 +1096,6 @@ public class EntityQueryServiceImplTest {
               new EntityCounterMetricSender(),
               entityFetcher,
               1,
-              false,
               1000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
 
@@ -1171,7 +1140,6 @@ public class EntityQueryServiceImplTest {
               new EntityCounterMetricSender(),
               entityFetcher,
               1,
-              false,
               1000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
 

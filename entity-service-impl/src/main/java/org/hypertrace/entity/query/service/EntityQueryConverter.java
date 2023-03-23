@@ -3,11 +3,8 @@ package org.hypertrace.entity.query.service;
 import static java.util.stream.Collectors.toMap;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import lombok.Value;
@@ -51,124 +48,6 @@ class EntityQueryConverter {
     queryBuilder.setOffset(queryRequest.getOffset());
 
     return queryBuilder.build();
-  }
-
-  @Deprecated(
-      since =
-          "Will be removed when Collection.find() and Collection.aggregate() are implemented for Postgres and the 'queryAggregationEnabled' helm-value is enabled",
-      forRemoval = true)
-  public static org.hypertrace.entity.query.service.v1.Value convertAttributeValueToQueryValue(
-      AttributeValue attributeValue) {
-    if (attributeValue == null) {
-      return org.hypertrace.entity.query.service.v1.Value.getDefaultInstance();
-    }
-    switch (attributeValue.getTypeCase()) {
-      case VALUE:
-        return convertValueToQueryValue(attributeValue.getValue());
-      case VALUE_LIST:
-        // TODO for now converting everything to string array
-        return org.hypertrace.entity.query.service.v1.Value.newBuilder()
-            .setValueType(ValueType.STRING_ARRAY)
-            .addAllStringArray(
-                attributeValue.getValueList().getValuesList().stream()
-                    .map(EntityQueryConverter::toStringWithoutTypeInfo)
-                    .collect(Collectors.toList()))
-            .build();
-      case VALUE_MAP:
-        // TODO for now converting everything to string map
-        Map<String, String> map = new HashMap<>();
-        for (Map.Entry<String, AttributeValue> entry :
-            attributeValue.getValueMap().getValuesMap().entrySet()) {
-          map.put(entry.getKey(), toStringWithoutTypeInfo(entry.getValue()));
-        }
-        return org.hypertrace.entity.query.service.v1.Value.newBuilder()
-            .setValueType(ValueType.STRING_MAP)
-            .putAllStringMap(map)
-            .build();
-      case TYPE_NOT_SET:
-      default:
-        return org.hypertrace.entity.query.service.v1.Value.getDefaultInstance();
-    }
-  }
-
-  @Deprecated(
-      since =
-          "Will be removed when Collection.find() and Collection.aggregate() are implemented for Postgres and the 'queryAggregationEnabled' helm-value is enabled",
-      forRemoval = true)
-  public List<String> convertSelectionsToDocStoreSelections(
-      RequestContext requestContext, List<Expression> expressions) {
-    if (expressions.isEmpty()) {
-      return Collections.emptyList();
-    }
-
-    List<String> result = new ArrayList<>();
-    for (Expression expression : expressions) {
-      if (expression.hasColumnIdentifier()) {
-        String docStoreColumnName =
-            getAttributeColumnInfo(requestContext, expression).getColumnName();
-        result.add(docStoreColumnName);
-      } else {
-        // entity data service and doc store only support field selection. There's no
-        // aggregate selection yet
-        throw new UnsupportedOperationException(
-            "Expression only support Column Identifier Expression");
-      }
-    }
-    return result;
-  }
-
-  @Deprecated(
-      since =
-          "Will be removed when Collection.find() and Collection.aggregate() are implemented for Postgres and the 'queryAggregationEnabled' helm-value is enabled",
-      forRemoval = true)
-  private static org.hypertrace.entity.query.service.v1.Value convertValueToQueryValue(
-      org.hypertrace.entity.data.service.v1.Value value) {
-    switch (value.getTypeCase()) {
-      case STRING:
-        return org.hypertrace.entity.query.service.v1.Value.newBuilder()
-            .setValueType(ValueType.STRING)
-            .setString(value.getString())
-            .build();
-      case BOOLEAN:
-        return org.hypertrace.entity.query.service.v1.Value.newBuilder()
-            .setValueType(ValueType.BOOL)
-            .setBoolean(value.getBoolean())
-            .build();
-      case INT:
-        return org.hypertrace.entity.query.service.v1.Value.newBuilder()
-            .setValueType(ValueType.INT)
-            .setInt(value.getInt())
-            .build();
-      case LONG:
-        return org.hypertrace.entity.query.service.v1.Value.newBuilder()
-            .setValueType(ValueType.LONG)
-            .setLong(value.getLong())
-            .build();
-      case FLOAT:
-        return org.hypertrace.entity.query.service.v1.Value.newBuilder()
-            .setValueType(ValueType.FLOAT)
-            .setFloat(value.getFloat())
-            .build();
-      case DOUBLE:
-        return org.hypertrace.entity.query.service.v1.Value.newBuilder()
-            .setValueType(ValueType.DOUBLE)
-            .setDouble(value.getDouble())
-            .build();
-      case BYTES:
-        return org.hypertrace.entity.query.service.v1.Value.newBuilder()
-            .setValueType(ValueType.BYTES)
-            .setBytes(value.getBytes())
-            .build();
-      case TIMESTAMP:
-        return org.hypertrace.entity.query.service.v1.Value.newBuilder()
-            .setValueType(ValueType.TIMESTAMP)
-            .setTimestamp(value.getTimestamp())
-            .build();
-      case TYPE_NOT_SET:
-      case CUSTOM:
-      default:
-        throw new IllegalStateException("Unexpected value: " + value.getTypeCase());
-    }
   }
 
   private AttributeFilter convertToAttributeFilter(
@@ -387,48 +266,6 @@ class EntityQueryConverter {
         throw new IllegalArgumentException(
             String.format("Attribute Key for expression:%s not found", expression));
     }
-  }
-
-  /**
-   * Method to return the String representation of the given attribute without including any type
-   * information.
-   */
-  @Deprecated(
-      since =
-          "Will be removed when Collection.find() and Collection.aggregate() are implemented for Postgres and the 'queryAggregationEnabled' helm-value is enabled",
-      forRemoval = true)
-  private static String toStringWithoutTypeInfo(AttributeValue value) {
-    switch (value.getTypeCase()) {
-      case VALUE:
-        org.hypertrace.entity.data.service.v1.Value inner = value.getValue();
-        switch (inner.getTypeCase()) {
-          case INT:
-            return String.valueOf(inner.getInt());
-          case LONG:
-            return String.valueOf(inner.getLong());
-          case FLOAT:
-            return String.valueOf(inner.getFloat());
-          case DOUBLE:
-            return String.valueOf(inner.getDouble());
-          case TIMESTAMP:
-            return String.valueOf(inner.getTimestamp());
-          case STRING:
-            return inner.getString();
-          case BYTES:
-            return String.valueOf(inner.getBytes());
-          case BOOLEAN:
-            return String.valueOf(inner.getBoolean());
-        }
-        throw new IllegalArgumentException("Unhandled type: " + inner.getTypeCase());
-
-      case VALUE_LIST:
-        String[] values = new String[value.getValueList().getValuesCount()];
-        for (int i = 0; i < value.getValueList().getValuesCount(); i++) {
-          values[i] = toStringWithoutTypeInfo(value.getValueList().getValues(i));
-        }
-        return Arrays.toString(values);
-    }
-    throw new IllegalArgumentException("Unhandled type: " + value.getTypeCase());
   }
 
   private List<org.hypertrace.entity.data.service.v1.OrderByExpression> convertOrderBy(
