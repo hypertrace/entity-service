@@ -102,7 +102,6 @@ import org.hypertrace.entity.v1.entitytype.EntityType;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -649,7 +648,6 @@ public class EntityQueryServiceTest {
   }
 
   @Test
-  @Disabled("Disabled until we enable querying based on the new Query DTO")
   void testExecuteWithEqualsArrayFilter() {
     String filterValue1 = generateRandomUUID();
     String filterValue2 = generateRandomUUID();
@@ -960,7 +958,6 @@ public class EntityQueryServiceTest {
   }
 
   @Test
-  @Disabled("Disabled until we enable querying based on the new Query DTO")
   void testExecuteWithAggregations() {
     // create and upsert some entities
     Entity entity1 =
