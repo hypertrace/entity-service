@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 import javax.inject.Inject;
 import lombok.AllArgsConstructor;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.UnnestExpression;
 import org.hypertrace.core.documentstore.expression.type.FromTypeExpression;
@@ -45,7 +46,9 @@ public class FromClauseConverter implements Converter<List<Expression>, List<Fro
     final ColumnIdentifier identifier =
         expressionAccessor.access(expression, expression.getValueCase(), Set.of(COLUMNIDENTIFIER));
 
-    if (!entityAttributeMapping.isMultiValued(requestContext, identifier.getColumnName())) {
+    final Optional<AttributeKind> attributeKind =
+        entityAttributeMapping.getAttributeKind(requestContext, identifier.getColumnName());
+    if (!(attributeKind.isPresent() && entityAttributeMapping.isArray(attributeKind.get()))) {
       return empty();
     }
 

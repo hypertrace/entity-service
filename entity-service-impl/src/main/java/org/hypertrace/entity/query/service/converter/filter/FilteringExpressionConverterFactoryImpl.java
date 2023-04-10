@@ -3,6 +3,9 @@ package org.hypertrace.entity.query.service.converter.filter;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.AllArgsConstructor;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
+import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.Value;
@@ -12,6 +15,7 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class FilteringExpressionConverterFactoryImpl
     implements FilteringExpressionConverterFactory {
+  private EntityAttributeMapping entityAttributeMapping;
   private NullFilteringExpressionConverter nullFilteringExpressionConverter;
   private PrimitiveFilteringExpressionConverter primitiveFilteringExpressionConverter;
   private ArrayFilteringExpressionConverter arrayFilteringExpressionConverter;
@@ -19,7 +23,9 @@ public class FilteringExpressionConverterFactoryImpl
   private ValueHelper valueHelper;
 
   @Override
-  public FilteringExpressionConverter getConverter(final Value value) throws ConversionException {
+  public FilteringExpressionConverter getConverter(
+      final String columnName, final Value value, final RequestContext context)
+      throws ConversionException {
     ValueType valueType = value.getValueType();
 
     // should always be first
@@ -27,15 +33,23 @@ public class FilteringExpressionConverterFactoryImpl
       return nullFilteringExpressionConverter;
     }
 
-    if (valueHelper.isPrimitive(valueType)) {
+    final AttributeKind attributeKind =
+        entityAttributeMapping
+            .getAttributeKind(context, columnName)
+            .orElseThrow(
+                () ->
+                    new ConversionException(
+                        String.format("Cannot find attribute kind for %s", columnName)));
+
+    if (entityAttributeMapping.isPrimitive(attributeKind)) {
       return primitiveFilteringExpressionConverter;
     }
 
-    if (valueHelper.isArray(valueType)) {
+    if (entityAttributeMapping.isArray(attributeKind)) {
       return arrayFilteringExpressionConverter;
     }
 
-    if (valueHelper.isMap(valueType)) {
+    if (entityAttributeMapping.isMap(attributeKind)) {
       return mapFilteringExpressionConverter;
     }
 

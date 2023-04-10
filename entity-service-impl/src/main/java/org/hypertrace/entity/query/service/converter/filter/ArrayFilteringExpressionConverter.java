@@ -34,7 +34,6 @@ public class ArrayFilteringExpressionConverter extends FilteringExpressionConver
 
   private final EntityAttributeMapping entityAttributeMapping;
   private final IdentifierConverterFactory identifierConverterFactory;
-  private final PrimitiveFilteringExpressionConverter primitiveFilteringExpressionConverter;
   private final OneOfAccessor<Value, ValueType> valueOneOfAccessor;
   private final ValueHelper valueHelper;
 
@@ -45,12 +44,6 @@ public class ArrayFilteringExpressionConverter extends FilteringExpressionConver
       final LiteralConstant constant,
       final RequestContext requestContext)
       throws ConversionException {
-
-    if (ARRAY_OPERATORS.contains(operator)) {
-      return primitiveFilteringExpressionConverter.convert(
-          columnIdentifier, operator, constant, requestContext);
-    }
-
     final String id = columnIdentifier.getColumnName();
     final String subDocPath = getSubDocPathById(entityAttributeMapping, id, requestContext);
     final Value value = constant.getValue();

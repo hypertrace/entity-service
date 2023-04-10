@@ -118,8 +118,7 @@ class UpdateConverterTest {
         .thenReturn(Optional.of("attributes.subDocPath"));
     when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
         .thenReturn(Optional.ofNullable(attributeKind));
-    when(mockEntityAttributeMapping.isMultiValued(attributeKind))
-        .thenReturn(valueType == STRING_ARRAY);
+    when(mockEntityAttributeMapping.isArray(attributeKind)).thenReturn(valueType == STRING_ARRAY);
     final SubDocumentUpdate result = updateConverter.convert(operation, requestContext);
     assertNotNull(result);
   }
@@ -169,7 +168,7 @@ class UpdateConverterTest {
     final RequestContext requestContext = new RequestContext();
     when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
         .thenReturn(Optional.of(TYPE_STRING_ARRAY));
-    when(mockEntityAttributeMapping.isMultiValued(TYPE_STRING_ARRAY)).thenReturn(true);
+    when(mockEntityAttributeMapping.isArray(TYPE_STRING_ARRAY)).thenReturn(true);
     assertThrows(
         ConversionException.class, () -> updateConverter.convert(operation, requestContext));
   }
@@ -188,7 +187,7 @@ class UpdateConverterTest {
     final RequestContext requestContext = new RequestContext();
     when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
         .thenReturn(Optional.of(TYPE_STRING));
-    when(mockEntityAttributeMapping.isMultiValued(TYPE_STRING)).thenReturn(false);
+    when(mockEntityAttributeMapping.isArray(TYPE_STRING)).thenReturn(false);
     assertThrows(
         ConversionException.class, () -> updateConverter.convert(operation, requestContext));
   }
@@ -208,7 +207,7 @@ class UpdateConverterTest {
     final RequestContext requestContext = new RequestContext();
     when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
         .thenReturn(Optional.of(TYPE_STRING));
-    when(mockEntityAttributeMapping.isMultiValued(TYPE_STRING)).thenReturn(false);
+    when(mockEntityAttributeMapping.isArray(TYPE_STRING)).thenReturn(false);
     assertThrows(
         ConversionException.class, () -> updateConverter.convert(operation, requestContext));
   }
@@ -229,7 +228,7 @@ class UpdateConverterTest {
     final RequestContext requestContext = new RequestContext();
     when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
         .thenReturn(Optional.of(TYPE_STRING));
-    when(mockEntityAttributeMapping.isMultiValued(TYPE_STRING)).thenReturn(false);
+    when(mockEntityAttributeMapping.isArray(TYPE_STRING)).thenReturn(false);
     assertThrows(
         ConversionException.class, () -> updateConverter.convert(operation, requestContext));
   }

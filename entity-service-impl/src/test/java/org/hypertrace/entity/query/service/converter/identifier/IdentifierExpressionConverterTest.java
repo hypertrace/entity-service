@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.quality.Strictness.LENIENT;
 
 import java.util.Optional;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
@@ -64,8 +65,9 @@ class IdentifierExpressionConverterTest {
     when(attributeMapping.getDocStorePathByAttributeId(
             requestContext, columnIdentifier.getColumnName()))
         .thenReturn(Optional.of("attributes.entity_name"));
-    when(attributeMapping.isMultiValued(requestContext, columnIdentifier.getColumnName()))
-        .thenReturn(true);
+    when(attributeMapping.getAttributeKind(requestContext, columnIdentifier.getColumnName()))
+        .thenReturn(Optional.of(AttributeKind.TYPE_BOOL));
+    when(attributeMapping.isArray(AttributeKind.TYPE_BOOL)).thenReturn(true);
     IdentifierExpression expected =
         IdentifierExpression.of("attributes.entity_name.valueList.values");
     assertEquals(expected, identifierExpressionConverter.convert(columnIdentifier, requestContext));

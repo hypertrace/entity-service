@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Optional;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.UnnestExpression;
 import org.hypertrace.core.documentstore.expression.type.FromTypeExpression;
@@ -49,9 +51,12 @@ class FromClauseConverterTest {
             Expression.newBuilder().setColumnIdentifier(col2).build());
 
     final RequestContext requestContext = new RequestContext();
-    when(mockEntityAttributeMapping.isMultiValued(eq(requestContext), eq("col1")))
-        .thenReturn(false);
-    when(mockEntityAttributeMapping.isMultiValued(eq(requestContext), eq("col2"))).thenReturn(true);
+    when(mockEntityAttributeMapping.getAttributeKind(eq(requestContext), eq("col1")))
+        .thenReturn(Optional.of(AttributeKind.TYPE_BOOL));
+    when(mockEntityAttributeMapping.getAttributeKind(eq(requestContext), eq("col2")))
+        .thenReturn(Optional.of(AttributeKind.TYPE_BOOL_ARRAY));
+    when(mockEntityAttributeMapping.isArray(AttributeKind.TYPE_BOOL)).thenReturn(false);
+    when(mockEntityAttributeMapping.isArray(AttributeKind.TYPE_BOOL_ARRAY)).thenReturn(true);
     when(mockIdentifierExpressionConverter.convert(col2, requestContext))
         .thenReturn(IdentifierExpression.of("name"));
 

@@ -104,7 +104,7 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
         entityAttributeMapping.getDocStorePathByAttributeId(context, id).orElseThrow();
     final String suffixedSubDocPath;
 
-    if (entityAttributeMapping.isMultiValued(attributeKind)) {
+    if (entityAttributeMapping.isArray(attributeKind)) {
       suffixedSubDocPath = DOT_JOINER.join(subDocPath, VALUE_LIST_KEY, VALUES_KEY);
     } else {
       suffixedSubDocPath = subDocPath;
@@ -143,8 +143,7 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
   private void validateOperator(
       final AttributeKind attributeKind, final AttributeUpdateOperator operator)
       throws ConversionException {
-    if (!entityAttributeMapping.isMultiValued(attributeKind)
-        && ARRAY_OPERATORS.contains(operator)) {
+    if (!entityAttributeMapping.isArray(attributeKind) && ARRAY_OPERATORS.contains(operator)) {
       throw new ConversionException(
           String.format(
               "Cannot perform array operation (%s) on an attribute of type %s",
