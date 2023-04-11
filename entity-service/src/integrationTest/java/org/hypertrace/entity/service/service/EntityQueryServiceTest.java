@@ -134,7 +134,7 @@ public class EntityQueryServiceTest {
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
   private static final String API_LABELS_ATTR = "API.labels";
   private static final String API_HTTP_URL_ATTR = "API.httpUrl";
-  private static final String API_IS_LATEST = "API.isLatest";
+  private static final String API_IS_LATEST_ATTR = "API.isLatest";
 
   private static final String SERVICE_ID_ATTR = "SERVICE.id";
   private static final String SERVICE_NAME_ATTR = "SERVICE.name";
@@ -304,9 +304,9 @@ public class EntityQueryServiceTest {
         AttributeMetadata.newBuilder()
             .setDisplayName("is latest")
             .addSources(AttributeSource.EDS)
-            .setFqn(API_IS_LATEST)
+            .setFqn(API_IS_LATEST_ATTR)
             .setGroupable(false)
-            .setId(API_IS_LATEST)
+            .setId(API_IS_LATEST_ATTR)
             .setKey("isLatest")
             .setScopeString("API")
             .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_BOOL)
@@ -1423,7 +1423,7 @@ public class EntityQueryServiceTest {
             .putAttributes(
                 apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
             .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
-            .putAttributes(apiAttributesMap.get(API_IS_LATEST), createAttribute(true))
+            .putAttributes(apiAttributesMap.get(API_IS_LATEST_ATTR), createAttribute(true))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -1470,7 +1470,7 @@ public class EntityQueryServiceTest {
             .putAttributes(
                 apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
             .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
-            .putAttributes(apiAttributesMap.get(API_IS_LATEST), createAttribute(false))
+            .putAttributes(apiAttributesMap.get(API_IS_LATEST_ATTR), createAttribute(false))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -1534,7 +1534,7 @@ public class EntityQueryServiceTest {
             .build();
     final AttributeUpdateOperation updateOperation6 =
         AttributeUpdateOperation.newBuilder()
-            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_IS_LATEST))
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_IS_LATEST_ATTR))
             .setOperator(ATTRIBUTE_UPDATE_OPERATOR_SET)
             .setValue(
                 LiteralConstant.newBuilder()
@@ -1626,6 +1626,7 @@ public class EntityQueryServiceTest {
             .addSelection(createExpression(API_DISCOVERY_STATE_ATTR))
             .addSelection(createExpression(API_HTTP_METHOD_ATTR))
             .addSelection(createExpression(API_LABELS_ATTR))
+            .addSelection(createExpression(API_IS_LATEST_ATTR))
             .build();
 
     final Iterator<ResultSetChunk> resultSetChunkIterator =
