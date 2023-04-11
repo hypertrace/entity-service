@@ -109,5 +109,14 @@ class ValueHelperTest {
           valueHelper.convertToSubDocumentValue(
               Value.newBuilder().setBoolean(true).setValueType(ValueType.BOOL).build()));
     }
+
+    @Test
+    void testConvertBooleanDefaultValueToSubDocumentValue()
+        throws ConversionException, IOException {
+      assertEquals(
+          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"boolean\": false }}")),
+          valueHelper.convertToSubDocumentValue(
+              Value.newBuilder().setBoolean(false).setValueType(ValueType.BOOL).build()));
+    }
   }
 }

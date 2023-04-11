@@ -39,11 +39,8 @@ import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
-import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
-import org.hypertrace.entity.service.util.DocStoreJsonFormat;
-import org.hypertrace.entity.service.util.DocStoreJsonFormat.Printer;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
@@ -54,7 +51,6 @@ public class ValueHelper {
   public static final String VALUE_LIST_KEY = "valueList";
   public static final String VALUE_MAP_KEY = "valueMap";
 
-  private static final Printer PRINTER = DocStoreJsonFormat.printer();
   private static final String NULL_VALUE = "null";
 
   private static final Set<ValueType> PRIMITIVE_TYPES =
@@ -75,8 +71,6 @@ public class ValueHelper {
   private static final Supplier<Map<ValueType, String>> TYPE_TO_STRING_VALUE_MAP =
       memoize(ValueHelper::getTypeToStringValueMap);
 
-  private static final Supplier<Map<ValueType, ValueType>> PRIMITIVE_TO_ARRAY_MAP =
-      memoize(ValueHelper::getPrimitiveToArrayMap);
   private static final Supplier<Map<ValueType, ArrayToPrimitiveValuesConverter<?>>>
       ARRAY_TO_PRIMITIVE_CONVERTER_MAP = memoize(ValueHelper::getArrayToPrimitiveConverterMap);
 
@@ -206,6 +200,7 @@ public class ValueHelper {
     }
   }
 
+  @SuppressWarnings("SwitchStatementWithTooFewBranches")
   public <K> ConstantExpression convertToConstantExpression(final Value value, final K key)
       throws ConversionException {
     switch (value.getValueType()) {
@@ -228,18 +223,6 @@ public class ValueHelper {
     return type;
   }
 
-  public ValueType getArrayValueType(final ValueType primitiveValueType)
-      throws ConversionException {
-    final ValueType arrayType = PRIMITIVE_TO_ARRAY_MAP.get().get(primitiveValueType);
-
-    if (arrayType == null) {
-      throw new ConversionException(
-          String.format("A suitable array type not found for %s", primitiveValueType));
-    }
-
-    return arrayType;
-  }
-
   public ValueType getPrimitiveValueType(final String primitiveType) throws ConversionException {
     final ValueType arrayType = STRING_VALUE_TO_PRIMITIVE_TYPE_MAP.get().get(primitiveType);
 
@@ -249,6 +232,48 @@ public class ValueHelper {
     }
 
     return arrayType;
+  }
+
+  private JSONDocument convertToDocument(final Value value) throws ConversionException {
+    try {
+      final String dataType = getStringValue(value.getValueType());
+      final Object valueObj = extractValueFromPrimitiveValue(value);
+
+      return new JSONDocument(Map.of(VALUE_KEY, Map.of(dataType, valueObj)));
+    } catch (final IOException e) {
+      throw new ConversionException(e.getMessage(), e);
+    }
+  }
+
+  private Object extractValueFromPrimitiveValue(final Value value) throws ConversionException {
+    switch (value.getValueType()) {
+      case STRING:
+        return value.getString();
+
+      case LONG:
+        return value.getLong();
+
+      case INT:
+        return value.getInt();
+
+      case FLOAT:
+        return value.getFloat();
+
+      case DOUBLE:
+        return value.getDouble();
+
+      case BYTES:
+        return new String(value.getBytes().toByteArray());
+
+      case BOOL:
+        return value.getBoolean();
+
+      case TIMESTAMP:
+        return value.getTimestamp();
+
+      default:
+        throw new ConversionException("Cannot extract value from a non-primitive value");
+    }
   }
 
   private static Map<ValueType, String> getTypeToStringValueMap() {
@@ -275,21 +300,6 @@ public class ValueHelper {
 
     // Maps
     map.put(STRING_MAP, "string");
-
-    return unmodifiableMap(map);
-  }
-
-  private static Map<ValueType, ValueType> getPrimitiveToArrayMap() {
-    final Map<ValueType, ValueType> map = new EnumMap<>(ValueType.class);
-
-    map.put(STRING, STRING_ARRAY);
-    map.put(LONG, LONG_ARRAY);
-    map.put(INT, INT_ARRAY);
-    map.put(FLOAT, FLOAT_ARRAY);
-    map.put(DOUBLE, DOUBLE_ARRAY);
-    map.put(BYTES, BYTES_ARRAY);
-    map.put(BOOL, BOOLEAN_ARRAY);
-    map.put(TIMESTAMP, LONG_ARRAY);
 
     return unmodifiableMap(map);
   }
@@ -342,15 +352,6 @@ public class ValueHelper {
     map.put("timestamp", TIMESTAMP);
 
     return unmodifiableMap(map);
-  }
-
-  private JSONDocument convertToDocument(final Value value) throws ConversionException {
-    try {
-      return new JSONDocument(
-          PRINTER.print(LiteralConstant.newBuilder().setValue(value.toBuilder().clearValueType())));
-    } catch (final IOException e) {
-      throw new ConversionException(e.getMessage(), e);
-    }
   }
 
   @AllArgsConstructor
