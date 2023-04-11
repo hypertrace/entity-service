@@ -95,9 +95,7 @@ class EntityAttributeMappingTest {
             .addSources(AttributeSource.EDS)
             .build();
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(singleValueAttributeData));
-    Optional<AttributeKind> attributeKind =
-        attributeMapping.getAttributeKind(mockRequestContext, "some-id");
-    assertFalse(attributeKind.isPresent() && attributeMapping.isArray(attributeKind.get()));
+    assertFalse(attributeMapping.isArray(mockRequestContext, "some-id"));
 
     org.hypertrace.core.attribute.service.v1.AttributeMetadata multiValueAttributeData =
         org.hypertrace.core.attribute.service.v1.AttributeMetadata.newBuilder()
@@ -106,9 +104,7 @@ class EntityAttributeMappingTest {
             .addSources(AttributeSource.EDS)
             .build();
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(multiValueAttributeData));
-
-    attributeKind = attributeMapping.getAttributeKind(mockRequestContext, "some-id");
-    assertTrue(attributeKind.isPresent() && attributeMapping.isArray(attributeKind.get()));
+    assertTrue(attributeMapping.isArray(mockRequestContext, "some-id"));
 
     org.hypertrace.core.attribute.service.v1.AttributeMetadata invalidSourceAttributeData =
         org.hypertrace.core.attribute.service.v1.AttributeMetadata.newBuilder()
@@ -118,8 +114,7 @@ class EntityAttributeMappingTest {
             .build();
     when(this.mockAttributeClient.get("some-id"))
         .thenReturn(Single.just(invalidSourceAttributeData));
-    attributeKind = attributeMapping.getAttributeKind(mockRequestContext, "some-id");
-    assertFalse(attributeKind.isPresent() && attributeMapping.isArray(attributeKind.get()));
+    assertFalse(attributeMapping.isArray(mockRequestContext, "some-id"));
   }
 
   @Test
@@ -135,9 +130,7 @@ class EntityAttributeMappingTest {
             .addSources(AttributeSource.EDS)
             .build();
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(singleValueAttributeData));
-    Optional<AttributeKind> attributeKind =
-        attributeMapping.getAttributeKind(mockRequestContext, "some-id");
-    assertFalse(attributeKind.isPresent() && attributeMapping.isPrimitive(attributeKind.get()));
+    assertFalse(attributeMapping.isPrimitive(mockRequestContext, "some-id"));
 
     org.hypertrace.core.attribute.service.v1.AttributeMetadata multiValueAttributeData =
         org.hypertrace.core.attribute.service.v1.AttributeMetadata.newBuilder()
@@ -146,9 +139,7 @@ class EntityAttributeMappingTest {
             .addSources(AttributeSource.EDS)
             .build();
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(multiValueAttributeData));
-
-    attributeKind = attributeMapping.getAttributeKind(mockRequestContext, "some-id");
-    assertTrue(attributeKind.isPresent() && attributeMapping.isPrimitive(attributeKind.get()));
+    assertTrue(attributeMapping.isPrimitive(mockRequestContext, "some-id"));
 
     org.hypertrace.core.attribute.service.v1.AttributeMetadata invalidSourceAttributeData =
         org.hypertrace.core.attribute.service.v1.AttributeMetadata.newBuilder()
@@ -158,8 +149,7 @@ class EntityAttributeMappingTest {
             .build();
     when(this.mockAttributeClient.get("some-id"))
         .thenReturn(Single.just(invalidSourceAttributeData));
-    attributeKind = attributeMapping.getAttributeKind(mockRequestContext, "some-id");
-    assertFalse(attributeKind.isPresent() && attributeMapping.isPrimitive(attributeKind.get()));
+    assertFalse(attributeMapping.isPrimitive(mockRequestContext, "some-id"));
   }
 
   @Test
@@ -175,9 +165,7 @@ class EntityAttributeMappingTest {
             .addSources(AttributeSource.EDS)
             .build();
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(singleValueAttributeData));
-    Optional<AttributeKind> attributeKind =
-        attributeMapping.getAttributeKind(mockRequestContext, "some-id");
-    assertFalse(attributeKind.isPresent() && attributeMapping.isMap(attributeKind.get()));
+    assertFalse(attributeMapping.isMap(mockRequestContext, "some-id"));
 
     org.hypertrace.core.attribute.service.v1.AttributeMetadata multiValueAttributeData =
         org.hypertrace.core.attribute.service.v1.AttributeMetadata.newBuilder()
@@ -187,8 +175,7 @@ class EntityAttributeMappingTest {
             .build();
     when(this.mockAttributeClient.get("some-id")).thenReturn(Single.just(multiValueAttributeData));
 
-    attributeKind = attributeMapping.getAttributeKind(mockRequestContext, "some-id");
-    assertTrue(attributeKind.isPresent() && attributeMapping.isMap(attributeKind.get()));
+    assertTrue(attributeMapping.isMap(mockRequestContext, "some-id"));
 
     org.hypertrace.core.attribute.service.v1.AttributeMetadata invalidSourceAttributeData =
         org.hypertrace.core.attribute.service.v1.AttributeMetadata.newBuilder()
@@ -198,7 +185,6 @@ class EntityAttributeMappingTest {
             .build();
     when(this.mockAttributeClient.get("some-id"))
         .thenReturn(Single.just(invalidSourceAttributeData));
-    attributeKind = attributeMapping.getAttributeKind(mockRequestContext, "some-id");
-    assertFalse(attributeKind.isPresent() && attributeMapping.isMap(attributeKind.get()));
+    assertFalse(attributeMapping.isMap(mockRequestContext, "some-id"));
   }
 }

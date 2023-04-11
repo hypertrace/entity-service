@@ -7,6 +7,7 @@ import com.google.protobuf.ByteString;
 import java.util.List;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.accessor.ValueOneOfAccessor;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Value;
@@ -15,10 +16,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.EnumSource.Mode;
+import org.mockito.Mock;
 
 class ConstantExpressionConverterTest {
+
+  @Mock private EntityAttributeMapping mockEntityAttributeMapping;
   private final Converter<LiteralConstant, ConstantExpression> constantExpressionConverter =
-      new ConstantExpressionConverter(new ValueHelper(new ValueOneOfAccessor()));
+      new ConstantExpressionConverter(
+          new ValueHelper(new ValueOneOfAccessor(), mockEntityAttributeMapping));
   private final RequestContext requestContext = RequestContext.forTenantId("Martian");
 
   @Test

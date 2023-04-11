@@ -29,13 +29,11 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
-import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
@@ -77,8 +75,6 @@ public class ValueHelper {
   private static final Supplier<Map<ValueType, String>> TYPE_TO_STRING_VALUE_MAP =
       memoize(ValueHelper::getTypeToStringValueMap);
 
-  private static final Supplier<Map<ValueType, ValueType>> PRIMITIVE_TO_ARRAY_MAP =
-      memoize(ValueHelper::getPrimitiveToArrayMap);
   private static final Supplier<Map<ValueType, ArrayToPrimitiveValuesConverter<?>>>
       ARRAY_TO_PRIMITIVE_CONVERTER_MAP = memoize(ValueHelper::getArrayToPrimitiveConverterMap);
 
@@ -86,6 +82,8 @@ public class ValueHelper {
       memoize(ValueHelper::getStringValueToPrimitiveTypeMap);
 
   private final OneOfAccessor<Value, ValueType> valueAccessor;
+
+  private final EntityAttributeMapping attributeMapping;
 
   public boolean isPrimitive(final ValueType valueType) {
     return PRIMITIVE_TYPES.contains(valueType);
@@ -160,16 +158,11 @@ public class ValueHelper {
   }
 
   public SubDocumentValue convertToSubDocumentValue(
-      final EntityAttributeMapping attributeMapping,
-      final RequestContext context,
-      final String columnId,
-      final Value value)
+      final RequestContext context, final String columnId, final Value value)
       throws ConversionException {
     final ValueType type = value.getValueType();
 
-    final Optional<AttributeKind> attributeKind =
-        attributeMapping.getAttributeKind(context, columnId);
-    if (attributeKind.isPresent() && attributeMapping.isArray(attributeKind.get())) {
+    if (attributeMapping.isArray(context, columnId)) {
       final List<Value> values = ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(type).apply(value);
       final List<Document> documents = new ArrayList<>();
 
@@ -180,7 +173,7 @@ public class ValueHelper {
       return SubDocumentValue.of(documents);
     }
 
-    if (attributeKind.isPresent() && attributeMapping.isPrimitive(attributeKind.get())) {
+    if (attributeMapping.isPrimitive(context, columnId)) {
       return SubDocumentValue.of(convertToDocument(value));
     }
 

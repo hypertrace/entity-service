@@ -111,15 +111,30 @@ public class EntityAttributeMapping {
                 .blockingGet());
   }
 
-  public boolean isArray(final AttributeKind attributeKind) {
+  public boolean isArray(final RequestContext requestContext, final String columnId) {
+    final Optional<AttributeKind> attributeKind = getAttributeKind(requestContext, columnId);
+    return attributeKind.map(this::isArray).orElse(false);
+  }
+
+  public boolean isPrimitive(final RequestContext requestContext, final String columnId) {
+    final Optional<AttributeKind> attributeKind = getAttributeKind(requestContext, columnId);
+    return attributeKind.map(this::isPrimitive).orElse(false);
+  }
+
+  public boolean isMap(final RequestContext requestContext, final String columnId) {
+    final Optional<AttributeKind> attributeKind = getAttributeKind(requestContext, columnId);
+    return attributeKind.map(this::isMap).orElse(false);
+  }
+
+  private boolean isArray(final AttributeKind attributeKind) {
     return ARRAY_ATTRIBUTE_KINDS.contains(attributeKind);
   }
 
-  public boolean isPrimitive(final AttributeKind attributeKind) {
+  private boolean isPrimitive(final AttributeKind attributeKind) {
     return PRIMITIVE_ATTRIBUTE_KINDS.contains(attributeKind);
   }
 
-  public boolean isMap(final AttributeKind attributeKind) {
+  private boolean isMap(final AttributeKind attributeKind) {
     return MAP_ATTRIBUTE_KINDS.contains(attributeKind);
   }
 

@@ -94,7 +94,7 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
                     new ConversionException(
                         String.format("Cannot update non-attribute value for %s", id)));
     // Validate if the operator is applicable for the LHS type
-    validateOperator(attributeKind, operation.getOperator());
+    validateOperator(context, id, operation.getOperator());
 
     final Value value = operation.getValue().getValue();
     // Validate if the LHS and the RHS are of same type
@@ -104,7 +104,7 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
         entityAttributeMapping.getDocStorePathByAttributeId(context, id).orElseThrow();
     final String suffixedSubDocPath;
 
-    if (entityAttributeMapping.isArray(attributeKind)) {
+    if (entityAttributeMapping.isArray(context, id)) {
       suffixedSubDocPath = DOT_JOINER.join(subDocPath, VALUE_LIST_KEY, VALUES_KEY);
     } else {
       suffixedSubDocPath = subDocPath;
@@ -117,7 +117,7 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
 
     if (operator != UNSET) {
       final SubDocumentValue subDocValue =
-          valueHelper.convertToSubDocumentValue(entityAttributeMapping, context, id, value);
+          valueHelper.convertToSubDocumentValue(context, id, value);
       updateBuilder.subDocumentValue(subDocValue);
     }
 
@@ -142,13 +142,13 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
   }
 
   private void validateOperator(
-      final AttributeKind attributeKind, final AttributeUpdateOperator operator)
+      final RequestContext context, final String columnId, final AttributeUpdateOperator operator)
       throws ConversionException {
-    if (!entityAttributeMapping.isArray(attributeKind) && ARRAY_OPERATORS.contains(operator)) {
+    if (!entityAttributeMapping.isArray(context, columnId) && ARRAY_OPERATORS.contains(operator)) {
       throw new ConversionException(
           String.format(
               "Cannot perform array operation (%s) on an attribute of type %s",
-              operator, attributeKind));
+              operator, entityAttributeMapping.getAttributeKind(context, columnId)));
     }
   }
 }

@@ -3,7 +3,6 @@ package org.hypertrace.entity.query.service.converter.filter;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.AllArgsConstructor;
-import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
@@ -33,23 +32,15 @@ public class FilteringExpressionConverterFactoryImpl
       return nullFilteringExpressionConverter;
     }
 
-    final AttributeKind attributeKind =
-        entityAttributeMapping
-            .getAttributeKind(context, columnName)
-            .orElseThrow(
-                () ->
-                    new ConversionException(
-                        String.format("Cannot find attribute kind for %s", columnName)));
-
-    if (entityAttributeMapping.isPrimitive(attributeKind)) {
+    if (entityAttributeMapping.isPrimitive(context, columnName)) {
       return primitiveFilteringExpressionConverter;
     }
 
-    if (entityAttributeMapping.isArray(attributeKind)) {
+    if (entityAttributeMapping.isArray(context, columnName)) {
       return arrayFilteringExpressionConverter;
     }
 
-    if (entityAttributeMapping.isMap(attributeKind)) {
+    if (entityAttributeMapping.isMap(context, columnName)) {
       return mapFilteringExpressionConverter;
     }
 

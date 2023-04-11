@@ -4,9 +4,7 @@ import static org.hypertrace.entity.query.service.converter.identifier.Identifie
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import java.util.Optional;
 import lombok.AllArgsConstructor;
-import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
@@ -65,9 +63,7 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
 
   private boolean isFilteringFieldArray(
       final RequestContext requestContext, final String columnId) {
-    final Optional<AttributeKind> attributeKind =
-        attributeMapping.getAttributeKind(requestContext, columnId);
-    return attributeKind.isPresent() && attributeMapping.isArray(attributeKind.get());
+    return attributeMapping.isArray(requestContext, columnId);
   }
 
   private boolean isFilterValueArray(final ValueType valueType) {
@@ -75,14 +71,10 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
   }
 
   private boolean isFilteringFieldMap(final RequestContext context, final String columnId) {
-    final Optional<AttributeKind> attributeKind =
-        attributeMapping.getAttributeKind(context, columnId);
-    return attributeKind.isPresent() && attributeMapping.isMap(attributeKind.get());
+    return attributeMapping.isMap(context, columnId);
   }
 
   private boolean isFilteringFieldPrimitive(final RequestContext context, final String columnId) {
-    final Optional<AttributeKind> attributeKind =
-        attributeMapping.getAttributeKind(context, columnId);
-    return attributeKind.isPresent() && attributeMapping.isPrimitive(attributeKind.get());
+    return attributeMapping.isPrimitive(context, columnId);
   }
 }

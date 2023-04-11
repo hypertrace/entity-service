@@ -4,9 +4,7 @@ import static org.hypertrace.entity.query.service.converter.identifier.Identifie
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import java.util.Optional;
 import lombok.AllArgsConstructor;
-import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
@@ -30,9 +28,7 @@ public class IdentifierExpressionConverter
 
     final String suffixedSubDocPath;
 
-    final Optional<AttributeKind> attributeKind =
-        attributeMapping.getAttributeKind(requestContext, columnId);
-    if (attributeKind.isPresent() && attributeMapping.isArray(attributeKind.get())) {
+    if (attributeMapping.isArray(requestContext, columnId)) {
       suffixedSubDocPath =
           arrayPathSuffixAddingIdentifierConverter.convert(
               IdentifierConversionMetadata.builder().subDocPath(subDocPath).build(),

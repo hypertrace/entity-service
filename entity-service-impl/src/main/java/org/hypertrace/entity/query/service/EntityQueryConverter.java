@@ -6,10 +6,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.Value;
-import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.v1.AttributeFilter;
@@ -256,10 +254,7 @@ class EntityQueryConverter {
                             String.format(
                                 "Unrecognized attribute: %s does not match any known entity attribute",
                                 attributeId)));
-        final Optional<AttributeKind> attributeKind =
-            this.attributeMapping.getAttributeKind(requestContext, attributeId);
-        final boolean isArray =
-            attributeKind.isPresent() && this.attributeMapping.isArray(attributeKind.get());
+        final boolean isArray = this.attributeMapping.isArray(requestContext, attributeId);
         return new AttributeColumnInformation(attributeName, isArray);
       case FUNCTION:
         throw new UnsupportedOperationException(

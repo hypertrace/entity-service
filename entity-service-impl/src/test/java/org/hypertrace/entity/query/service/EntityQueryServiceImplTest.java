@@ -575,7 +575,6 @@ public class EntityQueryServiceImplTest {
 
     @Test
     void testBulkUpdateAllMatchingFilter_success() throws Exception {
-      when(mockAttributeMapping.isPrimitive(any())).thenReturn(true);
       final Collection mockEntitiesCollection = mockEntitiesCollection();
 
       final Builder newStatus =
@@ -945,7 +944,6 @@ public class EntityQueryServiceImplTest {
         .thenReturn(Streams.stream(docs.iterator()));
     when(mockAttributeMapping.getIdentifierAttributeId(TEST_ENTITY_TYPE))
         .thenReturn(Optional.of("API.id"));
-    when(mockAttributeMapping.isPrimitive(any())).thenReturn(true);
 
     DeleteEntitiesRequest request =
         DeleteEntitiesRequest.newBuilder()
@@ -1180,6 +1178,7 @@ public class EntityQueryServiceImplTest {
   private EntityAttributeMapping mockMappingForAttributes() {
     when(mockAttributeMapping.getAttributeKind(requestContext, API_ID))
         .thenReturn(Optional.of(TYPE_STRING));
+    when(mockAttributeMapping.isPrimitive(requestContext, ATTRIBUTE_ID1)).thenReturn(true);
     return when(this.mockMappingForAttribute1()
             .getDocStorePathByAttributeId(requestContext, API_ID))
         .thenReturn(Optional.of(EDS_API_ID_COLUMN_NAME))
@@ -1187,9 +1186,10 @@ public class EntityQueryServiceImplTest {
   }
 
   private EntityAttributeMapping mockMappingForAttribute1() {
+    when(mockAttributeMapping.isArray(requestContext, ATTRIBUTE_ID1)).thenReturn(false);
+    when(mockAttributeMapping.isPrimitive(requestContext, ATTRIBUTE_ID1)).thenReturn(true);
     when(mockAttributeMapping.getAttributeKind(requestContext, ATTRIBUTE_ID1))
         .thenReturn(Optional.of(TYPE_STRING));
-    when(mockAttributeMapping.isArray(TYPE_STRING)).thenReturn(false);
     return when(mockAttributeMapping.getDocStorePathByAttributeId(requestContext, ATTRIBUTE_ID1))
         .thenReturn(Optional.of(EDS_COLUMN_NAME1))
         .getMock();
