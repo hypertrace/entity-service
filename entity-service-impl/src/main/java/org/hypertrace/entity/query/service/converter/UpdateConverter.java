@@ -116,7 +116,8 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
             .operator(operator);
 
     if (operator != UNSET) {
-      final SubDocumentValue subDocValue = valueHelper.convertToSubDocumentValue(value);
+      final SubDocumentValue subDocValue =
+          valueHelper.convertToSubDocumentValue(entityAttributeMapping, context, id, value);
       updateBuilder.subDocumentValue(subDocValue);
     }
 

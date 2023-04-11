@@ -9,12 +9,17 @@ import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
+import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -37,6 +42,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ValueHelperTest {
 
   @Mock private OneOfAccessor<Value, ValueType> mockValueAccessor;
+  @Mock private RequestContext context;
+  @Mock private EntityAttributeMapping attributeMapping;
 
   private ValueHelper valueHelper;
 
@@ -96,17 +103,32 @@ class ValueHelperTest {
   class ConvertToSubDocumentValueTest {
     @Test
     void testConvertStringValueToSubDocumentValue() throws ConversionException, IOException {
+      final String columnName = "string";
+      when(attributeMapping.getAttributeKind(context, columnName))
+          .thenReturn(Optional.of(AttributeKind.TYPE_STRING));
+      when(attributeMapping.isPrimitive(AttributeKind.TYPE_STRING)).thenReturn(true);
       assertEquals(
-          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"string\": \"Mars\" }}")),
+          SubDocumentValue.of(
+              new JSONDocument("{ \"value\": {\"" + columnName + "\": \"Mars\" }}")),
           valueHelper.convertToSubDocumentValue(
+              attributeMapping,
+              context,
+              columnName,
               Value.newBuilder().setString("Mars").setValueType(ValueType.STRING).build()));
     }
 
     @Test
     void testConvertBooleanValueToSubDocumentValue() throws ConversionException, IOException {
+      final String columnName = "boolean";
+      when(attributeMapping.getAttributeKind(context, columnName))
+          .thenReturn(Optional.of(AttributeKind.TYPE_BOOL));
+      when(attributeMapping.isPrimitive(AttributeKind.TYPE_BOOL)).thenReturn(true);
       assertEquals(
-          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"boolean\": true }}")),
+          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + columnName + "\": true }}")),
           valueHelper.convertToSubDocumentValue(
+              attributeMapping,
+              context,
+              columnName,
               Value.newBuilder().setBoolean(true).setValueType(ValueType.BOOL).build()));
     }
   }

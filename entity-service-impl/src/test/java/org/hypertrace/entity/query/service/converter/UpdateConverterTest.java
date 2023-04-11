@@ -93,6 +93,7 @@ class UpdateConverterTest {
         .thenReturn(Optional.of("attributes.subDocPath"));
     when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
         .thenReturn(Optional.of(TYPE_STRING));
+    when(mockEntityAttributeMapping.isPrimitive(TYPE_STRING)).thenReturn(true);
     final SubDocumentUpdate result = updateConverter.convert(operation, requestContext);
 
     assertEquals(expectedResult, result);
@@ -119,6 +120,17 @@ class UpdateConverterTest {
     when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
         .thenReturn(Optional.ofNullable(attributeKind));
     when(mockEntityAttributeMapping.isArray(attributeKind)).thenReturn(valueType == STRING_ARRAY);
+    if (operator.equals(ATTRIBUTE_UPDATE_OPERATOR_SET) && !valueType.equals(STRING_ARRAY)) {
+      when(mockEntityAttributeMapping.isPrimitive(attributeKind))
+          .thenReturn(
+              valueType == DOUBLE
+                  || valueType == FLOAT
+                  || valueType == LONG
+                  || valueType == INT
+                  || valueType == BOOL
+                  || valueType == STRING
+                  || valueType == BYTES);
+    }
     final SubDocumentUpdate result = updateConverter.convert(operation, requestContext);
     assertNotNull(result);
   }

@@ -49,11 +49,11 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
       }
     }
 
-    if (isFilterValuePrimitive(valueType) || isFilterValueArray(valueType)) {
+    if (isFilteringFieldPrimitive(requestContext, columnId) || isFilterValueArray(valueType)) {
       return primitiveSuffixAddingIdentifierConverter;
     }
 
-    if (isFilterValueMap(valueType)) {
+    if (isFilteringFieldMap(requestContext, columnId)) {
       return mapSuffixAddingIdentifierConverter;
     }
 
@@ -74,11 +74,15 @@ public class IdentifierConverterFactoryImpl implements IdentifierConverterFactor
     return valueHelper.isArray(valueType);
   }
 
-  private boolean isFilterValueMap(final ValueType valueType) {
-    return valueHelper.isMap(valueType);
+  private boolean isFilteringFieldMap(final RequestContext context, final String columnId) {
+    final Optional<AttributeKind> attributeKind =
+        attributeMapping.getAttributeKind(context, columnId);
+    return attributeKind.isPresent() && attributeMapping.isMap(attributeKind.get());
   }
 
-  private boolean isFilterValuePrimitive(final ValueType valueType) {
-    return valueHelper.isPrimitive(valueType);
+  private boolean isFilteringFieldPrimitive(final RequestContext context, final String columnId) {
+    final Optional<AttributeKind> attributeKind =
+        attributeMapping.getAttributeKind(context, columnId);
+    return attributeKind.isPresent() && attributeMapping.isPrimitive(attributeKind.get());
   }
 }

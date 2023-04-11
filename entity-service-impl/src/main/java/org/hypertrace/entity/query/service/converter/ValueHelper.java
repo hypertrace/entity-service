@@ -29,15 +29,19 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
+import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
 import org.hypertrace.entity.query.service.v1.Value;
@@ -70,8 +74,6 @@ public class ValueHelper {
           BYTES_ARRAY,
           BOOLEAN_ARRAY);
 
-  private static final Set<ValueType> MAP_TYPES = Set.of(STRING_MAP);
-
   private static final Supplier<Map<ValueType, String>> TYPE_TO_STRING_VALUE_MAP =
       memoize(ValueHelper::getTypeToStringValueMap);
 
@@ -91,10 +93,6 @@ public class ValueHelper {
 
   public boolean isArray(final ValueType valueType) {
     return ARRAY_TYPES.contains(valueType);
-  }
-
-  public boolean isMap(final ValueType valueType) {
-    return MAP_TYPES.contains(valueType);
   }
 
   public boolean isNull(final Value value) {
@@ -161,10 +159,17 @@ public class ValueHelper {
     }
   }
 
-  public SubDocumentValue convertToSubDocumentValue(final Value value) throws ConversionException {
+  public SubDocumentValue convertToSubDocumentValue(
+      final EntityAttributeMapping attributeMapping,
+      final RequestContext context,
+      final String columnId,
+      final Value value)
+      throws ConversionException {
     final ValueType type = value.getValueType();
 
-    if (isArray(type)) {
+    final Optional<AttributeKind> attributeKind =
+        attributeMapping.getAttributeKind(context, columnId);
+    if (attributeKind.isPresent() && attributeMapping.isArray(attributeKind.get())) {
       final List<Value> values = ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(type).apply(value);
       final List<Document> documents = new ArrayList<>();
 
@@ -175,7 +180,7 @@ public class ValueHelper {
       return SubDocumentValue.of(documents);
     }
 
-    if (isPrimitive(type)) {
+    if (attributeKind.isPresent() && attributeMapping.isPrimitive(attributeKind.get())) {
       return SubDocumentValue.of(convertToDocument(value));
     }
 
@@ -226,18 +231,6 @@ public class ValueHelper {
     }
 
     return type;
-  }
-
-  public ValueType getArrayValueType(final ValueType primitiveValueType)
-      throws ConversionException {
-    final ValueType arrayType = PRIMITIVE_TO_ARRAY_MAP.get().get(primitiveValueType);
-
-    if (arrayType == null) {
-      throw new ConversionException(
-          String.format("A suitable array type not found for %s", primitiveValueType));
-    }
-
-    return arrayType;
   }
 
   public ValueType getPrimitiveValueType(final String primitiveType) throws ConversionException {
