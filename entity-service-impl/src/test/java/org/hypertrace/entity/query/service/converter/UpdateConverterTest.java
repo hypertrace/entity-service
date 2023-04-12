@@ -123,17 +123,41 @@ class UpdateConverterTest {
         .thenReturn(Optional.ofNullable(attributeKind));
     when(mockEntityAttributeMapping.isArray(requestContext, "columnName"))
         .thenReturn(valueType == STRING_ARRAY);
-    if (operator.equals(ATTRIBUTE_UPDATE_OPERATOR_SET) && !valueType.equals(STRING_ARRAY)) {
-      when(mockEntityAttributeMapping.isPrimitive(requestContext, "columnName"))
-          .thenReturn(
-              valueType == DOUBLE
-                  || valueType == FLOAT
-                  || valueType == LONG
-                  || valueType == INT
-                  || valueType == BOOL
-                  || valueType == STRING
-                  || valueType == BYTES);
-    }
+    final SubDocumentUpdate result = updateConverter.convert(operation, requestContext);
+    assertNotNull(result);
+  }
+
+  @ParameterizedTest
+  @ArgumentsSource(SetOperatorWithPrimitives.class)
+  void testSetOperatorWithPrimitives(
+      final AttributeUpdateOperator operator,
+      final AttributeKind attributeKind,
+      final ValueType valueType)
+      throws Exception {
+    final AttributeUpdateOperation operation =
+        AttributeUpdateOperation.newBuilder()
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName("columnName"))
+            .setOperator(operator)
+            .setValue(
+                LiteralConstant.newBuilder()
+                    .setValue(Value.newBuilder().setValueType(valueType).setString("value")))
+            .build();
+    final RequestContext requestContext = new RequestContext();
+    when(mockEntityAttributeMapping.getDocStorePathByAttributeId(requestContext, "columnName"))
+        .thenReturn(Optional.of("attributes.subDocPath"));
+    when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
+        .thenReturn(Optional.ofNullable(attributeKind));
+    when(mockEntityAttributeMapping.isArray(requestContext, "columnName"))
+        .thenReturn(valueType == STRING_ARRAY);
+    when(mockEntityAttributeMapping.isPrimitive(requestContext, "columnName"))
+        .thenReturn(
+            valueType == DOUBLE
+                || valueType == FLOAT
+                || valueType == LONG
+                || valueType == INT
+                || valueType == BOOL
+                || valueType == STRING
+                || valueType == BYTES);
     final SubDocumentUpdate result = updateConverter.convert(operation, requestContext);
     assertNotNull(result);
   }
@@ -259,13 +283,6 @@ class UpdateConverterTest {
     @Override
     public Stream<Arguments> provideArguments(final ExtensionContext context) {
       return Stream.of(
-          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_DOUBLE, DOUBLE),
-          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_DOUBLE, FLOAT),
-          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_INT64, LONG),
-          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_INT64, INT),
-          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_BOOL, BOOL),
-          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_STRING, STRING),
-          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_BYTES, BYTES),
           Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_STRING_ARRAY, STRING_ARRAY),
           Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_UNSET, TYPE_DOUBLE, DOUBLE),
           Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_UNSET, TYPE_DOUBLE, FLOAT),
@@ -279,6 +296,20 @@ class UpdateConverterTest {
               ATTRIBUTE_UPDATE_OPERATOR_ADD_TO_LIST_IF_ABSENT, TYPE_STRING_ARRAY, STRING_ARRAY),
           Arguments.of(
               ATTRIBUTE_UPDATE_OPERATOR_REMOVE_FROM_LIST, TYPE_STRING_ARRAY, STRING_ARRAY));
+    }
+  }
+
+  private static class SetOperatorWithPrimitives implements ArgumentsProvider {
+    @Override
+    public Stream<Arguments> provideArguments(final ExtensionContext context) {
+      return Stream.of(
+          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_DOUBLE, DOUBLE),
+          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_DOUBLE, FLOAT),
+          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_INT64, LONG),
+          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_INT64, INT),
+          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_BOOL, BOOL),
+          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_STRING, STRING),
+          Arguments.of(ATTRIBUTE_UPDATE_OPERATOR_SET, TYPE_BYTES, BYTES));
     }
   }
 

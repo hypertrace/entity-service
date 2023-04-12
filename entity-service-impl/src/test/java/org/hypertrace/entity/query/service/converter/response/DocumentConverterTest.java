@@ -9,6 +9,7 @@ import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.VALUE_MAP;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 
 import com.google.inject.Guice;
 import java.io.IOException;
@@ -16,17 +17,27 @@ import java.util.List;
 import java.util.Map;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ConverterModule;
 import org.hypertrace.entity.query.service.v1.ColumnMetadata;
 import org.hypertrace.entity.query.service.v1.ResultSetMetadata;
 import org.hypertrace.entity.query.service.v1.Row;
 import org.hypertrace.entity.query.service.v1.Value;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class DocumentConverterTest {
-  private final DocumentConverter documentConverter =
-      Guice.createInjector(new ConverterModule(null)).getInstance(DocumentConverter.class);
+  private EntityAttributeMapping mockEntityAttributeMapping;
+  private DocumentConverter documentConverter;
+
+  @BeforeEach
+  void setUp() {
+    mockEntityAttributeMapping = mock(EntityAttributeMapping.class);
+    documentConverter =
+        Guice.createInjector(new ConverterModule(mockEntityAttributeMapping))
+            .getInstance(DocumentConverter.class);
+  }
 
   @Test
   void testConvert() throws IOException, ConversionException {
