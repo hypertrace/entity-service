@@ -126,11 +126,11 @@ public class EntityAttributeMapping {
     return attributeKind.map(this::isMap).orElse(false);
   }
 
-  private boolean isArray(final AttributeKind attributeKind) {
+  public boolean isArray(final AttributeKind attributeKind) {
     return ARRAY_ATTRIBUTE_KINDS.contains(attributeKind);
   }
 
-  private boolean isPrimitive(final AttributeKind attributeKind) {
+  public boolean isPrimitive(final AttributeKind attributeKind) {
     return PRIMITIVE_ATTRIBUTE_KINDS.contains(attributeKind);
   }
 

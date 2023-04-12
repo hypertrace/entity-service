@@ -93,7 +93,7 @@ class UpdateConverterTest {
             SubDocumentValue.of(new JSONDocument("{\"value\":{\"string\":\"value\"}}")));
     when(mockEntityAttributeMapping.getDocStorePathByAttributeId(requestContext, "columnName"))
         .thenReturn(Optional.of("attributes.subDocPath"));
-    when(mockEntityAttributeMapping.isPrimitive(requestContext, "columnName")).thenReturn(true);
+    when(mockEntityAttributeMapping.isPrimitive(TYPE_STRING)).thenReturn(true);
     when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
         .thenReturn(Optional.of(TYPE_STRING));
     final SubDocumentUpdate result = updateConverter.convert(operation, requestContext);
@@ -121,8 +121,7 @@ class UpdateConverterTest {
         .thenReturn(Optional.of("attributes.subDocPath"));
     when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
         .thenReturn(Optional.ofNullable(attributeKind));
-    when(mockEntityAttributeMapping.isArray(requestContext, "columnName"))
-        .thenReturn(valueType == STRING_ARRAY);
+    when(mockEntityAttributeMapping.isArray(attributeKind)).thenReturn(valueType == STRING_ARRAY);
     final SubDocumentUpdate result = updateConverter.convert(operation, requestContext);
     assertNotNull(result);
   }
@@ -147,9 +146,8 @@ class UpdateConverterTest {
         .thenReturn(Optional.of("attributes.subDocPath"));
     when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
         .thenReturn(Optional.ofNullable(attributeKind));
-    when(mockEntityAttributeMapping.isArray(requestContext, "columnName"))
-        .thenReturn(valueType == STRING_ARRAY);
-    when(mockEntityAttributeMapping.isPrimitive(requestContext, "columnName"))
+    when(mockEntityAttributeMapping.isArray(attributeKind)).thenReturn(valueType == STRING_ARRAY);
+    when(mockEntityAttributeMapping.isPrimitive(attributeKind))
         .thenReturn(
             valueType == DOUBLE
                 || valueType == FLOAT

@@ -34,11 +34,11 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
-import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.LiteralConstant;
@@ -158,11 +158,10 @@ public class ValueHelper {
   }
 
   public SubDocumentValue convertToSubDocumentValue(
-      final RequestContext context, final String columnId, final Value value)
-      throws ConversionException {
+      final AttributeKind attributeKind, final Value value) throws ConversionException {
     final ValueType type = value.getValueType();
 
-    if (attributeMapping.isArray(context, columnId)) {
+    if (attributeMapping.isArray(attributeKind)) {
       final List<Value> values = ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(type).apply(value);
       final List<Document> documents = new ArrayList<>();
 
@@ -173,7 +172,7 @@ public class ValueHelper {
       return SubDocumentValue.of(documents);
     }
 
-    if (attributeMapping.isPrimitive(context, columnId)) {
+    if (attributeMapping.isPrimitive(attributeKind)) {
       return SubDocumentValue.of(convertToDocument(value));
     }
 

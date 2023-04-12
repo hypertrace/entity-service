@@ -14,7 +14,9 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
 import org.hypertrace.core.grpcutils.context.RequestContext;
@@ -106,24 +108,30 @@ class ValueHelperTest {
     @Test
     void testConvertStringValueToSubDocumentValue() throws ConversionException, IOException {
       final String dataType = "string";
-      when(mockEntityAttributeMapping.isPrimitive(context, dataType)).thenReturn(true);
+      when(mockEntityAttributeMapping.getAttributeKind(context, dataType))
+          .thenReturn(Optional.of(AttributeKind.TYPE_STRING));
+      when(mockEntityAttributeMapping.isPrimitive(AttributeKind.TYPE_STRING)).thenReturn(true);
+      final Optional<AttributeKind> attributeKind =
+          mockEntityAttributeMapping.getAttributeKind(context, dataType);
       assertEquals(
           SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": \"Mars\" }}")),
           valueHelper.convertToSubDocumentValue(
-              context,
-              dataType,
+              attributeKind.get(),
               Value.newBuilder().setString("Mars").setValueType(ValueType.STRING).build()));
     }
 
     @Test
     void testConvertBooleanValueToSubDocumentValue() throws ConversionException, IOException {
       final String dataType = "boolean";
-      when(mockEntityAttributeMapping.isPrimitive(context, dataType)).thenReturn(true);
+      when(mockEntityAttributeMapping.getAttributeKind(context, dataType))
+          .thenReturn(Optional.of(AttributeKind.TYPE_BOOL));
+      when(mockEntityAttributeMapping.isPrimitive(AttributeKind.TYPE_BOOL)).thenReturn(true);
+      final Optional<AttributeKind> attributeKind =
+          mockEntityAttributeMapping.getAttributeKind(context, dataType);
       assertEquals(
           SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": true }}")),
           valueHelper.convertToSubDocumentValue(
-              context,
-              dataType,
+              attributeKind.get(),
               Value.newBuilder().setBoolean(true).setValueType(ValueType.BOOL).build()));
     }
   }

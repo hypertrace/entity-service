@@ -1187,7 +1187,7 @@ public class EntityQueryServiceImplTest {
 
   private EntityAttributeMapping mockMappingForAttribute1() {
     when(mockAttributeMapping.isArray(requestContext, ATTRIBUTE_ID1)).thenReturn(false);
-    when(mockAttributeMapping.isPrimitive(requestContext, ATTRIBUTE_ID1)).thenReturn(true);
+    when(mockAttributeMapping.isPrimitive(TYPE_STRING)).thenReturn(true);
     when(mockAttributeMapping.getAttributeKind(requestContext, ATTRIBUTE_ID1))
         .thenReturn(Optional.of(TYPE_STRING));
     return when(mockAttributeMapping.getDocStorePathByAttributeId(requestContext, ATTRIBUTE_ID1))
