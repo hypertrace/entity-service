@@ -145,7 +145,7 @@ class ValueHelperTest {
       final Optional<AttributeKind> attributeKind =
           mockEntityAttributeMapping.getAttributeKind(context, dataType);
       assertEquals(
-          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"boolean\": false }}")),
+          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": false }}")),
           valueHelper.convertToSubDocumentValue(
               attributeKind.get(),
               Value.newBuilder().setBoolean(false).setValueType(ValueType.BOOL).build()));
