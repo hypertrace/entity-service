@@ -138,9 +138,16 @@ class ValueHelperTest {
     @Test
     void testConvertBooleanDefaultValueToSubDocumentValue()
         throws ConversionException, IOException {
+      final String dataType = "boolean";
+      when(mockEntityAttributeMapping.getAttributeKind(context, dataType))
+          .thenReturn(Optional.of(AttributeKind.TYPE_BOOL));
+      when(mockEntityAttributeMapping.isPrimitive(AttributeKind.TYPE_BOOL)).thenReturn(true);
+      final Optional<AttributeKind> attributeKind =
+          mockEntityAttributeMapping.getAttributeKind(context, dataType);
       assertEquals(
           SubDocumentValue.of(new JSONDocument("{ \"value\": {\"boolean\": false }}")),
           valueHelper.convertToSubDocumentValue(
+              attributeKind.get(),
               Value.newBuilder().setBoolean(false).setValueType(ValueType.BOOL).build()));
     }
   }
