@@ -7,6 +7,7 @@ import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.At
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_SET;
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_UNSET;
 import static org.hypertrace.entity.query.service.v1.SortOrder.ASC;
+import static org.hypertrace.entity.query.service.v1.ValueType.BOOL;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
@@ -133,6 +134,7 @@ public class EntityQueryServiceTest {
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
   private static final String API_LABELS_ATTR = "API.labels";
   private static final String API_HTTP_URL_ATTR = "API.httpUrl";
+  private static final String API_IS_LATEST_ATTR = "API.isLatest";
 
   private static final String SERVICE_ID_ATTR = "SERVICE.id";
   private static final String SERVICE_NAME_ATTR = "SERVICE.name";
@@ -298,12 +300,27 @@ public class EntityQueryServiceTest {
             .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
             .build();
 
+    final AttributeMetadata isLatest =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("is latest")
+            .addSources(AttributeSource.EDS)
+            .setFqn(API_IS_LATEST_ATTR)
+            .setGroupable(false)
+            .setId(API_IS_LATEST_ATTR)
+            .setKey("isLatest")
+            .setScopeString("API")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_BOOL)
+            .setScope(AttributeScope.API)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
+
     AttributeCreateRequest request =
         AttributeCreateRequest.newBuilder()
             .addAttributes(labelsAttribute)
             .addAttributes(httpUrlAttribute)
             .addAttributes(discoveryStateAttribute)
             .addAttributes(httpMethod)
+            .addAttributes(isLatest)
             .build();
     AttributeServiceClient attributeServiceClient = new AttributeServiceClient(channel);
     attributeServiceClient.create(TENANT_ID, request);
@@ -1406,6 +1423,7 @@ public class EntityQueryServiceTest {
             .putAttributes(
                 apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
             .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
+            .putAttributes(apiAttributesMap.get(API_IS_LATEST_ATTR), createAttribute(true))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -1452,6 +1470,7 @@ public class EntityQueryServiceTest {
             .putAttributes(
                 apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
             .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
+            .putAttributes(apiAttributesMap.get(API_IS_LATEST_ATTR), createAttribute(false))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -1513,6 +1532,17 @@ public class EntityQueryServiceTest {
             .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_DISCOVERY_STATE_ATTR))
             .setOperator(ATTRIBUTE_UPDATE_OPERATOR_UNSET)
             .build();
+    final AttributeUpdateOperation updateOperation6 =
+        AttributeUpdateOperation.newBuilder()
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_IS_LATEST_ATTR))
+            .setOperator(ATTRIBUTE_UPDATE_OPERATOR_SET)
+            .setValue(
+                LiteralConstant.newBuilder()
+                    .setValue(
+                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                            .setValueType(BOOL)
+                            .setBoolean(false)))
+            .build();
 
     final Update update1 =
         Update.newBuilder()
@@ -1555,6 +1585,7 @@ public class EntityQueryServiceTest {
                                                     entity1.getEntityId(),
                                                     entity2.getEntityId()))))))
             .addOperations(updateOperation2)
+            .addOperations(updateOperation6)
             .build();
     final Update update3 =
         Update.newBuilder()
@@ -1595,6 +1626,7 @@ public class EntityQueryServiceTest {
             .addSelection(createExpression(API_DISCOVERY_STATE_ATTR))
             .addSelection(createExpression(API_HTTP_METHOD_ATTR))
             .addSelection(createExpression(API_LABELS_ATTR))
+            .addSelection(createExpression(API_IS_LATEST_ATTR))
             .build();
 
     final Iterator<ResultSetChunk> resultSetChunkIterator =
@@ -1615,14 +1647,17 @@ public class EntityQueryServiceTest {
     assertEquals("DISCOVERED", values.get(0).get(0).getString());
     assertEquals("POST", values.get(0).get(1).getString());
     assertEquals(List.of("Label1", "Label4"), values.get(0).get(2).getStringArrayList());
+    assertEquals(false, values.get(0).get(3).getBoolean());
 
     assertEquals("UNDER_DISCOVERY", values.get(1).get(0).getString());
     assertEquals("POST", values.get(1).get(1).getString());
     assertEquals(List.of("Label2"), values.get(1).get(2).getStringArrayList());
+    assertEquals(false, values.get(1).get(3).getBoolean());
 
     assertEquals("", values.get(2).get(0).getString());
     assertEquals("GET", values.get(2).get(1).getString());
     assertEquals(List.of(), values.get(2).get(2).getStringArrayList());
+    assertEquals(false, values.get(2).get(3).getBoolean());
   }
 
   @Test
@@ -1890,6 +1925,12 @@ public class EntityQueryServiceTest {
 
   private AttributeValue createAttribute(String name) {
     return AttributeValue.newBuilder().setValue(Value.newBuilder().setString(name).build()).build();
+  }
+
+  private AttributeValue createAttribute(final boolean value) {
+    return AttributeValue.newBuilder()
+        .setValue(Value.newBuilder().setBoolean(value).build())
+        .build();
   }
 
   private AttributeValue createStringArrayAttribute(List<String> values) {
