@@ -116,7 +116,6 @@ class ValueHelperTest {
       assertEquals(
           SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": \"Mars\" }}")),
           valueHelper.convertToSubDocumentValue(
-              attributeKind.get(),
               Value.newBuilder().setString("Mars").setValueType(ValueType.STRING).build()));
     }
 
@@ -131,7 +130,6 @@ class ValueHelperTest {
       assertEquals(
           SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": true }}")),
           valueHelper.convertToSubDocumentValue(
-              attributeKind.get(),
               Value.newBuilder().setBoolean(true).setValueType(ValueType.BOOL).build()));
     }
 
@@ -147,7 +145,6 @@ class ValueHelperTest {
       assertEquals(
           SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": false }}")),
           valueHelper.convertToSubDocumentValue(
-              attributeKind.get(),
               Value.newBuilder().setBoolean(false).setValueType(ValueType.BOOL).build()));
     }
   }

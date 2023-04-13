@@ -116,8 +116,7 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
             .operator(operator);
 
     if (operator != UNSET) {
-      final SubDocumentValue subDocValue =
-          valueHelper.convertToSubDocumentValue(attributeKind, value);
+      final SubDocumentValue subDocValue = valueHelper.convertToSubDocumentValue(value);
       updateBuilder.subDocumentValue(subDocValue);
     }
 

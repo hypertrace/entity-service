@@ -2,8 +2,8 @@ package org.hypertrace.entity.query.service.converter.filter;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.util.Set;
 import lombok.AllArgsConstructor;
-import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.Operator;
@@ -14,7 +14,7 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class FilteringExpressionConverterFactoryImpl
     implements FilteringExpressionConverterFactory {
-  private EntityAttributeMapping entityAttributeMapping;
+  private static final Set<Operator> CONTAINMENT_OPERATORS = Set.of(Operator.IN, Operator.NOT_IN);
   private NullFilteringExpressionConverter nullFilteringExpressionConverter;
   private PrimitiveFilteringExpressionConverter primitiveFilteringExpressionConverter;
   private ArrayFilteringExpressionConverter arrayFilteringExpressionConverter;
@@ -31,13 +31,7 @@ public class FilteringExpressionConverterFactoryImpl
       return nullFilteringExpressionConverter;
     }
 
-    //    try {
-    //      Thread.sleep(200000);
-    //    } catch (InterruptedException e) {
-    //      throw new RuntimeException(e);
-    //    }
-
-    if (operator.equals(Operator.IN) || operator.equals(Operator.NOT_IN)) {
+    if (CONTAINMENT_OPERATORS.contains(operator)) {
       return primitiveFilteringExpressionConverter;
     }
 

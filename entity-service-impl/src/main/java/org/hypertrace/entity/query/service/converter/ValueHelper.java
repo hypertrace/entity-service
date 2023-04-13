@@ -34,7 +34,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
-import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
@@ -159,11 +158,10 @@ public class ValueHelper {
     }
   }
 
-  public SubDocumentValue convertToSubDocumentValue(
-      final AttributeKind attributeKind, final Value value) throws ConversionException {
+  public SubDocumentValue convertToSubDocumentValue(final Value value) throws ConversionException {
     final ValueType type = value.getValueType();
 
-    if (attributeMapping.isArray(attributeKind)) {
+    if (isArray(type)) {
       final List<Value> values = ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(type).apply(value);
       final List<Document> documents = new ArrayList<>();
 
@@ -174,7 +172,7 @@ public class ValueHelper {
       return SubDocumentValue.of(documents);
     }
 
-    if (attributeMapping.isPrimitive(attributeKind)) {
+    if (isPrimitive(type)) {
       return SubDocumentValue.of(convertToDocument(value));
     }
 
