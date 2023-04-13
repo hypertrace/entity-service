@@ -21,7 +21,7 @@ image:
   pullPolicy: IfNotPresent
   tagOverride: ""
 
-imagePullSecrets: { }
+imagePullSecrets: {}
 
 containerPort: 50061
 containerAdminPort: 50062
@@ -30,13 +30,15 @@ service:
   type: ClusterIP
   port: 50061
 
-nodeLabels: { }
+nodeLabels: {}
 
-tolerations: [ ]
+tolerations: []
 
-affinity: { }
+affinity: {}
 
-topologySpreadConstraints: [ ]
+topologySpreadConstraints: []
+
+securityContext: {}
 
 javaOpts: "-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=75.0"
 
@@ -67,7 +69,7 @@ deploymentLabels:
 podLabels:
   app: entity-service
 
-podAnnotations: { }
+podAnnotations: {}
 
 # The Deployment Selector match labels are different from the pod labels. Note that they should be a subset of the pod
 # labels. You append new labels to them but cannot remove labels. If you remove or modify the labels you will need to
@@ -101,8 +103,8 @@ entityServiceConfig:
     host: attribute-service
     port: 9012
 
-attributes: [ ]
-extraAttributes: [ ]
+attributes: []
+extraAttributes: []
 
 logConfig:
   name: entity-service-log-config
@@ -116,7 +118,7 @@ logConfig:
 config-bootstrapper:
   job:
     prefix: entity
-  configurationCommands: { }
+  configurationCommands: {}
 
 hpa:
   enabled: false
@@ -138,5 +140,5 @@ kafka-topic-creator:
           retention.ms: 86400000 # default = 604800000 (7 days)
   zookeeper:
     address: zookeeper:2181
-  imagePullSecrets: [ ]
-  podAnnotations: { }
+  imagePullSecrets: []
+  podAnnotations: {}
