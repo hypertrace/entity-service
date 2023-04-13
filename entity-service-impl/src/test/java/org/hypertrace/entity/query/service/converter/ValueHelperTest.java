@@ -10,17 +10,13 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Optional;
 import java.util.Set;
-import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
 import org.hypertrace.core.grpcutils.context.RequestContext;
-import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -44,7 +40,6 @@ class ValueHelperTest {
 
   @Mock private RequestContext context;
   private OneOfAccessor<Value, ValueType> mockValueAccessor;
-  private EntityAttributeMapping mockEntityAttributeMapping;
 
   private ValueHelper valueHelper;
 
@@ -52,8 +47,7 @@ class ValueHelperTest {
   @BeforeAll
   void setUp() {
     mockValueAccessor = mock(OneOfAccessor.class);
-    mockEntityAttributeMapping = mock(EntityAttributeMapping.class);
-    valueHelper = spy(new ValueHelper(mockValueAccessor, mockEntityAttributeMapping));
+    valueHelper = spy(new ValueHelper(mockValueAccessor));
   }
 
   @Nested
@@ -108,11 +102,6 @@ class ValueHelperTest {
     @Test
     void testConvertStringValueToSubDocumentValue() throws ConversionException, IOException {
       final String dataType = "string";
-      when(mockEntityAttributeMapping.getAttributeKind(context, dataType))
-          .thenReturn(Optional.of(AttributeKind.TYPE_STRING));
-      when(mockEntityAttributeMapping.isPrimitive(AttributeKind.TYPE_STRING)).thenReturn(true);
-      final Optional<AttributeKind> attributeKind =
-          mockEntityAttributeMapping.getAttributeKind(context, dataType);
       assertEquals(
           SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": \"Mars\" }}")),
           valueHelper.convertToSubDocumentValue(
@@ -122,11 +111,6 @@ class ValueHelperTest {
     @Test
     void testConvertBooleanValueToSubDocumentValue() throws ConversionException, IOException {
       final String dataType = "boolean";
-      when(mockEntityAttributeMapping.getAttributeKind(context, dataType))
-          .thenReturn(Optional.of(AttributeKind.TYPE_BOOL));
-      when(mockEntityAttributeMapping.isPrimitive(AttributeKind.TYPE_BOOL)).thenReturn(true);
-      final Optional<AttributeKind> attributeKind =
-          mockEntityAttributeMapping.getAttributeKind(context, dataType);
       assertEquals(
           SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": true }}")),
           valueHelper.convertToSubDocumentValue(
@@ -137,11 +121,6 @@ class ValueHelperTest {
     void testConvertBooleanDefaultValueToSubDocumentValue()
         throws ConversionException, IOException {
       final String dataType = "boolean";
-      when(mockEntityAttributeMapping.getAttributeKind(context, dataType))
-          .thenReturn(Optional.of(AttributeKind.TYPE_BOOL));
-      when(mockEntityAttributeMapping.isPrimitive(AttributeKind.TYPE_BOOL)).thenReturn(true);
-      final Optional<AttributeKind> attributeKind =
-          mockEntityAttributeMapping.getAttributeKind(context, dataType);
       assertEquals(
           SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": false }}")),
           valueHelper.convertToSubDocumentValue(

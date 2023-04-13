@@ -38,7 +38,6 @@ import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
-import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -79,8 +78,6 @@ public class ValueHelper {
       memoize(ValueHelper::getStringValueToPrimitiveTypeMap);
 
   private final OneOfAccessor<Value, ValueType> valueAccessor;
-
-  private final EntityAttributeMapping attributeMapping;
 
   public boolean isPrimitive(final ValueType valueType) {
     return PRIMITIVE_TYPES.contains(valueType);

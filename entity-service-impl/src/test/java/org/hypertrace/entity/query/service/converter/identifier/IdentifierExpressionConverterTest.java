@@ -26,8 +26,7 @@ class IdentifierExpressionConverterTest {
   @Mock private EntityAttributeMapping attributeMapping;
   private final RequestContext requestContext = RequestContext.forTenantId("Martian");
   private final ArrayPathSuffixAddingIdentifierConverter arrayPathSuffixAddingIdentifierConverter =
-      new ArrayPathSuffixAddingIdentifierConverter(
-          new ValueHelper(new ValueOneOfAccessor(), attributeMapping));
+      new ArrayPathSuffixAddingIdentifierConverter(new ValueHelper(new ValueOneOfAccessor()));
 
   private final ColumnIdentifier columnIdentifier =
       ColumnIdentifier.newBuilder().setColumnName("planet").build();

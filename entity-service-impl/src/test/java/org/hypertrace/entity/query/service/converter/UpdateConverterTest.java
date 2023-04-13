@@ -71,9 +71,7 @@ class UpdateConverterTest {
   @BeforeEach
   void setUp() {
     updateConverter =
-        new UpdateConverter(
-            mockEntityAttributeMapping,
-            new ValueHelper(new ValueOneOfAccessor(), mockEntityAttributeMapping));
+        new UpdateConverter(mockEntityAttributeMapping, new ValueHelper(new ValueOneOfAccessor()));
   }
 
   @Test
