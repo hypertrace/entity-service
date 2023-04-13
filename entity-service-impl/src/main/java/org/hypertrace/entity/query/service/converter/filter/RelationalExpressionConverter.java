@@ -39,7 +39,7 @@ public class RelationalExpressionConverter implements Converter<Filter, FilterTy
 
     final FilteringExpressionConverter filteringExpressionConverter =
         filteringExpressionConverterFactory.getConverter(
-            identifier.getColumnName(), literal.getValue(), requestContext);
+            identifier.getColumnName(), literal.getValue(), operator, requestContext);
     return filteringExpressionConverter.convert(identifier, operator, literal, requestContext);
   }
 }

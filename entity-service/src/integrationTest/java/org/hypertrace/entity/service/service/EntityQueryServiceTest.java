@@ -259,6 +259,21 @@ public class EntityQueryServiceTest {
             .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
             .build();
 
+    AttributeMetadata apiId =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("Endpoint ID")
+            .addSources(AttributeSource.QS)
+            .addSources(AttributeSource.EDS)
+            .setFqn(API_ID_ATTR)
+            .setGroupable(false)
+            .setId(API_ID_ATTR)
+            .setKey("id")
+            .setScopeString("API")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING)
+            .setScope(AttributeScope.API)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
+
     AttributeMetadata httpUrlAttribute =
         AttributeMetadata.newBuilder()
             .setDisplayName("HTTP URL object")
@@ -316,33 +331,33 @@ public class EntityQueryServiceTest {
             .build();
 
     final AttributeMetadata createdTime =
-            AttributeMetadata.newBuilder()
-                    .setDisplayName("Service Created Time")
-                    .addSources(AttributeSource.EDS)
-                    .setFqn(SERVICE_CREATED_TIME_ATTR)
-                    .setGroupable(false)
-                    .setId(SERVICE_CREATED_TIME_ATTR)
-                    .setKey("createdTime")
-                    .setScopeString("SERVICE")
-                    .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_TIMESTAMP)
-                    .setScope(AttributeScope.SERVICE)
-                    .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
-                    .build();
+        AttributeMetadata.newBuilder()
+            .setDisplayName("Service Created Time")
+            .addSources(AttributeSource.EDS)
+            .setFqn(SERVICE_CREATED_TIME_ATTR)
+            .setGroupable(false)
+            .setId(SERVICE_CREATED_TIME_ATTR)
+            .setKey("createdTime")
+            .setScopeString("SERVICE")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_TIMESTAMP)
+            .setScope(AttributeScope.SERVICE)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
 
     final AttributeMetadata serviceName =
-            AttributeMetadata.newBuilder()
-                    .setDisplayName("Service Name")
-                    .addSources(AttributeSource.QS)
-                    .addSources(AttributeSource.EDS)
-                    .setFqn(SERVICE_NAME_ATTR)
-                    .setGroupable(false)
-                    .setId(SERVICE_NAME_ATTR)
-                    .setKey("name")
-                    .setScopeString("SERVICE")
-                    .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING)
-                    .setScope(AttributeScope.SERVICE)
-                    .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
-                    .build();
+        AttributeMetadata.newBuilder()
+            .setDisplayName("Service Name")
+            .addSources(AttributeSource.QS)
+            .addSources(AttributeSource.EDS)
+            .setFqn(SERVICE_NAME_ATTR)
+            .setGroupable(false)
+            .setId(SERVICE_NAME_ATTR)
+            .setKey("name")
+            .setScopeString("SERVICE")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING)
+            .setScope(AttributeScope.SERVICE)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
 
     AttributeCreateRequest request =
         AttributeCreateRequest.newBuilder()
@@ -353,6 +368,7 @@ public class EntityQueryServiceTest {
             .addAttributes(isLatest)
             .addAttributes(createdTime)
             .addAttributes(serviceName)
+            .addAttributes(apiId)
             .build();
     AttributeServiceClient attributeServiceClient = new AttributeServiceClient(channel);
     attributeServiceClient.create(TENANT_ID, request);

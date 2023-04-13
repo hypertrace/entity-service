@@ -3,15 +3,13 @@ package org.hypertrace.entity.query.service.converter.filter;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.AllArgsConstructor;
-import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
+import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
-
-import java.util.Optional;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
@@ -26,7 +24,10 @@ public class FilteringExpressionConverterFactoryImpl
 
   @Override
   public FilteringExpressionConverter getConverter(
-      final String columnName, final Value value, final RequestContext context)
+      final String columnName,
+      final Value value,
+      final Operator operator,
+      final RequestContext context)
       throws ConversionException {
     ValueType valueType = value.getValueType();
 
@@ -35,11 +36,15 @@ public class FilteringExpressionConverterFactoryImpl
       return nullFilteringExpressionConverter;
     }
 
-//    try {
-//      Thread.sleep(200000);
-//    } catch (InterruptedException e) {
-//      throw new RuntimeException(e);
-//    }
+    //    try {
+    //      Thread.sleep(200000);
+    //    } catch (InterruptedException e) {
+    //      throw new RuntimeException(e);
+    //    }
+
+    if (operator.equals(Operator.IN) || operator.equals(Operator.NOT_IN)) {
+      return primitiveFilteringExpressionConverter;
+    }
 
     if (entityAttributeMapping.isPrimitive(context, columnName)) {
       return primitiveFilteringExpressionConverter;
