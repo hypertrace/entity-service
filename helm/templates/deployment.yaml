@@ -58,6 +58,10 @@ spec:
       topologySpreadConstraints:
         {{- toYaml . | nindent 8}}
     {{- end }}
+    {{- with .Values.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8}}
+    {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ include "entityservice.image" . }}"
