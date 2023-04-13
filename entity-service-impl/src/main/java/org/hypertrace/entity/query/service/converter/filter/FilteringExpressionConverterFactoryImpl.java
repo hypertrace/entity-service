@@ -3,12 +3,15 @@ package org.hypertrace.entity.query.service.converter.filter;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.AllArgsConstructor;
+import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
+
+import java.util.Optional;
 
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
@@ -31,6 +34,12 @@ public class FilteringExpressionConverterFactoryImpl
     if (valueHelper.isNull(value)) {
       return nullFilteringExpressionConverter;
     }
+
+//    try {
+//      Thread.sleep(200000);
+//    } catch (InterruptedException e) {
+//      throw new RuntimeException(e);
+//    }
 
     if (entityAttributeMapping.isPrimitive(context, columnName)) {
       return primitiveFilteringExpressionConverter;

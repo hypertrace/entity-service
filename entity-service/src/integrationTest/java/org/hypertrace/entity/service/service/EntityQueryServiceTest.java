@@ -135,6 +135,7 @@ public class EntityQueryServiceTest {
   private static final String API_LABELS_ATTR = "API.labels";
   private static final String API_HTTP_URL_ATTR = "API.httpUrl";
   private static final String API_IS_LATEST_ATTR = "API.isLatest";
+  private static final String SERVICE_CREATED_TIME_ATTR = "Service.createdTime";
 
   private static final String SERVICE_ID_ATTR = "SERVICE.id";
   private static final String SERVICE_NAME_ATTR = "SERVICE.name";
@@ -265,7 +266,7 @@ public class EntityQueryServiceTest {
             .setFqn(API_HTTP_URL_ATTR)
             .setGroupable(false)
             .setId(API_HTTP_URL_ATTR)
-            .setKey("http_url")
+            .setKey("httpUrl")
             .setScopeString("API")
             .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP)
             .setScope(AttributeScope.API)
@@ -314,6 +315,35 @@ public class EntityQueryServiceTest {
             .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
             .build();
 
+    final AttributeMetadata createdTime =
+            AttributeMetadata.newBuilder()
+                    .setDisplayName("Service Created Time")
+                    .addSources(AttributeSource.EDS)
+                    .setFqn(SERVICE_CREATED_TIME_ATTR)
+                    .setGroupable(false)
+                    .setId(SERVICE_CREATED_TIME_ATTR)
+                    .setKey("createdTime")
+                    .setScopeString("SERVICE")
+                    .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_TIMESTAMP)
+                    .setScope(AttributeScope.SERVICE)
+                    .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+                    .build();
+
+    final AttributeMetadata serviceName =
+            AttributeMetadata.newBuilder()
+                    .setDisplayName("Service Name")
+                    .addSources(AttributeSource.QS)
+                    .addSources(AttributeSource.EDS)
+                    .setFqn(SERVICE_NAME_ATTR)
+                    .setGroupable(false)
+                    .setId(SERVICE_NAME_ATTR)
+                    .setKey("name")
+                    .setScopeString("SERVICE")
+                    .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING)
+                    .setScope(AttributeScope.SERVICE)
+                    .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+                    .build();
+
     AttributeCreateRequest request =
         AttributeCreateRequest.newBuilder()
             .addAttributes(labelsAttribute)
@@ -321,6 +351,8 @@ public class EntityQueryServiceTest {
             .addAttributes(discoveryStateAttribute)
             .addAttributes(httpMethod)
             .addAttributes(isLatest)
+            .addAttributes(createdTime)
+            .addAttributes(serviceName)
             .build();
     AttributeServiceClient attributeServiceClient = new AttributeServiceClient(channel);
     attributeServiceClient.create(TENANT_ID, request);
@@ -329,6 +361,7 @@ public class EntityQueryServiceTest {
   @Test
   public void testExecute() {
     // create and upsert some entities
+
     Entity entity1 =
         Entity.newBuilder()
             .setTenantId(TENANT_ID)
