@@ -14,7 +14,6 @@ import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 import static org.hypertrace.entity.service.client.config.EntityServiceTestConfig.getServiceConfig;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.ENTITY_TYPES_COLLECTION;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
-import static org.hypertrace.entity.service.constants.EntityConstants.ENTITY_ID;
 import static org.hypertrace.entity.v1.servicetype.ServiceType.HOSTNAME;
 import static org.hypertrace.entity.v1.servicetype.ServiceType.JAEGER_SERVICE;
 import static org.hypertrace.entity.v1.servicetype.ServiceType.K8S_SERVICE;
@@ -130,6 +129,7 @@ public class EntityQueryServiceTest {
   private static final RequestContext requestContext = RequestContext.forTenantId(TENANT_ID);
   // attributes defined in application.conf in attribute map
   private static final String API_ID_ATTR = "API.id";
+  private static final String ENTITY_ID_ATTR = "Entity.id";
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
   private static final String API_LABELS_ATTR = "API.labels";
@@ -274,6 +274,20 @@ public class EntityQueryServiceTest {
             .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
             .build();
 
+    AttributeMetadata entityId =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("Entity ID")
+            .addSources(AttributeSource.EDS)
+            .setFqn(ENTITY_ID_ATTR)
+            .setGroupable(false)
+            .setId(ENTITY_ID_ATTR)
+            .setKey("id")
+            .setScopeString("Entity")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING)
+            .setScope(AttributeScope.ENTITY)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
+
     AttributeMetadata httpUrlAttribute =
         AttributeMetadata.newBuilder()
             .setDisplayName("HTTP URL object")
@@ -369,6 +383,7 @@ public class EntityQueryServiceTest {
             .addAttributes(createdTime)
             .addAttributes(serviceName)
             .addAttributes(apiId)
+            .addAttributes(entityId)
             .build();
     AttributeServiceClient attributeServiceClient = new AttributeServiceClient(channel);
     attributeServiceClient.create(TENANT_ID, request);
@@ -1458,7 +1473,7 @@ public class EntityQueryServiceTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"API.id", ENTITY_ID})
+  @ValueSource(strings = {"API.id", ENTITY_ID_ATTR})
   public void testBulkUpdateAllMatchingFilter(final String filterColumn)
       throws InterruptedException {
     final Entity.Builder apiEntityBuilder1 =
