@@ -136,8 +136,6 @@ public class EntityQueryServiceTest {
   private static final String API_HTTP_URL_ATTR = "API.httpUrl";
   private static final String API_IS_LATEST_ATTR = "API.isLatest";
   private static final String API_NAME_ATTR = "API.name";
-  private static final String SERVICE_CREATED_TIME_ATTR = "Service.createdTime";
-
   private static final String SERVICE_ID_ATTR = "SERVICE.id";
   private static final String SERVICE_NAME_ATTR = "SERVICE.name";
   private static final String SERVICE_TYPE_ATTR = "SERVICE.service_type";
