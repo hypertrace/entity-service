@@ -68,6 +68,8 @@ public class ValueHelper {
           BYTES_ARRAY,
           BOOLEAN_ARRAY);
 
+  private static final Set<ValueType> MAP_TYPES = Set.of(STRING_MAP);
+
   private static final Supplier<Map<ValueType, String>> TYPE_TO_STRING_VALUE_MAP =
       memoize(ValueHelper::getTypeToStringValueMap);
 
@@ -87,6 +89,10 @@ public class ValueHelper {
 
   public boolean isArray(final ValueType valueType) {
     return ARRAY_TYPES.contains(valueType);
+  }
+
+  public boolean isMap(final ValueType valueType) {
+    return MAP_TYPES.contains(valueType);
   }
 
   public boolean isNull(final Value value) {

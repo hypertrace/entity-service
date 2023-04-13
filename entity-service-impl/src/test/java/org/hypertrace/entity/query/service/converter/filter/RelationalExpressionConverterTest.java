@@ -2,7 +2,6 @@ package org.hypertrace.entity.query.service.converter.filter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 import static org.mockito.quality.Strictness.LENIENT;
@@ -68,8 +67,7 @@ class RelationalExpressionConverterTest {
     doReturn(constantExpression)
         .when(constantExpressionConverter)
         .convert(literalConstant, requestContext);
-    when(filteringExpressionConverterFactory.getConverter(
-            any(String.class), any(Value.class), any(Operator.class), eq(requestContext)))
+    when(filteringExpressionConverterFactory.getConverter(any(Value.class), any(Operator.class)))
         .thenReturn(filteringExpressionConverter);
   }
 

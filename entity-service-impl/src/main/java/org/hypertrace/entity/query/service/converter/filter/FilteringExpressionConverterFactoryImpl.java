@@ -3,7 +3,6 @@ package org.hypertrace.entity.query.service.converter.filter;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.AllArgsConstructor;
-import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
@@ -23,11 +22,7 @@ public class FilteringExpressionConverterFactoryImpl
   private ValueHelper valueHelper;
 
   @Override
-  public FilteringExpressionConverter getConverter(
-      final String columnName,
-      final Value value,
-      final Operator operator,
-      final RequestContext context)
+  public FilteringExpressionConverter getConverter(final Value value, final Operator operator)
       throws ConversionException {
     ValueType valueType = value.getValueType();
 
@@ -46,15 +41,15 @@ public class FilteringExpressionConverterFactoryImpl
       return primitiveFilteringExpressionConverter;
     }
 
-    if (entityAttributeMapping.isPrimitive(context, columnName)) {
+    if (valueHelper.isPrimitive(valueType)) {
       return primitiveFilteringExpressionConverter;
     }
 
-    if (entityAttributeMapping.isArray(context, columnName)) {
+    if (valueHelper.isArray(valueType)) {
       return arrayFilteringExpressionConverter;
     }
 
-    if (entityAttributeMapping.isMap(context, columnName)) {
+    if (valueHelper.isMap(valueType)) {
       return mapFilteringExpressionConverter;
     }
 

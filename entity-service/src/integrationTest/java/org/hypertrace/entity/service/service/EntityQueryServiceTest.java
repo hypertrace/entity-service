@@ -277,6 +277,7 @@ public class EntityQueryServiceTest {
     AttributeMetadata entityId =
         AttributeMetadata.newBuilder()
             .setDisplayName("Entity ID")
+            .addSources(AttributeSource.QS)
             .addSources(AttributeSource.EDS)
             .setFqn(ENTITY_ID_ATTR)
             .setGroupable(false)
@@ -1700,7 +1701,6 @@ public class EntityQueryServiceTest {
 
     while (resultSetChunkIterator.hasNext()) {
       final ResultSetChunk chunk = resultSetChunkIterator.next();
-      final List<org.hypertrace.entity.query.service.v1.Value> colValues = new ArrayList<>();
 
       for (final Row row : chunk.getRowList()) {
         values.add(row.getColumnList());
