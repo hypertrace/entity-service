@@ -329,7 +329,6 @@ public class EntityQueryServiceTest {
   @Test
   public void testExecute() {
     // create and upsert some entities
-
     Entity entity1 =
         Entity.newBuilder()
             .setTenantId(TENANT_ID)

@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.Set;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
-import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -31,14 +30,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @TestInstance(Lifecycle.PER_CLASS)
 class ValueHelperTest {
-
-  @Mock private RequestContext context;
   private OneOfAccessor<Value, ValueType> mockValueAccessor;
 
   private ValueHelper valueHelper;
@@ -101,18 +97,16 @@ class ValueHelperTest {
   class ConvertToSubDocumentValueTest {
     @Test
     void testConvertStringValueToSubDocumentValue() throws ConversionException, IOException {
-      final String dataType = "string";
       assertEquals(
-          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": \"Mars\" }}")),
+          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"string\": \"Mars\" }}")),
           valueHelper.convertToSubDocumentValue(
               Value.newBuilder().setString("Mars").setValueType(ValueType.STRING).build()));
     }
 
     @Test
     void testConvertBooleanValueToSubDocumentValue() throws ConversionException, IOException {
-      final String dataType = "boolean";
       assertEquals(
-          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": true }}")),
+          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"boolean\": true }}")),
           valueHelper.convertToSubDocumentValue(
               Value.newBuilder().setBoolean(true).setValueType(ValueType.BOOL).build()));
     }
@@ -120,9 +114,8 @@ class ValueHelperTest {
     @Test
     void testConvertBooleanDefaultValueToSubDocumentValue()
         throws ConversionException, IOException {
-      final String dataType = "boolean";
       assertEquals(
-          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"" + dataType + "\": false }}")),
+          SubDocumentValue.of(new JSONDocument("{ \"value\": {\"boolean\": false }}")),
           valueHelper.convertToSubDocumentValue(
               Value.newBuilder().setBoolean(false).setValueType(ValueType.BOOL).build()));
     }
