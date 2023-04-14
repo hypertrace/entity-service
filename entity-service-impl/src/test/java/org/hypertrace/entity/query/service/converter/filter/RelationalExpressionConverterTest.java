@@ -67,7 +67,7 @@ class RelationalExpressionConverterTest {
     doReturn(constantExpression)
         .when(constantExpressionConverter)
         .convert(literalConstant, requestContext);
-    when(filteringExpressionConverterFactory.getConverter(any(Value.class)))
+    when(filteringExpressionConverterFactory.getConverter(any(Value.class), any(Operator.class)))
         .thenReturn(filteringExpressionConverter);
   }
 

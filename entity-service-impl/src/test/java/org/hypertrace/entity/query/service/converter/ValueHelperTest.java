@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.EnumSource.Mode.INCLUDE;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -29,19 +30,19 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 @TestInstance(Lifecycle.PER_CLASS)
 class ValueHelperTest {
-
-  @Mock private OneOfAccessor<Value, ValueType> mockValueAccessor;
+  private OneOfAccessor<Value, ValueType> mockValueAccessor;
 
   private ValueHelper valueHelper;
 
+  @SuppressWarnings("unchecked")
   @BeforeAll
   void setUp() {
+    mockValueAccessor = mock(OneOfAccessor.class);
     valueHelper = spy(new ValueHelper(mockValueAccessor));
   }
 

@@ -598,7 +598,8 @@ public class EntityQueryServiceImplTest {
                               .setLhs(
                                   Expression.newBuilder()
                                       .setColumnIdentifier(
-                                          ColumnIdentifier.newBuilder().setColumnName(ENTITY_ID)))
+                                          ColumnIdentifier.newBuilder()
+                                              .setColumnName(ATTRIBUTE_ID1)))
                               .setOperator(Operator.EQ)
                               .setRhs(
                                   Expression.newBuilder()
@@ -625,7 +626,7 @@ public class EntityQueryServiceImplTest {
               .setFilter(
                   and(
                       RelationalExpression.of(
-                          IdentifierExpression.of(ENTITY_ID),
+                          IdentifierExpression.of("attributes.entity_id.value.string"),
                           RelationalOperator.EQ,
                           ConstantExpression.of(entityId)),
                       RelationalExpression.of(
@@ -1177,6 +1178,7 @@ public class EntityQueryServiceImplTest {
   private EntityAttributeMapping mockMappingForAttributes() {
     when(mockAttributeMapping.getAttributeKind(requestContext, API_ID))
         .thenReturn(Optional.of(TYPE_STRING));
+    when(mockAttributeMapping.isPrimitive(requestContext, ATTRIBUTE_ID1)).thenReturn(true);
     return when(this.mockMappingForAttribute1()
             .getDocStorePathByAttributeId(requestContext, API_ID))
         .thenReturn(Optional.of(EDS_API_ID_COLUMN_NAME))
@@ -1184,9 +1186,10 @@ public class EntityQueryServiceImplTest {
   }
 
   private EntityAttributeMapping mockMappingForAttribute1() {
+    when(mockAttributeMapping.isArray(requestContext, ATTRIBUTE_ID1)).thenReturn(false);
+    when(mockAttributeMapping.isPrimitive(TYPE_STRING)).thenReturn(true);
     when(mockAttributeMapping.getAttributeKind(requestContext, ATTRIBUTE_ID1))
         .thenReturn(Optional.of(TYPE_STRING));
-    when(mockAttributeMapping.isMultiValued(TYPE_STRING)).thenReturn(false);
     return when(mockAttributeMapping.getDocStorePathByAttributeId(requestContext, ATTRIBUTE_ID1))
         .thenReturn(Optional.of(EDS_COLUMN_NAME1))
         .getMock();

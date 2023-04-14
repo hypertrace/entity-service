@@ -1,10 +1,17 @@
 package org.hypertrace.entity.attribute.translator;
 
 import static java.util.stream.Collectors.toUnmodifiableMap;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_BOOL;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_BOOL_ARRAY;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_BYTES;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_DOUBLE;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_DOUBLE_ARRAY;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_INT64;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_INT64_ARRAY;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_TIMESTAMP;
 
 import com.typesafe.config.Config;
 import java.util.Map;
@@ -27,8 +34,11 @@ public class EntityAttributeMapping {
   private static final String SCOPE_PATH = "scope";
   private static final String ATTRIBUTE_PATH = "attribute";
   private static final String NAME_PATH = "name";
-  private static final Set<AttributeKind> MULTI_VALUED_ATTRIBUTE_KINDS =
+  private static final Set<AttributeKind> ARRAY_ATTRIBUTE_KINDS =
       Set.of(TYPE_STRING_ARRAY, TYPE_INT64_ARRAY, TYPE_DOUBLE_ARRAY, TYPE_BOOL_ARRAY);
+  private static final Set<AttributeKind> PRIMITIVE_ATTRIBUTE_KINDS =
+      Set.of(TYPE_DOUBLE, TYPE_INT64, TYPE_BOOL, TYPE_STRING, TYPE_BYTES, TYPE_TIMESTAMP);
+  private static final Set<AttributeKind> MAP_ATTRIBUTE_KINDS = Set.of(TYPE_STRING_MAP);
 
   private final CachingAttributeClient attributeClient;
   private final Map<String, AttributeMetadataIdentifier> explicitAttributeIdByAttributeMetadata;
@@ -101,21 +111,31 @@ public class EntityAttributeMapping {
                 .blockingGet());
   }
 
-  public boolean isMultiValued(RequestContext requestContext, String attributeId) {
-    return requestContext.call(
-        () ->
-            this.attributeClient
-                .get(attributeId)
-                .filter(metadata -> metadata.getSourcesList().contains(AttributeSource.EDS))
-                .map(org.hypertrace.core.attribute.service.v1.AttributeMetadata::getValueKind)
-                .map(this::isMultiValued)
-                .onErrorComplete()
-                .defaultIfEmpty(false)
-                .blockingGet());
+  public boolean isArray(final RequestContext requestContext, final String columnId) {
+    final Optional<AttributeKind> attributeKind = getAttributeKind(requestContext, columnId);
+    return attributeKind.map(this::isArray).orElse(false);
   }
 
-  public boolean isMultiValued(final AttributeKind attributeKind) {
-    return MULTI_VALUED_ATTRIBUTE_KINDS.contains(attributeKind);
+  public boolean isPrimitive(final RequestContext requestContext, final String columnId) {
+    final Optional<AttributeKind> attributeKind = getAttributeKind(requestContext, columnId);
+    return attributeKind.map(this::isPrimitive).orElse(false);
+  }
+
+  public boolean isMap(final RequestContext requestContext, final String columnId) {
+    final Optional<AttributeKind> attributeKind = getAttributeKind(requestContext, columnId);
+    return attributeKind.map(this::isMap).orElse(false);
+  }
+
+  public boolean isArray(final AttributeKind attributeKind) {
+    return ARRAY_ATTRIBUTE_KINDS.contains(attributeKind);
+  }
+
+  public boolean isPrimitive(final AttributeKind attributeKind) {
+    return PRIMITIVE_ATTRIBUTE_KINDS.contains(attributeKind);
+  }
+
+  private boolean isMap(final AttributeKind attributeKind) {
+    return MAP_ATTRIBUTE_KINDS.contains(attributeKind);
   }
 
   private Optional<AttributeMetadataIdentifier> calculateAttributeMetadataFromAttributeId(

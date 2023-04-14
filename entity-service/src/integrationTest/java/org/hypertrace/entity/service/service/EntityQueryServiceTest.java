@@ -135,7 +135,7 @@ public class EntityQueryServiceTest {
   private static final String API_LABELS_ATTR = "API.labels";
   private static final String API_HTTP_URL_ATTR = "API.httpUrl";
   private static final String API_IS_LATEST_ATTR = "API.isLatest";
-
+  private static final String API_NAME_ATTR = "API.name";
   private static final String SERVICE_ID_ATTR = "SERVICE.id";
   private static final String SERVICE_NAME_ATTR = "SERVICE.name";
   private static final String SERVICE_TYPE_ATTR = "SERVICE.service_type";
@@ -265,7 +265,7 @@ public class EntityQueryServiceTest {
             .setFqn(API_HTTP_URL_ATTR)
             .setGroupable(false)
             .setId(API_HTTP_URL_ATTR)
-            .setKey("http_url")
+            .setKey("httpUrl")
             .setScopeString("API")
             .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP)
             .setScope(AttributeScope.API)
@@ -1627,6 +1627,11 @@ public class EntityQueryServiceTest {
             .addSelection(createExpression(API_HTTP_METHOD_ATTR))
             .addSelection(createExpression(API_LABELS_ATTR))
             .addSelection(createExpression(API_IS_LATEST_ATTR))
+            .addSelection(createExpression(API_NAME_ATTR))
+            .addOrderBy(
+                OrderByExpression.newBuilder()
+                    .setExpression(createExpression(API_NAME_ATTR))
+                    .setOrder(ASC))
             .build();
 
     final Iterator<ResultSetChunk> resultSetChunkIterator =
@@ -1636,7 +1641,6 @@ public class EntityQueryServiceTest {
 
     while (resultSetChunkIterator.hasNext()) {
       final ResultSetChunk chunk = resultSetChunkIterator.next();
-      final List<org.hypertrace.entity.query.service.v1.Value> colValues = new ArrayList<>();
 
       for (final Row row : chunk.getRowList()) {
         values.add(row.getColumnList());
@@ -1644,16 +1648,19 @@ public class EntityQueryServiceTest {
     }
 
     assertEquals(3, values.size());
+    assertEquals("api1", values.get(0).get(4).getString());
     assertEquals("DISCOVERED", values.get(0).get(0).getString());
     assertEquals("POST", values.get(0).get(1).getString());
     assertEquals(List.of("Label1", "Label4"), values.get(0).get(2).getStringArrayList());
     assertEquals(false, values.get(0).get(3).getBoolean());
 
+    assertEquals("api2", values.get(1).get(4).getString());
     assertEquals("UNDER_DISCOVERY", values.get(1).get(0).getString());
     assertEquals("POST", values.get(1).get(1).getString());
     assertEquals(List.of("Label2"), values.get(1).get(2).getStringArrayList());
     assertEquals(false, values.get(1).get(3).getBoolean());
 
+    assertEquals("api3", values.get(2).get(4).getString());
     assertEquals("", values.get(2).get(0).getString());
     assertEquals("GET", values.get(2).get(1).getString());
     assertEquals(List.of(), values.get(2).get(2).getStringArrayList());

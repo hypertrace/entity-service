@@ -254,8 +254,8 @@ class EntityQueryConverter {
                             String.format(
                                 "Unrecognized attribute: %s does not match any known entity attribute",
                                 attributeId)));
-        boolean isMultiValued = this.attributeMapping.isMultiValued(requestContext, attributeId);
-        return new AttributeColumnInformation(attributeName, isMultiValued);
+        final boolean isArray = this.attributeMapping.isArray(requestContext, attributeId);
+        return new AttributeColumnInformation(attributeName, isArray);
       case FUNCTION:
         throw new UnsupportedOperationException(
             "Filtering on functional expressions not supported in EDS");

@@ -49,9 +49,8 @@ class FromClauseConverterTest {
             Expression.newBuilder().setColumnIdentifier(col2).build());
 
     final RequestContext requestContext = new RequestContext();
-    when(mockEntityAttributeMapping.isMultiValued(eq(requestContext), eq("col1")))
-        .thenReturn(false);
-    when(mockEntityAttributeMapping.isMultiValued(eq(requestContext), eq("col2"))).thenReturn(true);
+    when(mockEntityAttributeMapping.isArray(eq(requestContext), eq("col1"))).thenReturn(false);
+    when(mockEntityAttributeMapping.isArray(eq(requestContext), eq("col2"))).thenReturn(true);
     when(mockIdentifierExpressionConverter.convert(col2, requestContext))
         .thenReturn(IdentifierExpression.of("name"));
 

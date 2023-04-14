@@ -28,7 +28,7 @@ public class IdentifierExpressionConverter
 
     final String suffixedSubDocPath;
 
-    if (attributeMapping.isMultiValued(requestContext, columnId)) {
+    if (attributeMapping.isArray(requestContext, columnId)) {
       suffixedSubDocPath =
           arrayPathSuffixAddingIdentifierConverter.convert(
               IdentifierConversionMetadata.builder().subDocPath(subDocPath).build(),

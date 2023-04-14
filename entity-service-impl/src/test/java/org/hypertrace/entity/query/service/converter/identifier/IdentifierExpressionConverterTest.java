@@ -23,11 +23,10 @@ import org.mockito.junit.jupiter.MockitoSettings;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = LENIENT)
 class IdentifierExpressionConverterTest {
+  @Mock private EntityAttributeMapping attributeMapping;
   private final RequestContext requestContext = RequestContext.forTenantId("Martian");
   private final ArrayPathSuffixAddingIdentifierConverter arrayPathSuffixAddingIdentifierConverter =
       new ArrayPathSuffixAddingIdentifierConverter(new ValueHelper(new ValueOneOfAccessor()));
-
-  @Mock private EntityAttributeMapping attributeMapping;
 
   private final ColumnIdentifier columnIdentifier =
       ColumnIdentifier.newBuilder().setColumnName("planet").build();
@@ -64,7 +63,7 @@ class IdentifierExpressionConverterTest {
     when(attributeMapping.getDocStorePathByAttributeId(
             requestContext, columnIdentifier.getColumnName()))
         .thenReturn(Optional.of("attributes.entity_name"));
-    when(attributeMapping.isMultiValued(requestContext, columnIdentifier.getColumnName()))
+    when(attributeMapping.isArray(requestContext, columnIdentifier.getColumnName()))
         .thenReturn(true);
     IdentifierExpression expected =
         IdentifierExpression.of("attributes.entity_name.valueList.values");

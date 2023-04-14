@@ -45,7 +45,7 @@ public class FromClauseConverter implements Converter<List<Expression>, List<Fro
     final ColumnIdentifier identifier =
         expressionAccessor.access(expression, expression.getValueCase(), Set.of(COLUMNIDENTIFIER));
 
-    if (!entityAttributeMapping.isMultiValued(requestContext, identifier.getColumnName())) {
+    if (!entityAttributeMapping.isArray(requestContext, identifier.getColumnName())) {
       return empty();
     }
 
