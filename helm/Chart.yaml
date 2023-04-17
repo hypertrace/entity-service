@@ -24,7 +24,7 @@ version: 0.1.0
 dependencies:
   - name: config-bootstrapper
     repository: "https://storage.googleapis.com/hypertrace-helm-charts"
-    version: 0.2.38
+    version: 0.2.39
   - name: kafka-topic-creator
     repository: "https://storage.googleapis.com/hypertrace-helm-charts"
     version: 0.2.x
