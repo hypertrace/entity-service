@@ -82,7 +82,7 @@ public class PrimitiveFilteringExpressionConverter extends FilteringExpressionCo
 
     final IdentifierConverter identifierConverter =
         identifierConverterFactory.getIdentifierConverter(
-            id, subDocPath, valueType, requestContext);
+            id, subDocPath, constant.getValue().getValueType(), requestContext);
 
     final IdentifierConversionMetadata metadata =
         IdentifierConversionMetadata.builder()

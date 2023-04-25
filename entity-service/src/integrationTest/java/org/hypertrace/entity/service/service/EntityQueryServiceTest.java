@@ -763,8 +763,14 @@ public class EntityQueryServiceTest {
             .setTenantId(TENANT_ID)
             .setEntityType(EntityType.API.name())
             .setEntityName("Some API 1")
-            .putAttributes(
-                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), generateRandomUUIDAttrValue())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
+                createAttribute(SERVICE_ID))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_NAME), createAttribute("api1"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(ApiAttribute.API_ATTRIBUTE_API_TYPE),
+                createAttribute(API_TYPE))
             .build();
     Entity createdEntity6 = entityDataServiceClient.upsert(entity6);
     assertNotNull(createdEntity6);
@@ -861,13 +867,16 @@ public class EntityQueryServiceTest {
         GrpcClientRequestContextUtil.executeWithHeadersContext(
             HEADERS, () -> entityQueryServiceClient.execute(queryRequest));
     List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
-    assertEquals(2, list.size());
+    assertEquals(3, list.size());
     assertEquals(2, list.get(0).getRowCount());
     assertEquals(0, list.get(0).getChunkId());
     assertFalse(list.get(0).getIsLastChunk());
-    assertEquals(1, list.get(1).getRowCount());
+    assertEquals(2, list.get(1).getRowCount());
     assertEquals(1, list.get(1).getChunkId());
-    assertTrue(list.get(1).getIsLastChunk());
+    assertFalse(list.get(1).getIsLastChunk());
+    assertEquals(1, list.get(2).getRowCount());
+    assertEquals(2, list.get(2).getChunkId());
+    assertTrue(list.get(2).getIsLastChunk());
 
     assertEquals(createdEntity1.getEntityId(), list.get(0).getRow(0).getColumn(0).getString());
     assertEquals(createdEntity1.getEntityName(), list.get(0).getRow(0).getColumn(1).getString());
@@ -875,9 +884,12 @@ public class EntityQueryServiceTest {
     assertEquals(createdEntity2.getEntityName(), list.get(0).getRow(1).getColumn(1).getString());
     assertEquals(createdEntity3.getEntityId(), list.get(1).getRow(0).getColumn(0).getString());
     assertEquals(createdEntity3.getEntityName(), list.get(1).getRow(0).getColumn(1).getString());
+    assertEquals(createdEntity6.getEntityId(), list.get(1).getRow(1).getColumn(0).getString());
+    assertEquals(createdEntity6.getEntityName(), list.get(1).getRow(1).getColumn(1).getString());
 
     assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
     assertTrue(list.get(1).getResultSetMetadata().getColumnMetadataCount() > 0);
+    assertTrue(list.get(2).getResultSetMetadata().getColumnMetadataCount() > 0);
   }
 
   @Test
