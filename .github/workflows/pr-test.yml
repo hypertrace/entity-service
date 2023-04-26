@@ -54,7 +54,7 @@ jobs:
         uses: hypertrace/github-actions/gradle@main
         with: 
           args: copyAllReports --output-dir=/tmp/test-reports
-        if: always()
+        if: failure()
             
       - name: Archive test reports
         uses: actions/upload-artifact@v1
