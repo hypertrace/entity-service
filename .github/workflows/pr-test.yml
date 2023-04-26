@@ -54,14 +54,14 @@ jobs:
         uses: hypertrace/github-actions/gradle@main
         with: 
           args: copyAllReports --output-dir=/tmp/test-reports
-        if: failure()
+        if: always()
             
       - name: Archive test reports
         uses: actions/upload-artifact@v1
         with:
           name: test-reports
           path: /tmp/test-reports
-        if: failure()
+        if: always()
      
       - name: Publish Unit Test Results
         uses: docker://ghcr.io/enricomi/publish-unit-test-result-action:v2
