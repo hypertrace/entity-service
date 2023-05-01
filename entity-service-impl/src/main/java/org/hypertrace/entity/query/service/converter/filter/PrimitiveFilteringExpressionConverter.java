@@ -11,6 +11,7 @@ import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_INT64_
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_TIMESTAMP;
 import static org.hypertrace.entity.query.service.converter.identifier.IdentifierConverter.getSubDocPathById;
 import static org.hypertrace.entity.query.service.v1.ValueType.BOOL;
 import static org.hypertrace.entity.query.service.v1.ValueType.BOOLEAN_ARRAY;
@@ -61,7 +62,9 @@ public class PrimitiveFilteringExpressionConverter extends FilteringExpressionCo
           entry(TYPE_INT64_ARRAY, LONG_ARRAY),
           entry(TYPE_DOUBLE_ARRAY, DOUBLE_ARRAY),
           entry(TYPE_BOOL_ARRAY, BOOLEAN_ARRAY),
-          entry(TYPE_STRING_MAP, STRING_MAP));
+          entry(TYPE_STRING_MAP, STRING_MAP),
+          entry(TYPE_TIMESTAMP, LONG) // Timestamps are stored as longs
+          );
   private final EntityAttributeMapping entityAttributeMapping;
   private final IdentifierConverterFactory identifierConverterFactory;
   private final Converter<LiteralConstant, ConstantExpression> constantExpressionConverter;
