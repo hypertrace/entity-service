@@ -159,12 +159,7 @@ public class ValueHelper {
     final ValueType type = value.getValueType();
 
     if (isArray(type)) {
-      final List<Value> values = ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(type).apply(value);
-      final List<Document> documents = new ArrayList<>();
-
-      for (final Value singleValue : values) {
-        documents.add(convertToDocument(singleValue));
-      }
+      final List<Document> documents = getDocumentListFromArrayValue(value);
 
       return SubDocumentValue.of(documents);
     }
@@ -174,6 +169,16 @@ public class ValueHelper {
     }
 
     throw new ConversionException(String.format("Unsupported value type: %s", type));
+  }
+
+  public List<Document> getDocumentListFromArrayValue(final Value value) throws ConversionException {
+    final List<Value> values = ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(value.getValueType()).apply(value);
+    final List<Document> documents = new ArrayList<>();
+
+    for (final Value singleValue : values) {
+      documents.add(convertToDocument(singleValue));
+    }
+    return documents;
   }
 
   public ConstantExpression convertToConstantExpression(final Value value, final int index)
@@ -234,7 +239,7 @@ public class ValueHelper {
     return arrayType;
   }
 
-  private JSONDocument convertToDocument(final Value value) throws ConversionException {
+  public JSONDocument convertToDocument(final Value value) throws ConversionException {
     try {
       final String dataType = getStringValue(value.getValueType());
       final Object valueObj = extractValueFromPrimitiveValue(value);
