@@ -1,8 +1,10 @@
 package org.hypertrace.entity.query.service.converter.filter;
 
 import static java.util.Map.entry;
+import static org.hypertrace.core.documentstore.expression.operators.LogicalOperator.AND;
 import static org.hypertrace.core.documentstore.expression.operators.LogicalOperator.OR;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.CONTAINS;
+import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.NOT_CONTAINS;
 import static org.hypertrace.entity.query.service.converter.identifier.IdentifierConverter.getSubDocPathById;
 
 import com.google.inject.Inject;
@@ -36,7 +38,8 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class ContainsFilteringExpressionConverter extends FilteringExpressionConverterBase {
   private static final Map<Operator, OperatorPair> OPERATOR_MAP = Map.ofEntries(
-        entry(Operator.IN, OperatorPair.of(CONTAINS, OR))
+      entry(Operator.IN, OperatorPair.of(CONTAINS, OR)),
+      entry(Operator.NOT_IN, OperatorPair.of(NOT_CONTAINS, AND))
   );
 
   private final EntityAttributeMapping entityAttributeMapping;
@@ -79,7 +82,7 @@ public class ContainsFilteringExpressionConverter extends FilteringExpressionCon
     final List<RelationalExpression> expressions = new ArrayList<>();
 
     for (final Document document : list) {
-      final ConstantExpression rhs = ConstantExpression.of(document.toJson());
+      final ConstantExpression rhs = ConstantExpression.of(document);
       final RelationalExpression expression = RelationalExpression.of(lhs,
           operatorPair.relationalOperator(), rhs);
 
