@@ -665,6 +665,109 @@ public class EntityQueryServiceTest {
   }
 
   @Test
+  void testExecuteWithNotInArrayFilter() {
+    // create and upsert some entities
+    List<String> filterValue1 = List.of(generateRandomUUID(), generateRandomUUID());
+    AttributeValueList.Builder labelsList1 = AttributeValueList.newBuilder();
+
+    filterValue1.stream().map(this::generateAttrValue).forEach(labelsList1::addValues);
+
+    Entity entity1 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 1")
+            .putAttributes("labels", AttributeValue.newBuilder().setValueList(labelsList1).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1);
+    assertFalse(createdEntity1.getEntityId().trim().isEmpty());
+
+    Entity entity2 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 2")
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2);
+    assertFalse(createdEntity2.getEntityId().trim().isEmpty());
+
+    List<String> filterValue2 = List.of(generateRandomUUID(), generateRandomUUID());
+    AttributeValueList.Builder labelsList2 = AttributeValueList.newBuilder();
+
+    filterValue2.stream().map(this::generateAttrValue).forEach(labelsList2::addValues);
+    Entity entity3 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 3")
+            .putAttributes("labels", AttributeValue.newBuilder().setValueList(labelsList2).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity3 = entityDataServiceClient.upsert(entity3);
+    assertNotNull(createdEntity3);
+    assertFalse(createdEntity3.getEntityId().trim().isEmpty());
+
+    EntityQueryRequest queryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(EntityType.SERVICE.name())
+            .setFilter(
+                Filter.newBuilder()
+                    .setOperator(Operator.NOT_IN)
+                    .setLhs(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR)))
+                    .setRhs(
+                        Expression.newBuilder()
+                            .setLiteral(
+                                LiteralConstant.newBuilder()
+                                    .setValue(
+                                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                            .setValueType(STRING_ARRAY)
+                                            .addAllStringArray(filterValue1))))
+                    .build())
+            .addSelection(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder().setColumnName("API.id").build())
+                    .build())
+            .addSelection(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder().setColumnName("API.name").build())
+                    .build())
+            .build();
+
+    Iterator<ResultSetChunk> resultSetChunkIterator =
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            HEADERS, () -> entityQueryServiceClient.execute(queryRequest));
+    List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
+    assertEquals(1, list.size());
+    assertEquals(2, list.get(0).getRowCount());
+    assertEquals(0, list.get(0).getChunkId());
+    assertTrue(list.get(0).getIsLastChunk());
+
+    assertEquals(createdEntity2.getEntityId(), list.get(0).getRow(0).getColumn(0).getString());
+    assertEquals(createdEntity2.getEntityName(), list.get(0).getRow(0).getColumn(1).getString());
+    assertEquals(createdEntity3.getEntityId(), list.get(0).getRow(1).getColumn(0).getString());
+    assertEquals(createdEntity3.getEntityName(), list.get(0).getRow(1).getColumn(1).getString());
+
+    assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
+  }
+
+  @Test
   void testExecuteWithExistsFilter() {
     // create and upsert some entities
     List<String> filterValue1 = List.of("DISCOVERED", "UNDER-DISCOVERY");

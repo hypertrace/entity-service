@@ -4,8 +4,11 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import java.util.Set;
 import lombok.AllArgsConstructor;
+import org.hypertrace.core.grpcutils.context.RequestContext;
+import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
+import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
@@ -18,11 +21,17 @@ public class FilteringExpressionConverterFactoryImpl
   private NullFilteringExpressionConverter nullFilteringExpressionConverter;
   private PrimitiveFilteringExpressionConverter primitiveFilteringExpressionConverter;
   private ArrayFilteringExpressionConverter arrayFilteringExpressionConverter;
+  private ContainsFilteringExpressionConverter containsFilteringExpressionConverter;
   private MapFilteringExpressionConverter mapFilteringExpressionConverter;
   private ValueHelper valueHelper;
+  private EntityAttributeMapping entityAttributeMapping;
 
   @Override
-  public FilteringExpressionConverter getConverter(final Value value, final Operator operator)
+  public FilteringExpressionConverter getConverter(
+      final ColumnIdentifier identifier,
+      final Operator operator,
+      final Value value,
+      final RequestContext context)
       throws ConversionException {
     ValueType valueType = value.getValueType();
 
@@ -32,6 +41,10 @@ public class FilteringExpressionConverterFactoryImpl
     }
 
     if (CONTAINMENT_OPERATORS.contains(operator)) {
+      if (entityAttributeMapping.isArray(context, identifier.getColumnName())) {
+        return containsFilteringExpressionConverter;
+      }
+
       return primitiveFilteringExpressionConverter;
     }
 
