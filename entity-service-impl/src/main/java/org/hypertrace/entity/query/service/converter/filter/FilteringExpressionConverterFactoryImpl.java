@@ -28,7 +28,9 @@ public class FilteringExpressionConverterFactoryImpl
 
   @Override
   public FilteringExpressionConverter getConverter(
-      final ColumnIdentifier identifier, final Operator operator, final Value value,
+      final ColumnIdentifier identifier,
+      final Operator operator,
+      final Value value,
       final RequestContext context)
       throws ConversionException {
     ValueType valueType = value.getValueType();

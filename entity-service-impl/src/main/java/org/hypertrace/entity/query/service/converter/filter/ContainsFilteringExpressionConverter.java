@@ -37,10 +37,10 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class ContainsFilteringExpressionConverter extends FilteringExpressionConverterBase {
-  private static final Map<Operator, OperatorPair> OPERATOR_MAP = Map.ofEntries(
-      entry(Operator.IN, OperatorPair.of(CONTAINS, OR)),
-      entry(Operator.NOT_IN, OperatorPair.of(NOT_CONTAINS, AND))
-  );
+  private static final Map<Operator, OperatorPair> OPERATOR_MAP =
+      Map.ofEntries(
+          entry(Operator.IN, OperatorPair.of(CONTAINS, OR)),
+          entry(Operator.NOT_IN, OperatorPair.of(NOT_CONTAINS, AND)));
 
   private final EntityAttributeMapping entityAttributeMapping;
   private final ArrayPathSuffixAddingIdentifierConverter arrayPathSuffixAddingIdentifierConverter;
@@ -76,15 +76,16 @@ public class ContainsFilteringExpressionConverter extends FilteringExpressionCon
             .operator(operator)
             .valueType(valueType)
             .build();
-    final String suffixedSubDocPath = arrayPathSuffixAddingIdentifierConverter.convert(metadata, requestContext);
+    final String suffixedSubDocPath =
+        arrayPathSuffixAddingIdentifierConverter.convert(metadata, requestContext);
     final IdentifierExpression lhs = IdentifierExpression.of(suffixedSubDocPath);
 
     final List<RelationalExpression> expressions = new ArrayList<>();
 
     for (final Document document : list) {
       final ConstantExpression rhs = ConstantExpression.of(document);
-      final RelationalExpression expression = RelationalExpression.of(lhs,
-          operatorPair.relationalOperator(), rhs);
+      final RelationalExpression expression =
+          RelationalExpression.of(lhs, operatorPair.relationalOperator(), rhs);
 
       expressions.add(expression);
     }
@@ -93,7 +94,10 @@ public class ContainsFilteringExpressionConverter extends FilteringExpressionCon
       return expressions.get(0);
     }
 
-    return LogicalExpression.builder().operator(operatorPair.logicalOperator()).operands(expressions).build();
+    return LogicalExpression.builder()
+        .operator(operatorPair.logicalOperator())
+        .operands(expressions)
+        .build();
   }
 
   @lombok.Value

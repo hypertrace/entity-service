@@ -38,7 +38,8 @@ public class RelationalExpressionConverter implements Converter<Filter, FilterTy
         expressionAccessor.access(rhs, rhs.getValueCase(), Set.of(LITERAL));
 
     final FilteringExpressionConverter filteringExpressionConverter =
-        filteringExpressionConverterFactory.getConverter(identifier, operator, literal.getValue(), requestContext);
+        filteringExpressionConverterFactory.getConverter(
+            identifier, operator, literal.getValue(), requestContext);
     return filteringExpressionConverter.convert(identifier, operator, literal, requestContext);
   }
 }

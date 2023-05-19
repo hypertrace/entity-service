@@ -171,8 +171,10 @@ public class ValueHelper {
     throw new ConversionException(String.format("Unsupported value type: %s", type));
   }
 
-  public List<Document> getDocumentListFromArrayValue(final Value value) throws ConversionException {
-    final List<Value> values = ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(value.getValueType()).apply(value);
+  public List<Document> getDocumentListFromArrayValue(final Value value)
+      throws ConversionException {
+    final List<Value> values =
+        ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(value.getValueType()).apply(value);
     final List<Document> documents = new ArrayList<>();
 
     for (final Value singleValue : values) {
