@@ -29,6 +29,8 @@ public class EntityAttributeMapping {
   private static final String NAME_PATH = "name";
   private static final Set<AttributeKind> MULTI_VALUED_ATTRIBUTE_KINDS =
       Set.of(TYPE_STRING_ARRAY, TYPE_INT64_ARRAY, TYPE_DOUBLE_ARRAY, TYPE_BOOL_ARRAY);
+  private static final Set<AttributeKind> ARRAY_ATTRIBUTE_KINDS =
+      Set.of(TYPE_STRING_ARRAY, TYPE_INT64_ARRAY, TYPE_DOUBLE_ARRAY, TYPE_BOOL_ARRAY);
 
   private final CachingAttributeClient attributeClient;
   private final Map<String, AttributeMetadataIdentifier> explicitAttributeIdByAttributeMetadata;
@@ -99,6 +101,15 @@ public class EntityAttributeMapping {
                 .onErrorComplete()
                 .defaultIfEmpty(Optional.empty())
                 .blockingGet());
+  }
+
+  public boolean isArray(final RequestContext requestContext, final String columnId) {
+    final Optional<AttributeKind> attributeKind = getAttributeKind(requestContext, columnId);
+    return attributeKind.map(this::isArray).orElse(false);
+  }
+
+  public boolean isArray(final AttributeKind attributeKind) {
+    return ARRAY_ATTRIBUTE_KINDS.contains(attributeKind);
   }
 
   public boolean isMultiValued(RequestContext requestContext, String attributeId) {
