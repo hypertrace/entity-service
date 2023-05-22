@@ -2,12 +2,14 @@ package org.hypertrace.entity.query.service.converter.filter;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.query.service.converter.ConversionException;
 import org.hypertrace.entity.query.service.converter.ValueHelper;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
+import org.hypertrace.entity.query.service.v1.Operator;
 import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 
