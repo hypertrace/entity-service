@@ -55,7 +55,7 @@ class FromClauseConverterTest {
         .thenReturn(IdentifierExpression.of("name"));
 
     final List<FromTypeExpression> expected =
-        List.of(UnnestExpression.of(IdentifierExpression.of("name"), false));
+        List.of(UnnestExpression.of(IdentifierExpression.of("name"), true));
     final List<FromTypeExpression> actual =
         fromClauseConverter.convert(expressions, requestContext);
 

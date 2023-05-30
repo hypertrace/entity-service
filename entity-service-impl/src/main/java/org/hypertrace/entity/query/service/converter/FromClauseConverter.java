@@ -51,7 +51,7 @@ public class FromClauseConverter implements Converter<List<Expression>, List<Fro
 
     final IdentifierExpression identifierExpression =
         identifierExpressionConverter.convert(identifier, requestContext);
-    final FromTypeExpression fromTypeExpression = UnnestExpression.of(identifierExpression, false);
+    final FromTypeExpression fromTypeExpression = UnnestExpression.of(identifierExpression, true);
 
     return Optional.of(fromTypeExpression);
   }

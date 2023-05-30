@@ -139,6 +139,7 @@ public class EntityQueryServiceTest {
   private static final String SERVICE_ID_ATTR = "SERVICE.id";
   private static final String SERVICE_NAME_ATTR = "SERVICE.name";
   private static final String SERVICE_TYPE_ATTR = "SERVICE.service_type";
+  private static final String SERVICE_MULTI_VALUE_ATTR = "SERVICE.multiValueAttribute";
 
   private static final String ATTRIBUTE_SERVICE_HOST_KEY = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT_KEY = "attribute.service.config.port";
@@ -258,6 +259,20 @@ public class EntityQueryServiceTest {
             .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
             .build();
 
+    AttributeMetadata multiValueAttribute =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("Multi Value Attributes")
+            .addSources(AttributeSource.EDS)
+            .setFqn(SERVICE_MULTI_VALUE_ATTR)
+            .setGroupable(false)
+            .setId(SERVICE_MULTI_VALUE_ATTR)
+            .setKey("multiValueAttribute")
+            .setScopeString("SERVICE")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY)
+            .setScope(AttributeScope.SERVICE)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
+
     AttributeMetadata httpUrlAttribute =
         AttributeMetadata.newBuilder()
             .setDisplayName("HTTP URL object")
@@ -321,6 +336,7 @@ public class EntityQueryServiceTest {
             .addAttributes(discoveryStateAttribute)
             .addAttributes(httpMethod)
             .addAttributes(isLatest)
+            .addAttributes(multiValueAttribute)
             .build();
     AttributeServiceClient attributeServiceClient = new AttributeServiceClient(channel);
     attributeServiceClient.create(TENANT_ID, request);
@@ -979,6 +995,194 @@ public class EntityQueryServiceTest {
 
     assertTrue(list.get(0).getResultSetMetadata().getColumnMetadataCount() > 0);
     assertTrue(list.get(1).getResultSetMetadata().getColumnMetadataCount() > 0);
+  }
+
+  @Test
+  void testExecuteWithArrayFieldGroupBy() {
+    String filterValue1 = generateRandomUUID();
+    String filterValue2 = generateRandomUUID();
+    String filterValue3 = generateRandomUUID();
+
+    AttributeValueList.Builder attributeValueListBuilder = AttributeValueList.newBuilder();
+
+    attributeValueListBuilder.clear();
+    Stream.of(filterValue1, filterValue2)
+        .map(this::generateAttrValue)
+        .forEach(attributeValueListBuilder::addValues);
+
+    Entity entity1 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 1")
+            .putAttributes(
+                "labels",
+                AttributeValue.newBuilder().setValueList(attributeValueListBuilder).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity1 = entityDataServiceClient.upsert(entity1);
+    assertNotNull(createdEntity1);
+    assertFalse(createdEntity1.getEntityId().trim().isEmpty());
+
+    attributeValueListBuilder.clear();
+    Stream.of(filterValue2, filterValue3)
+        .map(this::generateAttrValue)
+        .forEach(attributeValueListBuilder::addValues);
+
+    Entity entity2 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 2")
+            .putAttributes(
+                "labels",
+                AttributeValue.newBuilder().setValueList(attributeValueListBuilder).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity2 = entityDataServiceClient.upsert(entity2);
+    assertNotNull(createdEntity2);
+    assertFalse(createdEntity2.getEntityId().trim().isEmpty());
+
+    attributeValueListBuilder.clear();
+    Stream.of(filterValue3, filterValue1, generateRandomUUID())
+        .map(this::generateAttrValue)
+        .forEach(attributeValueListBuilder::addValues);
+
+    Entity entity3 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 3")
+            .putAttributes(
+                "labels",
+                AttributeValue.newBuilder().setValueList(attributeValueListBuilder).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity3 = entityDataServiceClient.upsert(entity3);
+    assertNotNull(createdEntity3);
+    assertFalse(createdEntity3.getEntityId().trim().isEmpty());
+
+    Entity entity4 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 4")
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity4 = entityDataServiceClient.upsert(entity4);
+    assertNotNull(createdEntity4);
+    assertFalse(createdEntity4.getEntityId().trim().isEmpty());
+
+    attributeValueListBuilder.clear();
+    Stream.of(generateRandomUUID(), generateRandomUUID())
+        .map(this::generateAttrValue)
+        .forEach(attributeValueListBuilder::addValues);
+
+    Entity entity5 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 5")
+            .putAttributes(
+                "labels",
+                AttributeValue.newBuilder().setValueList(attributeValueListBuilder).build())
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity5 = entityDataServiceClient.upsert(entity5);
+    assertNotNull(createdEntity5);
+    assertFalse(createdEntity5.getEntityId().trim().isEmpty());
+
+    // Test groupby on two array fields one present and one absent
+    EntityQueryRequest queryRequest =
+        EntityQueryRequest.newBuilder()
+            .setEntityType(EntityType.SERVICE.name())
+            .setFilter(
+                Filter.newBuilder()
+                    .setLhs(
+                        Expression.newBuilder()
+                            .setColumnIdentifier(
+                                ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR))
+                            .build())
+                    .setOperator(Operator.EXISTS)
+                    .setRhs(
+                        Expression.newBuilder()
+                            .setLiteral(
+                                LiteralConstant.newBuilder()
+                                    .setValue(
+                                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                                            .setValueType(BOOL)
+                                            .setBoolean(true)))
+                            .build()))
+            .addGroupBy(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR))
+                    .build())
+            .addSelection(
+                Expression.newBuilder()
+                    .setColumnIdentifier(
+                        ColumnIdentifier.newBuilder().setColumnName(API_LABELS_ATTR).build())
+                    .build())
+            .addSelection(
+                Expression.newBuilder()
+                    .setFunction(
+                        Function.newBuilder()
+                            .setFunctionName("DISTINCTCOUNT")
+                            .addArguments(
+                                Expression.newBuilder()
+                                    .setColumnIdentifier(
+                                        ColumnIdentifier.newBuilder()
+                                            .setColumnName(API_LABELS_ATTR)))))
+            .addSelection(
+                Expression.newBuilder()
+                    .setFunction(
+                        Function.newBuilder()
+                            .setFunctionName("DISTINCTCOUNT")
+                            .addArguments(
+                                Expression.newBuilder()
+                                    .setColumnIdentifier(
+                                        ColumnIdentifier.newBuilder()
+                                            .setColumnName(SERVICE_MULTI_VALUE_ATTR))
+                                    .build())
+                            .build())
+                    .build())
+            .addSelection(
+                Expression.newBuilder()
+                    .setFunction(
+                        Function.newBuilder()
+                            .setFunctionName("DISTINCTCOUNT")
+                            .addArguments(
+                                Expression.newBuilder()
+                                    .setColumnIdentifier(
+                                        ColumnIdentifier.newBuilder()
+                                            .setColumnName(SERVICE_ID_ATTR)))))
+            .build();
+
+    Iterator<ResultSetChunk> resultSetChunkIterator =
+        GrpcClientRequestContextUtil.executeWithHeadersContext(
+            HEADERS, () -> entityQueryServiceClient.execute(queryRequest));
+    List<ResultSetChunk> list = Lists.newArrayList(resultSetChunkIterator);
+    assertEquals(3, list.size());
+    assertEquals(2, list.get(0).getRowCount());
+    assertEquals(0, list.get(0).getChunkId());
+    assertFalse(list.get(0).getIsLastChunk());
+    assertEquals(2, list.get(1).getRowCount());
+    assertEquals(1, list.get(1).getChunkId());
+    assertFalse(list.get(1).getIsLastChunk());
+    assertEquals(2, list.get(2).getRowCount());
+    assertEquals(2, list.get(2).getChunkId());
+    assertTrue(list.get(2).getIsLastChunk());
+    assertEquals(4, list.get(0).getResultSetMetadata().getColumnMetadataCount());
   }
 
   @Test
