@@ -16,6 +16,8 @@
 replicaCount: 1
 maxUnavailable: 0
 
+chartType: application
+
 image:
   repository: hypertrace/entity-service
   pullPolicy: IfNotPresent
@@ -27,6 +29,7 @@ containerPort: 50061
 containerAdminPort: 50062
 
 service:
+  name: entity-service
   type: ClusterIP
   port: 50061
 
@@ -125,20 +128,3 @@ hpa:
   minReplicas: 1
   maxReplicas: 5
   targetCPUUtilizationPercentage: 80
-
-kafka-topic-creator:
-  enabled: true
-  jobName: entity-service-kafka-topics-creator
-  helmHook: pre-install,pre-upgrade
-  kafka:
-    topics:
-      entity-change-events:
-        replicationFactor: 3
-        partitions: 8
-        configs:
-          retention.bytes: 1073741824 # default = -1
-          retention.ms: 86400000 # default = 604800000 (7 days)
-  zookeeper:
-    address: zookeeper:2181
-  imagePullSecrets: []
-  podAnnotations: {}
