@@ -13,7 +13,11 @@ data:
         {{ $dst }} {
           {{- range $key, $value := (index .Values "entityServiceConfig" (printf "%s" $dst)) }}
           {{- if $value }}
+            {{- if eq $key "password" }}
+          {{ $key }} = {{ $value }}
+            {{- else }}
           {{ $key }} = {{ $value | quote }}
+            {{- end }}
           {{- end }}
           {{- end }}
         }
