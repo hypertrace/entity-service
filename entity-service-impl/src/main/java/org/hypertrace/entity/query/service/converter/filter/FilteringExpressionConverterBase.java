@@ -13,6 +13,7 @@ import static org.hypertrace.entity.query.service.v1.Operator.LT;
 import static org.hypertrace.entity.query.service.v1.Operator.NEQ;
 import static org.hypertrace.entity.query.service.v1.Operator.NOT_EXISTS;
 import static org.hypertrace.entity.query.service.v1.Operator.NOT_IN;
+import static org.hypertrace.entity.query.service.v1.Operator.STARTS_WITH;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -58,6 +59,7 @@ public abstract class FilteringExpressionConverterBase implements FilteringExpre
     map.put(LIKE, RelationalOperator.LIKE);
     map.put(EXISTS, RelationalOperator.EXISTS);
     map.put(NOT_EXISTS, RelationalOperator.NOT_EXISTS);
+    map.put(STARTS_WITH, RelationalOperator.STARTS_WITH);
 
     return unmodifiableMap(map);
   }
