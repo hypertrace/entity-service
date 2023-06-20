@@ -13,11 +13,11 @@ dependencies {
   api(project(":entity-service-api"))
   api("io.reactivex.rxjava3:rxjava:3.0.11")
 
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.11.2")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-rx-utils:0.11.2")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.0")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-rx-utils:0.12.0")
 
   implementation("org.slf4j:slf4j-api:1.7.30")
-  implementation("com.google.guava:guava:31.1-jre")
+  implementation("com.google.guava:guava:32.0.1-jre")
   implementation("org.slf4j:slf4j-api:1.7.30")
   annotationProcessor("org.projectlombok:lombok:1.18.18")
   compileOnly("org.projectlombok:lombok:1.18.18")
