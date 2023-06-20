@@ -61,7 +61,7 @@ sourceSets {
 }
 
 dependencies {
-  api("io.grpc:grpc-protobuf:1.50.0")
-  api("io.grpc:grpc-stub:1.50.0")
+  api("io.grpc:grpc-protobuf:1.56.0")
+  api("io.grpc:grpc-stub:1.56.0")
   api("javax.annotation:javax.annotation-api:1.3.2")
 }
