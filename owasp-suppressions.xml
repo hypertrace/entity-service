@@ -39,6 +39,14 @@
         <packageUrl regex="true">^pkg:maven/com\.squareup\.wire/wire\-schema\-jvm@.*$</packageUrl>
         <cpe>cpe:/a:wire:wire</cpe>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: protobuf-java-util-3.19.4.jar
+   mismatching with kafka-protobuf-serializer
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.google\.protobuf/protobuf\-java\-util@.*$</packageUrl>
+        <cpe>cpe:/a:google:protobuf-java</cpe>
+    </suppress>
 </suppressions>
 
 
