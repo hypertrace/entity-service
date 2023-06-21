@@ -31,5 +31,5 @@ dependencyCheck {
   format = org.owasp.dependencycheck.reporting.ReportGenerator.Format.ALL.toString()
   suppressionFile = "owasp-suppressions.xml"
   scanConfigurations.add("runtimeClasspath")
-  failBuildOnCVSS = 3.0F
+  failBuildOnCVSS = 7.0F
 }

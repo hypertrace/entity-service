@@ -22,13 +22,13 @@ dependencies {
   implementation(project(":entity-type-service-rx-client"))
   implementation(project(":entity-service-change-event-generator"))
 
-  implementation("com.google.protobuf:protobuf-java-util:3.19.3")
+  implementation("com.google.protobuf:protobuf-java-util:3.21.12")
   implementation("com.github.f4b6a3:uuid-creator:3.5.0")
   implementation("io.reactivex.rxjava3:rxjava:3.0.11")
   implementation("com.google.guava:guava:32.0.1-jre")
 
   implementation("org.slf4j:slf4j-api:1.7.30")
-  implementation("com.fasterxml.jackson.core:jackson-databind:2.13.2.2")
+  implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   testImplementation("org.mockito:mockito-core:3.8.0")

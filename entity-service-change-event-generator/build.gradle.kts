@@ -27,7 +27,7 @@ dependencies {
     }
   }
 
-  runtimeOnly("io.confluent:kafka-protobuf-serializer:6.0.1")
+  runtimeOnly("io.confluent:kafka-protobuf-serializer:7.4.0")
 
   annotationProcessor("org.projectlombok:lombok:1.18.18")
   compileOnly("org.projectlombok:lombok:1.18.18")
