@@ -1,5 +1,7 @@
 name: build and validate
 on:
+  schedule:
+    - cron: 10 0 * * 1
   push:
     branches:
       - main
@@ -30,17 +32,11 @@ jobs:
         with:
           args: build dockerBuildImages
 
-      - name: Determine docker tag
-        id: tag
-        run: echo ::set-output name=tag::$(./gradlew -q printDockerImageDefaultTag | head -1)
-
-      - name: Scan docker image
-        uses: azure/container-scan@v0.1
+      - name: Run Trivy vulnerability scanner for entity-service image
+        uses: hypertrace/github-actions/trivy-image-scan@main
         with:
-          image-name: hypertrace/entity-service:${{ steps.tag.outputs.tag }}
-        env:
-          DOCKLE_HOST: "unix:///var/run/docker.sock"
-        continue-on-error: true
+          image: hypertrace/entity-service
+          output-mode: github
 
   validate-protos:
     runs-on: ubuntu-22.04
