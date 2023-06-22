@@ -37,7 +37,7 @@ dependencies {
   // integration test
   integrationTestImplementation(project(":entity-service-client"))
   integrationTestImplementation(project(":entity-service-impl"))
-  integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.0")
+  integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.1")
   integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.52")
   integrationTestImplementation("org.testcontainers:testcontainers:1.16.1")
