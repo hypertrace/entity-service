@@ -15,14 +15,14 @@ val generateLocalGoGrpcFiles = false
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.15.6"
+    artifact = "com.google.protobuf:protoc:3.21.12"
   }
   plugins {
     // Optional: an artifact spec for a protoc plugin, with "grpc" as
     // the identifier, which can be referred to in the "plugins"
     // container of the "generateProtoTasks" closure.
     id("grpc_java") {
-      artifact = "io.grpc:protoc-gen-grpc-java:1.50.0"
+      artifact = "io.grpc:protoc-gen-grpc-java:1.56.0"
     }
 
     if (generateLocalGoGrpcFiles) {
@@ -61,7 +61,13 @@ sourceSets {
 }
 
 dependencies {
-  api("io.grpc:grpc-protobuf:1.50.0")
-  api("io.grpc:grpc-stub:1.50.0")
+  api(platform("io.grpc:grpc-bom:1.56.0"))
+  api("io.grpc:grpc-protobuf")
+  api("io.grpc:grpc-stub")
   api("javax.annotation:javax.annotation-api:1.3.2")
+  constraints {
+    implementation("com.google.guava:guava:32.0.1-jre") {
+      because("https://nvd.nist.gov/vuln/detail/CVE-2023-2976")
+    }
+  }
 }

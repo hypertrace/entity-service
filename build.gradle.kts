@@ -7,6 +7,7 @@ plugins {
   id("org.hypertrace.docker-publish-plugin") version "0.9.4" apply false
   id("org.hypertrace.integration-test-plugin") version "0.2.0" apply false
   id("org.hypertrace.code-style-plugin") version "1.1.0" apply false
+  id("org.owasp.dependencycheck") version "8.2.1"
 }
 
 subprojects {
@@ -24,4 +25,11 @@ subprojects {
       targetCompatibility = JavaVersion.VERSION_11
     }
   }
+}
+
+dependencyCheck {
+  format = org.owasp.dependencycheck.reporting.ReportGenerator.Format.ALL.toString()
+  suppressionFile = "owasp-suppressions.xml"
+  scanConfigurations.add("runtimeClasspath")
+  failBuildOnCVSS = 7.0F
 }

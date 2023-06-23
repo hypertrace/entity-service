@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <suppress>
+        <notes><![CDATA[
+   file name: avro-1.9.2.jar
+   According to https://nvd.nist.gov/vuln/detail/cve-2021-43045 , CVE only impacts .NET SDK
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.avro/avro@.*$</packageUrl>
+        <cve>CVE-2021-43045</cve>
+    </suppress>
+    <suppress until="2023-06-30Z">
+        <notes><![CDATA[
+    Doesn't appear to be a real vulnerability, jackson maintainers discuss at https://github.com/FasterXML/jackson-databind/issues/3973
+    Revisit when suppression expires
+    ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson\-databind@.*$</packageUrl>
+        <vulnerabilityName>CVE-2023-35116</vulnerabilityName>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+    Any hypertrace core dep
+    ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.hypertrace\.core\..*@.*$</packageUrl>
+        <cpe>cpe:/a:grpc:grpc</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: wire-runtime-jvm-4.4.3.jar
+   According to https://nvd.nist.gov/vuln/detail/CVE-2018-8909 , it is applicable for Wire application for Android
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.squareup\.wire/wire\-runtime\-jvm@.*$</packageUrl>
+        <cpe>cpe:/a:wire:wire</cpe>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
+   file name: wire-schema-jvm-4.4.3.jar
+   According to https://nvd.nist.gov/vuln/detail/CVE-2018-8909 , it is applicable for Wire application for Android
+   ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.squareup\.wire/wire\-schema\-jvm@.*$</packageUrl>
+        <cpe>cpe:/a:wire:wire</cpe>
+    </suppress>
+</suppressions>
+
+
