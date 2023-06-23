@@ -96,10 +96,6 @@ jobs:
     runs-on: ubuntu-22.04
     container:
       image: bufbuild/buf:0.56.0
-      credentials:
-        username: ${{ secrets.DOCKERHUB_READ_USER }}
-        password: ${{ secrets.DOCKERHUB_READ_TOKEN }}
-      # Set fetch-depth: 0 to fetch commit history and tags for use in version calculation
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -110,7 +106,6 @@ jobs:
         run: |
           buf lint
           buf breaking --against "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
-
 
   validate-helm-charts:
     runs-on: ubuntu-22.04
