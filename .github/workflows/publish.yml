@@ -52,7 +52,7 @@ jobs:
   publish-release-notes:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@3
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - uses: hypertrace/github-actions/release-notes@main
