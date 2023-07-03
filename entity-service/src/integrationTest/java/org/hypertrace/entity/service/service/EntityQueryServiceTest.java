@@ -131,6 +131,7 @@ public class EntityQueryServiceTest {
   // attributes defined in application.conf in attribute map
   private static final String API_ID_ATTR = "API.id";
   private static final String API_DISCOVERY_STATE_ATTR = "API.apiDiscoveryState";
+  private static final String API_DISCOVERY_SOURCE_ATTR = "API.apiDiscoverySource";
   private static final String API_HTTP_METHOD_ATTR = "API.httpMethod";
   private static final String API_LABELS_ATTR = "API.labels";
   private static final String API_HTTP_URL_ATTR = "API.httpUrl";
@@ -586,6 +587,23 @@ public class EntityQueryServiceTest {
     Entity createdEntity5 = entityDataServiceClient.upsert(entity5);
     assertNotNull(createdEntity5);
     assertFalse(createdEntity5.getEntityId().trim().isEmpty());
+
+    String filterValue4 = "OpenAPI";
+    Entity entity6 =
+        Entity.newBuilder()
+            .setTenantId(TENANT_ID)
+            .setEntityType(EntityType.SERVICE.name())
+            .setEntityName("Some Service 6")
+            .putAttributes(
+                apiAttributesMap.get(API_DISCOVERY_SOURCE_ATTR),
+                createStringArrayAttribute(List.of(filterValue4)))
+            .putIdentifyingAttributes(
+                EntityConstants.getValue(CommonAttribute.COMMON_ATTRIBUTE_FQN),
+                generateRandomUUIDAttrValue())
+            .build();
+    Entity createdEntity6 = entityDataServiceClient.upsert(entity6);
+    assertNotNull(createdEntity6);
+    assertFalse(createdEntity6.getEntityId().trim().isEmpty());
 
     EntityQueryRequest queryRequest =
         EntityQueryRequest.newBuilder()
