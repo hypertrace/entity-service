@@ -8,7 +8,7 @@
         <packageUrl regex="true">^pkg:maven/org\.apache\.avro/avro@.*$</packageUrl>
         <cve>CVE-2021-43045</cve>
     </suppress>
-    <suppress until="2023-06-30Z">
+    <suppress until="2023-07-31Z">
         <notes><![CDATA[
     Doesn't appear to be a real vulnerability, jackson maintainers discuss at https://github.com/FasterXML/jackson-databind/issues/3973
     Revisit when suppression expires
