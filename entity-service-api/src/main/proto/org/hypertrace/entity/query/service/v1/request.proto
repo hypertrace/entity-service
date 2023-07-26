@@ -38,6 +38,7 @@ enum Operator {
   LIKE = 12;
   EXISTS = 13;
   NOT_EXISTS = 14;
+  STARTS_WITH = 15;
 }
 
 message Function {

@@ -9,7 +9,7 @@ plugins {
 
 protobuf {
   protoc {
-    artifact = "com.google.protobuf:protoc:3.18.0"
+    artifact = "com.google.protobuf:protoc:3.21.12"
   }
 }
 
@@ -22,6 +22,6 @@ sourceSets {
 }
 
 dependencies {
-  api("com.google.protobuf:protobuf-java:3.19.1")
+  api("com.google.protobuf:protobuf-java:3.21.12")
   api(project(":entity-service-api"))
 }
