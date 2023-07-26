@@ -59,7 +59,8 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
                 config,
                 entityAttributeMapping,
                 entityChangeEventGenerator,
-                entityCounterMetricSender))
+                entityCounterMetricSender,
+                localChannel))
         .map(GrpcPlatformService::new)
         .collect(Collectors.toUnmodifiableList());
   }
