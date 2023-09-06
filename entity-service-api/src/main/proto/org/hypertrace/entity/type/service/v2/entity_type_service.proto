@@ -10,6 +10,7 @@ message EntityType {
   string name_attribute_key = 4;
   string timestamp_attribute_key = 5;
   repeated EntityFormationCondition required_conditions = 6;
+  string create_source = 7;
 
   message EntityFormationCondition {
     oneof condition {
