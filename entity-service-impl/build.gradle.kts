@@ -25,7 +25,7 @@ dependencies {
   implementation("com.google.protobuf:protobuf-java-util:3.21.12")
   implementation("com.github.f4b6a3:uuid-creator:3.5.0")
   implementation("io.reactivex.rxjava3:rxjava:3.0.11")
-  implementation("com.google.guava:guava:32.0.1-jre")
+  implementation("com.google.guava:guava:32.1.2-jre")
 
   implementation("org.slf4j:slf4j-api:1.7.30")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
