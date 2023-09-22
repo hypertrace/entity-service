@@ -17,7 +17,7 @@ dependencies {
   implementation("org.hypertrace.core.grpcutils:grpc-client-rx-utils:0.12.1")
 
   implementation("org.slf4j:slf4j-api:1.7.30")
-  implementation("com.google.guava:guava:32.0.1-jre")
+  implementation("com.google.guava:guava:32.1.2-jre")
   annotationProcessor("org.projectlombok:lombok:1.18.18")
   compileOnly("org.projectlombok:lombok:1.18.18")
 
