@@ -108,10 +108,10 @@ class ValueHelperTest {
     void testConvertMapValueToSubDocumentValue() throws ConversionException, IOException {
       assertEquals(
           SubDocumentValue.of(
-              new JSONDocument("{ \"key\": {\"value\": {\"string\": \"value\" }}}")),
+              new JSONDocument("{ \"key\": {\"value\": {\"string\": \"value1\" }}}")),
           valueHelper.convertToSubDocumentValue(
               Value.newBuilder()
-                  .putAllStringMap(Map.of("key", "value"))
+                  .putAllStringMap(Map.of("key", "value1"))
                   .setValueType(ValueType.STRING_MAP)
                   .build()));
     }
