@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
@@ -101,6 +102,14 @@ class ValueHelperTest {
           SubDocumentValue.of(new JSONDocument("{ \"value\": {\"string\": \"Mars\" }}")),
           valueHelper.convertToSubDocumentValue(
               Value.newBuilder().setString("Mars").setValueType(ValueType.STRING).build()));
+    }
+
+    @Test
+    void testConvertMapValueToSubDocumentValue() throws ConversionException, IOException {
+      assertEquals(
+          SubDocumentValue.of(new JSONDocument("{ \"key\": {\"value\": {\"string\": \"value\" }}}")),
+          valueHelper.convertToSubDocumentValue(
+              Value.newBuilder().putAllStringMap(Map.of("key", "value")).setValueType(ValueType.STRING_MAP).build()));
     }
 
     @Test

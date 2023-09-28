@@ -141,7 +141,7 @@ public class EntityQueryServiceTest {
   private static final String SERVICE_NAME_ATTR = "SERVICE.name";
   private static final String SERVICE_TYPE_ATTR = "SERVICE.service_type";
   private static final String SERVICE_MULTI_VALUE_ATTR = "SERVICE.multiValueAttribute";
-  private static final String API_TRIE_PATTERNS = "API.triePatterns";
+  private static final String API_STRING_MAP_ATTR = "API.stringMapAttr";
 
   private static final String ATTRIBUTE_SERVICE_HOST_KEY = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT_KEY = "attribute.service.config.port";
@@ -335,9 +335,9 @@ public class EntityQueryServiceTest {
         AttributeMetadata.newBuilder()
             .setDisplayName("Api Trie Patterns")
             .addSources(AttributeSource.EDS)
-            .setFqn(API_TRIE_PATTERNS)
+            .setFqn(API_STRING_MAP_ATTR)
             .setGroupable(false)
-            .setId(API_TRIE_PATTERNS)
+            .setId(API_STRING_MAP_ATTR)
             .setKey("triePatterns")
             .setScopeString("API")
             .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP)
@@ -2384,7 +2384,7 @@ public class EntityQueryServiceTest {
             .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
             .putAttributes(apiAttributesMap.get(API_IS_LATEST_ATTR), createAttribute(false))
             .putAttributes(
-                apiAttributesMap.get(API_TRIE_PATTERNS), createAttribute(Map.of("key", "value")))
+                apiAttributesMap.get(API_STRING_MAP_ATTR), createAttribute(Map.of("key", "value")))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -2460,7 +2460,7 @@ public class EntityQueryServiceTest {
 
     final AttributeUpdateOperation updateOperation7 =
         AttributeUpdateOperation.newBuilder()
-            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_TRIE_PATTERNS))
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_STRING_MAP_ATTR))
             .setOperator(ATTRIBUTE_UPDATE_OPERATOR_SET)
             .setValue(
                 LiteralConstant.newBuilder()
@@ -2576,7 +2576,7 @@ public class EntityQueryServiceTest {
             .addSelection(createExpression(API_LABELS_ATTR))
             .addSelection(createExpression(API_IS_LATEST_ATTR))
             .addSelection(createExpression(API_NAME_ATTR))
-            .addSelection(createExpression(API_TRIE_PATTERNS))
+            .addSelection(createExpression(API_STRING_MAP_ATTR))
             .addOrderBy(
                 OrderByExpression.newBuilder()
                     .setExpression(createExpression(API_NAME_ATTR))

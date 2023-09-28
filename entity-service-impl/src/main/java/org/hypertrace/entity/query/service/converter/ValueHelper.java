@@ -25,7 +25,6 @@ import com.google.inject.Singleton;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +34,7 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
@@ -166,8 +166,7 @@ public class ValueHelper {
     }
 
     if (isMap(type)) {
-      final List<Document> documents = getDocumentsFromMapValue(value);
-      return SubDocumentValue.of(documents);
+      return SubDocumentValue.of(getDocumentFromMapValue(value));
     }
 
     if (isPrimitive(type)) {
@@ -177,7 +176,7 @@ public class ValueHelper {
     throw new ConversionException(String.format("Unsupported value type: %s", type));
   }
 
-  public List<Document> getDocumentsFromMapValue(final Value value) throws ConversionException {
+  public Document getDocumentFromMapValue(final Value value) throws ConversionException {
     switch (value.getValueType()) {
       case STRING_MAP:
         return convertStringMapToDocument(value.getStringMap());
@@ -187,21 +186,19 @@ public class ValueHelper {
     }
   }
 
-  private List<Document> convertStringMapToDocument(final Map<String, String> stringMap)
+  private Document convertStringMapToDocument(final Map<String, String> stringMap)
       throws ConversionException {
-    List<Document> documents = new ArrayList<>();
     try {
-      for (Entry<String, String> entry : stringMap.entrySet()) {
-        final String dataType = getStringValue(STRING);
-        documents.add(
-            new JSONDocument(
-                Map.of(entry.getKey(), Map.of(VALUE_KEY, Map.of(dataType, entry.getValue())))));
-      }
+      final String dataType = getStringValue(STRING);
+      return new JSONDocument(
+          stringMap.entrySet().stream()
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      Entry::getKey,
+                      entry -> Map.of(VALUE_KEY, Map.of(dataType, entry.getValue())))));
     } catch (final IOException e) {
       throw new ConversionException(e.getMessage(), e);
     }
-
-    return Collections.unmodifiableList(documents);
   }
 
   public List<Document> getDocumentListFromArrayValue(final Value value)
