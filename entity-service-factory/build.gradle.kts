@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-  api("org.hypertrace.core.serviceframework:platform-grpc-service-framework:0.1.58")
+  api("org.hypertrace.core.serviceframework:platform-grpc-service-framework:0.1.60")
 
   implementation(project(":entity-service-attribute-translator"))
   implementation(project(":entity-service-impl"))
