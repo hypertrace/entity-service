@@ -7,6 +7,7 @@ import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_DOUBLE
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_INT64;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP;
 import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.ADD_TO_LIST_IF_ABSENT;
 import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.REMOVE_ALL_FROM_LIST;
 import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.SET;
@@ -26,6 +27,7 @@ import static org.hypertrace.entity.query.service.v1.ValueType.INT;
 import static org.hypertrace.entity.query.service.v1.ValueType.LONG;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
+import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 
 import com.google.common.base.Joiner;
 import java.util.Map;
@@ -58,7 +60,8 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
           entry(DOUBLE, TYPE_DOUBLE),
           entry(BYTES, TYPE_BYTES),
           entry(BOOL, TYPE_BOOL),
-          entry(STRING_ARRAY, TYPE_STRING_ARRAY));
+          entry(STRING_ARRAY, TYPE_STRING_ARRAY),
+          entry(STRING_MAP, TYPE_STRING_MAP));
 
   private static final Map<AttributeUpdateOperator, UpdateOperator> OPERATOR_MAP =
       Map.ofEntries(
