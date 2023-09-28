@@ -12,7 +12,7 @@ dependencies {
 
   implementation("org.hypertrace.core.eventstore:event-store:0.1.2")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.1")
-  implementation("com.google.guava:guava:32.0.1-jre")
+  implementation("com.google.guava:guava:32.1.2-jre")
   implementation("org.slf4j:slf4j-api:1.7.30")
 
   constraints {
@@ -28,7 +28,7 @@ dependencies {
   }
 
   runtimeOnly("io.confluent:kafka-protobuf-serializer")
-  implementation(platform("org.hypertrace.core.kafkastreams.framework:kafka-bom:0.2.11"))
+  implementation(platform("org.hypertrace.core.kafkastreams.framework:kafka-bom:0.3.2"))
 
   annotationProcessor("org.projectlombok:lombok:1.18.18")
   compileOnly("org.projectlombok:lombok:1.18.18")
