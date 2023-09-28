@@ -22,10 +22,10 @@ tasks.integrationTest {
 dependencies {
   implementation(project(":entity-service-factory"))
 
-  implementation("org.hypertrace.core.serviceframework:platform-grpc-service-framework:0.1.52")
+  implementation("org.hypertrace.core.serviceframework:platform-grpc-service-framework:0.1.58")
   implementation("org.hypertrace.core.documentstore:document-store:0.7.32")
 
-  runtimeOnly("io.grpc:grpc-netty:1.56.0")
+  runtimeOnly("io.grpc:grpc-netty:1.57.2")
 
   // Logging
   implementation("org.slf4j:slf4j-api:1.7.30")
