@@ -7,16 +7,16 @@ plugins {
 dependencies {
   api(project(":entity-service-api"))
   api(project(":entity-service-attribute-translator"))
-  api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.52")
+  api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.60")
 
   annotationProcessor("org.projectlombok:lombok:1.18.22")
   compileOnly("org.projectlombok:lombok:1.18.18")
 
   implementation("org.hypertrace.core.documentstore:document-store:0.7.32")
-  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.1")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.1")
+  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.5")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.5")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.14.15")
-  implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.52")
+  implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.60")
   implementation("com.google.inject:guice:5.0.1")
 
   implementation(project(":entity-type-service-rx-client"))
