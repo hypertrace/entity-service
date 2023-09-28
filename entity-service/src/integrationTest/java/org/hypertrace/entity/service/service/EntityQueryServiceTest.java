@@ -338,7 +338,7 @@ public class EntityQueryServiceTest {
             .setFqn(API_STRING_MAP_ATTR)
             .setGroupable(false)
             .setId(API_STRING_MAP_ATTR)
-            .setKey("triePatterns")
+            .setKey("stringMapAttr")
             .setScopeString("API")
             .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP)
             .setScope(AttributeScope.API)
