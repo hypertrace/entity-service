@@ -109,9 +109,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/**
- * Test for {@link org.hypertrace.entity.query.service.client.EntityQueryServiceClient}
- */
+/** Test for {@link org.hypertrace.entity.query.service.client.EntityQueryServiceClient} */
 public class EntityQueryServiceTest {
 
   private static EntityQueryServiceBlockingStub entityQueryServiceClient;
@@ -156,7 +154,7 @@ public class EntityQueryServiceTest {
   @BeforeAll
   public static void setUp() {
     ConfigFactory.invalidateCaches();
-    IntegrationTestServerUtil.startServices(new String[]{"entity-service"});
+    IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
 
     EntityServiceClientConfig entityServiceTestConfig = EntityServiceTestConfig.getClientConfig();
     channel =
@@ -2385,8 +2383,8 @@ public class EntityQueryServiceTest {
                 apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
             .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
             .putAttributes(apiAttributesMap.get(API_IS_LATEST_ATTR), createAttribute(false))
-            .putAttributes(apiAttributesMap.get(API_TRIE_PATTERNS),
-                createAttribute(Map.of("key", "value")))
+            .putAttributes(
+                apiAttributesMap.get(API_TRIE_PATTERNS), createAttribute(Map.of("key", "value")))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -2550,16 +2548,24 @@ public class EntityQueryServiceTest {
     // Add a small delay for the update to reflect
     Thread.sleep(500);
 
-    Entity entity2Get = requestContext.call(
-        () -> entityDataServiceStub.getById(ByIdRequest.newBuilder()
-            .setEntityType("API")
-            .setEntityId(entity2.getEntityId()).build()));
+    Entity entity2Get =
+        requestContext.call(
+            () ->
+                entityDataServiceStub.getById(
+                    ByIdRequest.newBuilder()
+                        .setEntityType("API")
+                        .setEntityId(entity2.getEntityId())
+                        .build()));
     System.out.println(String.format("Printing the entities 2 to check %s", entity2Get));
 
-    Entity entity3Get = requestContext.call(
-        () -> entityDataServiceStub.getById(ByIdRequest.newBuilder()
-            .setEntityType("API")
-            .setEntityId(entity3.getEntityId()).build()));
+    Entity entity3Get =
+        requestContext.call(
+            () ->
+                entityDataServiceStub.getById(
+                    ByIdRequest.newBuilder()
+                        .setEntityType("API")
+                        .setEntityId(entity3.getEntityId())
+                        .build()));
     System.out.println(String.format("Printing the entities 3 to check %s", entity3Get));
 
     final EntityQueryRequest entityQueryRequest =
@@ -2876,11 +2882,18 @@ public class EntityQueryServiceTest {
   }
 
   private AttributeValue createAttribute(Map<String, String> valueMap) {
-    Map<String, AttributeValue> values = valueMap.entrySet().stream().collect(
-        toUnmodifiableMap(Entry::getKey, entry -> AttributeValue.newBuilder()
-            .setValue(Value.newBuilder().setString(entry.getValue()).build()).build()));
-    return AttributeValue.newBuilder().setValueMap(AttributeValueMap.newBuilder()
-        .putAllValues(values).build()).build();
+    Map<String, AttributeValue> values =
+        valueMap.entrySet().stream()
+            .collect(
+                toUnmodifiableMap(
+                    Entry::getKey,
+                    entry ->
+                        AttributeValue.newBuilder()
+                            .setValue(Value.newBuilder().setString(entry.getValue()).build())
+                            .build()));
+    return AttributeValue.newBuilder()
+        .setValueMap(AttributeValueMap.newBuilder().putAllValues(values).build())
+        .build();
   }
 
   private AttributeValue createAttribute(String name) {
