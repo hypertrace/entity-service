@@ -25,10 +25,12 @@ import com.google.inject.Singleton;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -45,6 +47,7 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class ValueHelper {
+
   public static final String VALUES_KEY = "values";
 
   public static final String VALUE_KEY = "value";
@@ -157,10 +160,13 @@ public class ValueHelper {
 
   public SubDocumentValue convertToSubDocumentValue(final Value value) throws ConversionException {
     final ValueType type = value.getValueType();
-
     if (isArray(type)) {
       final List<Document> documents = getDocumentListFromArrayValue(value);
+      return SubDocumentValue.of(documents);
+    }
 
+    if (isMap(type)) {
+      final List<Document> documents = getDocumentsFromMapValue(value);
       return SubDocumentValue.of(documents);
     }
 
@@ -171,15 +177,42 @@ public class ValueHelper {
     throw new ConversionException(String.format("Unsupported value type: %s", type));
   }
 
+  public List<Document> getDocumentsFromMapValue(final Value value) throws ConversionException {
+    switch (value.getValueType()) {
+      case STRING_MAP:
+        return convertStringMapToDocument(value.getStringMap());
+      default:
+        throw new ConversionException(
+            String.format("Unsupported map value: %s", value.getValueType()));
+    }
+  }
+
+  private List<Document> convertStringMapToDocument(final Map<String, String> stringMap)
+      throws ConversionException {
+    List<Document> documents = new ArrayList<>();
+    try {
+      for (Entry<String, String> entry : stringMap.entrySet()) {
+        final String dataType = getStringValue(STRING);
+        documents.add(
+            new JSONDocument(
+                Map.of(entry.getKey(), Map.of(VALUE_KEY, Map.of(dataType, entry.getValue())))));
+      }
+    } catch (final IOException e) {
+      throw new ConversionException(e.getMessage(), e);
+    }
+
+    return Collections.unmodifiableList(documents);
+  }
+
   public List<Document> getDocumentListFromArrayValue(final Value value)
       throws ConversionException {
     final List<Value> values =
         ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(value.getValueType()).apply(value);
     final List<Document> documents = new ArrayList<>();
-
     for (final Value singleValue : values) {
       documents.add(convertToDocument(singleValue));
     }
+
     return documents;
   }
 
@@ -363,6 +396,7 @@ public class ValueHelper {
 
   @AllArgsConstructor
   private static class ArrayToPrimitiveValuesConverter<T> {
+
     private final Function<Value, List<T>> arrayValueGetter;
     private final BiFunction<Value.Builder, T, Value.Builder> primitiveSetter;
     private final ValueType primitiveType;

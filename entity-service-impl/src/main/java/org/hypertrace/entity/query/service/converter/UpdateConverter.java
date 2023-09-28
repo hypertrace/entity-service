@@ -13,6 +13,7 @@ import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.SET;
 import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.UNSET;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUES_KEY;
 import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUE_LIST_KEY;
+import static org.hypertrace.entity.query.service.converter.ValueHelper.VALUE_MAP_KEY;
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_ADD_TO_LIST_IF_ABSENT;
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_REMOVE_FROM_LIST;
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_SET;
@@ -106,6 +107,8 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
 
     if (entityAttributeMapping.isArray(attributeKind)) {
       suffixedSubDocPath = DOT_JOINER.join(subDocPath, VALUE_LIST_KEY, VALUES_KEY);
+    } else if (entityAttributeMapping.isMap(attributeKind)) {
+      suffixedSubDocPath = DOT_JOINER.join(subDocPath, VALUE_MAP_KEY, VALUES_KEY);
     } else {
       suffixedSubDocPath = subDocPath;
     }

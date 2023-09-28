@@ -61,6 +61,7 @@ import org.hypertrace.entity.data.service.client.EntityDataServiceClient;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.AttributeValueMap;
+import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc;
 import org.hypertrace.entity.data.service.v1.EntityDataServiceGrpc.EntityDataServiceBlockingStub;
@@ -108,7 +109,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/** Test for {@link org.hypertrace.entity.query.service.client.EntityQueryServiceClient} */
+/**
+ * Test for {@link org.hypertrace.entity.query.service.client.EntityQueryServiceClient}
+ */
 public class EntityQueryServiceTest {
 
   private static EntityQueryServiceBlockingStub entityQueryServiceClient;
@@ -140,6 +143,7 @@ public class EntityQueryServiceTest {
   private static final String SERVICE_NAME_ATTR = "SERVICE.name";
   private static final String SERVICE_TYPE_ATTR = "SERVICE.service_type";
   private static final String SERVICE_MULTI_VALUE_ATTR = "SERVICE.multiValueAttribute";
+  private static final String API_TRIE_PATTERNS = "API.triePatterns";
 
   private static final String ATTRIBUTE_SERVICE_HOST_KEY = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT_KEY = "attribute.service.config.port";
@@ -152,7 +156,7 @@ public class EntityQueryServiceTest {
   @BeforeAll
   public static void setUp() {
     ConfigFactory.invalidateCaches();
-    IntegrationTestServerUtil.startServices(new String[] {"entity-service"});
+    IntegrationTestServerUtil.startServices(new String[]{"entity-service"});
 
     EntityServiceClientConfig entityServiceTestConfig = EntityServiceTestConfig.getClientConfig();
     channel =
@@ -329,6 +333,20 @@ public class EntityQueryServiceTest {
             .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
             .build();
 
+    AttributeMetadata triePatternsAttribute =
+        AttributeMetadata.newBuilder()
+            .setDisplayName("Api Trie Patterns")
+            .addSources(AttributeSource.EDS)
+            .setFqn(API_TRIE_PATTERNS)
+            .setGroupable(false)
+            .setId(API_TRIE_PATTERNS)
+            .setKey("triePatterns")
+            .setScopeString("API")
+            .setValueKind(org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP)
+            .setScope(AttributeScope.API)
+            .setType(org.hypertrace.core.attribute.service.v1.AttributeType.ATTRIBUTE)
+            .build();
+
     AttributeCreateRequest request =
         AttributeCreateRequest.newBuilder()
             .addAttributes(labelsAttribute)
@@ -337,6 +355,7 @@ public class EntityQueryServiceTest {
             .addAttributes(httpMethod)
             .addAttributes(isLatest)
             .addAttributes(multiValueAttribute)
+            .addAttributes(triePatternsAttribute)
             .build();
     AttributeServiceClient attributeServiceClient = new AttributeServiceClient(channel);
     attributeServiceClient.create(TENANT_ID, request);
@@ -2366,6 +2385,8 @@ public class EntityQueryServiceTest {
                 apiAttributesMap.get(API_DISCOVERY_STATE_ATTR), createAttribute("DISCOVERED"))
             .putAttributes(apiAttributesMap.get(API_HTTP_METHOD_ATTR), createAttribute("GET"))
             .putAttributes(apiAttributesMap.get(API_IS_LATEST_ATTR), createAttribute(false))
+            .putAttributes(apiAttributesMap.get(API_TRIE_PATTERNS),
+                createAttribute(Map.of("key", "value")))
             .putIdentifyingAttributes(
                 EntityConstants.getValue(ServiceAttribute.SERVICE_ATTRIBUTE_ID),
                 createAttribute(SERVICE_ID))
@@ -2439,6 +2460,18 @@ public class EntityQueryServiceTest {
                             .setBoolean(false)))
             .build();
 
+    final AttributeUpdateOperation updateOperation7 =
+        AttributeUpdateOperation.newBuilder()
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName(API_TRIE_PATTERNS))
+            .setOperator(ATTRIBUTE_UPDATE_OPERATOR_SET)
+            .setValue(
+                LiteralConstant.newBuilder()
+                    .setValue(
+                        org.hypertrace.entity.query.service.v1.Value.newBuilder()
+                            .setValueType(STRING_MAP)
+                            .putAllStringMap(Map.of("key1", "value1", "key2", "value2"))))
+            .build();
+
     final Update update1 =
         Update.newBuilder()
             .setFilter(
@@ -2481,6 +2514,7 @@ public class EntityQueryServiceTest {
                                                     entity2.getEntityId()))))))
             .addOperations(updateOperation2)
             .addOperations(updateOperation6)
+            .addOperations(updateOperation7)
             .build();
     final Update update3 =
         Update.newBuilder()
@@ -2501,6 +2535,7 @@ public class EntityQueryServiceTest {
                                             .setString(entity3.getEntityId())))))
             .addOperations(updateOperation3)
             .addOperations(updateOperation5)
+            .addOperations(updateOperation7)
             .build();
 
     final BulkUpdateAllMatchingFilterRequest request =
@@ -2515,6 +2550,18 @@ public class EntityQueryServiceTest {
     // Add a small delay for the update to reflect
     Thread.sleep(500);
 
+    Entity entity2Get = requestContext.call(
+        () -> entityDataServiceStub.getById(ByIdRequest.newBuilder()
+            .setEntityType("API")
+            .setEntityId(entity2.getEntityId()).build()));
+    System.out.println(String.format("Printing the entities 2 to check %s", entity2Get));
+
+    Entity entity3Get = requestContext.call(
+        () -> entityDataServiceStub.getById(ByIdRequest.newBuilder()
+            .setEntityType("API")
+            .setEntityId(entity3.getEntityId()).build()));
+    System.out.println(String.format("Printing the entities 3 to check %s", entity3Get));
+
     final EntityQueryRequest entityQueryRequest =
         EntityQueryRequest.newBuilder()
             .setEntityType(EntityType.API.name())
@@ -2523,6 +2570,7 @@ public class EntityQueryServiceTest {
             .addSelection(createExpression(API_LABELS_ATTR))
             .addSelection(createExpression(API_IS_LATEST_ATTR))
             .addSelection(createExpression(API_NAME_ATTR))
+            .addSelection(createExpression(API_TRIE_PATTERNS))
             .addOrderBy(
                 OrderByExpression.newBuilder()
                     .setExpression(createExpression(API_NAME_ATTR))
@@ -2554,12 +2602,14 @@ public class EntityQueryServiceTest {
     assertEquals("POST", values.get(1).get(1).getString());
     assertEquals(List.of("Label2"), values.get(1).get(2).getStringArrayList());
     assertEquals(false, values.get(1).get(3).getBoolean());
+    assertEquals(2, values.get(1).get(5).getStringMap().size());
 
     assertEquals("api3", values.get(2).get(4).getString());
     assertEquals("", values.get(2).get(0).getString());
     assertEquals("GET", values.get(2).get(1).getString());
     assertEquals(List.of(), values.get(2).get(2).getStringArrayList());
     assertEquals(false, values.get(2).get(3).getBoolean());
+    assertEquals(2, values.get(2).get(5).getStringMap().size());
   }
 
   @Test
@@ -2823,6 +2873,14 @@ public class EntityQueryServiceTest {
 
   private static String generateRandomUUID() {
     return UUID.randomUUID().toString();
+  }
+
+  private AttributeValue createAttribute(Map<String, String> valueMap) {
+    Map<String, AttributeValue> values = valueMap.entrySet().stream().collect(
+        toUnmodifiableMap(Entry::getKey, entry -> AttributeValue.newBuilder()
+            .setValue(Value.newBuilder().setString(entry.getValue()).build()).build()));
+    return AttributeValue.newBuilder().setValueMap(AttributeValueMap.newBuilder()
+        .putAllValues(values).build()).build();
   }
 
   private AttributeValue createAttribute(String name) {
