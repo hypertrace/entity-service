@@ -2608,14 +2608,15 @@ public class EntityQueryServiceTest {
     assertEquals("POST", values.get(1).get(1).getString());
     assertEquals(List.of("Label2"), values.get(1).get(2).getStringArrayList());
     assertEquals(false, values.get(1).get(3).getBoolean());
-    assertEquals(2, values.get(1).get(5).getStringMap().size());
+    assertEquals(
+        Map.of("key1", "value1", "key2", "value2"), values.get(1).get(5).getStringMap().size());
 
     assertEquals("api3", values.get(2).get(4).getString());
     assertEquals("", values.get(2).get(0).getString());
     assertEquals("GET", values.get(2).get(1).getString());
     assertEquals(List.of(), values.get(2).get(2).getStringArrayList());
     assertEquals(false, values.get(2).get(3).getBoolean());
-    assertEquals(2, values.get(2).get(5).getStringMap().size());
+    assertEquals(Map.of("key1", "value1", "key2", "value2"), values.get(2).get(5).getStringMap());
   }
 
   @Test
