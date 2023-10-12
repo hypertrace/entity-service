@@ -20,6 +20,8 @@ enum ServiceAttribute {
   SERVICE_ATTRIBUTE_ID = 2 [(string_value) = "SERVICE_ID"];
   SERVICE_ATTRIBUTE_SERVICE_TYPE = 3 [(string_value) = "service_type"];
   SERVICE_ATTRIBUTE_HOST_HEADER = 4[(string_value) = "host_header"];
+  CALLER_SERVICE_ATTRIBUTE_NAME = 5 [(string_value) = "CALLER_SERVICE_NAME"];
+  CALLER_SERVICE_ATTRIBUTE_ID = 6 [(string_value) = "CALLER_SERVICE_ID"];
 }
 
 enum ApiAttribute {
