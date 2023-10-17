@@ -22,8 +22,8 @@ tasks.integrationTest {
 dependencies {
   implementation(project(":entity-service-factory"))
 
-  implementation("org.hypertrace.core.serviceframework:platform-grpc-service-framework:0.1.60")
-  implementation("org.hypertrace.core.documentstore:document-store:0.7.32")
+  implementation("org.hypertrace.core.serviceframework:platform-grpc-service-framework:0.1.61")
+  implementation("org.hypertrace.core.documentstore:document-store:0.7.44")
 
   runtimeOnly("io.grpc:grpc-netty:1.57.2")
 

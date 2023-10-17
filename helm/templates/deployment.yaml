@@ -83,6 +83,20 @@ spec:
               value: "/var/{{ .Chart.Name }}/log/log4j2.properties"
             - name: JAVA_OPTS
               value: {{ .Values.javaOpts | quote }}
+            {{- if .Values.database.mongoAuthEnabled }}
+            {{- with .Values.configMap.mongo.credentials }}
+            - name: MONGO_SERVICE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretName }}
+                  key: {{ .secretUsernameKey }}
+            - name: MONGO_SERVICE_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretName }}
+                  key: {{ .secretPasswordKey }}
+            {{- end }}
+            {{- end }}
           volumeMounts:
             - name: service-config
               mountPath: /app/resources/configs/{{ .Chart.Name }}/application.conf

@@ -1,6 +1,7 @@
 package org.hypertrace.entity.service;
 
 import static java.util.Objects.isNull;
+import static org.hypertrace.entity.service.EntityServiceDataStoreConfig.DATASTORE_TYPE_CONFIG;
 
 import com.typesafe.config.Config;
 import io.grpc.Channel;
@@ -11,6 +12,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.DatastoreProvider;
+import org.hypertrace.core.documentstore.model.config.DatastoreConfig;
+import org.hypertrace.core.documentstore.model.config.TypesafeConfigDatastoreConfigExtractor;
 import org.hypertrace.core.serviceframework.grpc.GrpcPlatformService;
 import org.hypertrace.core.serviceframework.grpc.GrpcPlatformServiceFactory;
 import org.hypertrace.core.serviceframework.grpc.GrpcServiceContainerEnvironment;
@@ -36,9 +39,28 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
     this.grpcServiceContainerEnvironment = grpcServiceContainerEnvironment;
     Config config = grpcServiceContainerEnvironment.getConfig(SERVICE_NAME);
     EntityServiceDataStoreConfig dataStoreConfig = new EntityServiceDataStoreConfig(config);
-    this.datastore =
-        DatastoreProvider.getDatastore(
-            dataStoreConfig.getDataStoreType(), dataStoreConfig.getDataStoreConfig());
+    final String dataStoreType = dataStoreConfig.getDataStoreType();
+    final DatastoreConfig datastoreConfig =
+        TypesafeConfigDatastoreConfigExtractor.from(
+                dataStoreConfig.getDataStoreConfig(), DATASTORE_TYPE_CONFIG)
+            .hostKey(dataStoreType + ".host")
+            .portKey(dataStoreType + ".port")
+            .keysForEndpoints(dataStoreType + ".endpoints", "host", "port")
+            .authDatabaseKey(dataStoreType + ".authDb")
+            .replicaSetKey(dataStoreType + ".replicaSet")
+            .databaseKey(dataStoreType + ".database")
+            .usernameKey(dataStoreType + ".user")
+            .passwordKey(dataStoreType + ".password")
+            .applicationNameKey("appName")
+            .poolMaxConnectionsKey("maxPoolSize")
+            .poolConnectionAccessTimeoutKey("connectionAccessTimeout")
+            .poolConnectionSurrenderTimeoutKey("connectionIdleTime")
+            .extract();
+
+    datastore = DatastoreProvider.getDatastore(datastoreConfig);
+
+    grpcServiceContainerEnvironment.getLifecycle().shutdownComplete().thenRun(datastore::close);
+
     EntityAttributeMapping entityAttributeMapping =
         new EntityAttributeMapping(config, grpcServiceContainerEnvironment.getChannelRegistry());
     EntityChangeEventGenerator entityChangeEventGenerator =

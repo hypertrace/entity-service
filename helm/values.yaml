@@ -94,8 +94,13 @@ entityServiceConfig:
   publishChangeEvents: false
   dataStoreType: "mongo"
   mongo:
-    host: mongo
-    url: ""
+    endpoints:
+      - host: mongo
+        port: 27017
+  # credentials:
+  #  secretName: <k8s secret name>
+  #  secretUsernameKey: <secret key for username>
+  #  secretPasswordKey: <secret key for password>
   postgres:
     host: postgres
     port: 5432
@@ -105,6 +110,9 @@ entityServiceConfig:
   attributeService:
     host: attribute-service
     port: 9012
+
+database:
+  mongoAuthEnabled: true
 
 attributes: []
 extraAttributes: []

@@ -1,21 +1,18 @@
 package org.hypertrace.entity.service;
 
 import com.typesafe.config.Config;
-import org.hypertrace.core.documentstore.DocumentStoreConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class EntityServiceDataStoreConfig {
 
-  private static final Logger LOG = LoggerFactory.getLogger(EntityServiceDataStoreConfig.class);
+  public static final String DATASTORE_TYPE_CONFIG = "dataStoreType";
 
   private final String dataStoreType;
 
   private final Config entityServiceConfig;
 
   public EntityServiceDataStoreConfig(Config config) {
-    entityServiceConfig = config.getConfig("entity.service.config.entity-service");
-    dataStoreType = entityServiceConfig.getString(DocumentStoreConfig.DATASTORE_TYPE_CONFIG_KEY);
+    entityServiceConfig = config.getConfig("entity.service.config.document.store");
+    this.dataStoreType = entityServiceConfig.getString(DATASTORE_TYPE_CONFIG);
   }
 
   public String getDataStoreType() {
@@ -23,7 +20,6 @@ public class EntityServiceDataStoreConfig {
   }
 
   public Config getDataStoreConfig() {
-    entityServiceConfig.entrySet().forEach(e -> LOG.info("Config key {}", e.getKey()));
-    return entityServiceConfig.getConfig(getDataStoreType());
+    return entityServiceConfig;
   }
 }
