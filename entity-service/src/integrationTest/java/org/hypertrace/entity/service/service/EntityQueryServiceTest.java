@@ -146,7 +146,8 @@ public class EntityQueryServiceTest {
   private static final String ATTRIBUTE_SERVICE_HOST_KEY = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT_KEY = "attribute.service.config.port";
 
-  private static final String MONGO_ENDPOINTS_KEY = "entity.service.config.document.store.mongo.endpoints";
+  private static final String MONGO_ENDPOINTS_KEY =
+      "entity.service.config.document.store.mongo.endpoints";
   private static final String MONGO_HOST_KEY = "host";
   private static final String MONGO_PORT_KEY = "port";
 
@@ -2946,8 +2947,10 @@ public class EntityQueryServiceTest {
     EntityServiceDataStoreConfig entityServiceConfig = new EntityServiceDataStoreConfig(config);
 
     Map<String, String> mongoConfig = new HashMap<>();
-    mongoConfig.putIfAbsent("host", config.getConfigList(MONGO_ENDPOINTS_KEY).get(0).getString(MONGO_HOST_KEY));
-    mongoConfig.putIfAbsent("port", config.getConfigList(MONGO_ENDPOINTS_KEY).get(0).getString(MONGO_PORT_KEY));
+    mongoConfig.putIfAbsent(
+        "host", config.getConfigList(MONGO_ENDPOINTS_KEY).get(0).getString(MONGO_HOST_KEY));
+    mongoConfig.putIfAbsent(
+        "port", config.getConfigList(MONGO_ENDPOINTS_KEY).get(0).getString(MONGO_PORT_KEY));
     Config dataStoreConfig = ConfigFactory.parseMap(mongoConfig);
     String dataStoreType = entityServiceConfig.getDataStoreType();
     return DatastoreProvider.getDatastore(dataStoreType, dataStoreConfig);
