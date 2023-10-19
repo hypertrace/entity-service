@@ -6,8 +6,8 @@ plugins {
 
 dependencies {
   api(project(":entity-service-api"))
-  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.5")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.5")
+  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.6")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.6")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.14.25")
   implementation("com.typesafe:config:1.4.2")
 
