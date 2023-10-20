@@ -2942,6 +2942,22 @@ public class EntityQueryServiceTest {
   }
 
   private static Datastore getDatastore() {
+    return getPostgresDatastore();
+  }
+
+  private static Datastore getPostgresDatastore() {
+    String postgresConnectionUrl =
+            String.format("jdbc:postgresql://localhost:%s/", "35432");
+    Map<String, String> postgresConfig = new HashMap<>();
+    postgresConfig.putIfAbsent("url", postgresConnectionUrl);
+    postgresConfig.putIfAbsent("user", "postgres");
+    postgresConfig.putIfAbsent("password", "postgres");
+    Config dataStoreConfig = ConfigFactory.parseMap(postgresConfig);
+    String dataStoreType = "Postgres";
+    return DatastoreProvider.getDatastore(dataStoreType, dataStoreConfig);
+  }
+
+  private static Datastore getMongoDatastore() {
     EntityServiceDataStoreConfig entityServiceConfig = new EntityServiceDataStoreConfig(config);
 
     Map<String, String> mongoConfig = new HashMap<>();

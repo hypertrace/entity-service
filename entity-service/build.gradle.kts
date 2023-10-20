@@ -98,6 +98,32 @@ tasks.register<DockerStopContainer>("stopMongoContainer") {
   finalizedBy("removeIntegrationTestNetwork")
 }
 
+tasks.register<DockerStartContainer>("startPostgresContainer") {
+  dependsOn("createPostgresContainer")
+  targetContainerId(tasks.getByName<DockerCreateContainer>("createPostgresContainer").containerId)
+}
+
+tasks.register<DockerCreateContainer>("createPostgresContainer") {
+  dependsOn("createIntegrationTestNetwork")
+  dependsOn("pullPostgresImage")
+  targetImageId(tasks.getByName<DockerPullImage>("pullPostgresImage").image)
+  containerName.set("postgres-local")
+  envVars.put("POSTGRES_PASSWORD", "postgres")
+  envVars.put("POSTGRES_USER", "postgres")
+  hostConfig.network.set(tasks.getByName<DockerCreateNetwork>("createIntegrationTestNetwork").networkId)
+  hostConfig.portBindings.set(listOf("35432:5432"))
+  hostConfig.autoRemove.set(true)
+}
+
+tasks.register<DockerPullImage>("pullPostgresImage") {
+  image.set("postgres:13.1")
+}
+
+tasks.register<DockerStopContainer>("stopPostgresContainer") {
+  targetContainerId(tasks.getByName<DockerCreateContainer>("createPostgresContainer").containerId)
+  finalizedBy("stopMongoContainer")
+}
+
 tasks.register<DockerCreateNetwork>("createIntegrationTestNetwork") {
   networkId.set("entity-svc-int-test")
   networkName.set("entity-svc-int-test")
@@ -109,6 +135,7 @@ tasks.register<DockerRemoveNetwork>("removeIntegrationTestNetwork") {
 
 tasks.register<DockerStartContainer>("startAttributeServiceContainer") {
   dependsOn("startMongoContainer")
+  dependsOn("startPostgresContainer")
   dependsOn("createAttributeServiceContainer")
   targetContainerId(tasks.getByName<DockerCreateContainer>("createAttributeServiceContainer").containerId)
 }
@@ -134,5 +161,5 @@ tasks.register<DockerPullImage>("pullAttributeServiceImage") {
 
 tasks.register<DockerStopContainer>("stopAttributeServiceContainer") {
   targetContainerId(tasks.getByName<DockerCreateContainer>("createAttributeServiceContainer").containerId)
-  finalizedBy("stopMongoContainer")
+  finalizedBy("stopPostgresContainer")
 }
