@@ -18,6 +18,7 @@ import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
 import com.google.protobuf.ServiceException;
 import com.typesafe.config.Config;
+import io.grpc.Channel;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
@@ -56,6 +57,9 @@ import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeChangeEvaluator;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.DocumentParser;
+import org.hypertrace.entity.data.service.EntityIdGenerator;
+import org.hypertrace.entity.data.service.EntityNormalizer;
+import org.hypertrace.entity.data.service.IdentifyingAttributeCache;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
@@ -101,6 +105,7 @@ import org.hypertrace.entity.service.util.DocStoreConverter;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat.Printer;
 import org.hypertrace.entity.service.util.StringUtils;
+import org.hypertrace.entity.type.service.rxclient.EntityTypeClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,19 +140,23 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final EntityChangeEventGenerator entityChangeEventGenerator;
   private final EntityAttributeChangeEvaluator entityAttributeChangeEvaluator;
   private final EntityCounterMetricSender entityCounterMetricSender;
+  private final EntityNormalizer entityNormalizer;
 
   public EntityQueryServiceImpl(
       Datastore datastore,
       Config config,
       EntityAttributeMapping entityAttributeMapping,
       EntityChangeEventGenerator entityChangeEventGenerator,
-      EntityCounterMetricSender entityCounterMetricSender) {
+      EntityCounterMetricSender entityCounterMetricSender,
+      Channel entityTypeChannel) {
     this(
         datastore.getCollection(RAW_ENTITIES_COLLECTION),
+        datastore,
         entityAttributeMapping,
         entityChangeEventGenerator,
         new EntityAttributeChangeEvaluator(config, entityAttributeMapping),
         entityCounterMetricSender,
+        entityTypeChannel,
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),
@@ -158,30 +167,36 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
   public EntityQueryServiceImpl(
       Collection entitiesCollection,
+      Datastore datastore,
       EntityAttributeMapping entityAttributeMapping,
       EntityChangeEventGenerator entityChangeEventGenerator,
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
       EntityCounterMetricSender entityCounterMetricSender,
+      Channel entityTypeChannel,
       int chunkSize,
       int maxEntitiesToDelete) {
     this(
         entitiesCollection,
+        datastore,
         entityAttributeMapping,
         entityChangeEventGenerator,
         entityAttributeChangeEvaluator,
         entityCounterMetricSender,
         new EntityFetcher(entitiesCollection, DOCUMENT_PARSER),
+        entityTypeChannel,
         chunkSize,
         maxEntitiesToDelete);
   }
 
   EntityQueryServiceImpl(
       Collection entitiesCollection,
+      Datastore datastore,
       EntityAttributeMapping entityAttributeMapping,
       EntityChangeEventGenerator entityChangeEventGenerator,
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
       EntityCounterMetricSender entityCounterMetricSender,
       EntityFetcher entityFetcher,
+      Channel entityTypeChannel,
       int chunkSize,
       int maxEntitiesToDelete) {
     this.entitiesCollection = entitiesCollection;
@@ -194,6 +209,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     this.entityFetcher = entityFetcher;
     this.entityAttributeChangeEvaluator = entityAttributeChangeEvaluator;
     this.entityCounterMetricSender = entityCounterMetricSender;
+    EntityTypeClient entityTypeClient = EntityTypeClient.builder(entityTypeChannel).build();
+    IdentifyingAttributeCache identifyingAttributeCache = new IdentifyingAttributeCache(datastore);
+    this.entityNormalizer =
+        new EntityNormalizer(entityTypeClient, new EntityIdGenerator(), identifyingAttributeCache);
   }
 
   @Override
@@ -354,8 +373,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
               requestContext, request.getEntityType(), request.getOperation());
 
       for (String entityId : request.getEntityIdsList()) {
-        SingleValueKey key =
-            new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId);
+        Key key =
+            this.entityNormalizer.getEntityDocKey(
+                requestContext.getTenantId().orElseThrow(), request.getEntityType(), entityId);
         if (entitiesUpdateMap.containsKey(key)) {
           entitiesUpdateMap.get(key).put(subDocPath, jsonDocument);
         } else {

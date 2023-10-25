@@ -7,16 +7,16 @@ plugins {
 dependencies {
   api(project(":entity-service-api"))
   api(project(":entity-service-attribute-translator"))
-  api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.52")
+  api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.62")
 
   annotationProcessor("org.projectlombok:lombok:1.18.22")
   compileOnly("org.projectlombok:lombok:1.18.18")
 
   implementation("org.hypertrace.core.documentstore:document-store:0.7.32")
-  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.1")
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.1")
+  implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.6")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.6")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.14.15")
-  implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.52")
+  implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.62")
   implementation("com.google.inject:guice:5.0.1")
 
   implementation(project(":entity-type-service-rx-client"))
@@ -25,7 +25,7 @@ dependencies {
   implementation("com.google.protobuf:protobuf-java-util:3.21.12")
   implementation("com.github.f4b6a3:uuid-creator:3.5.0")
   implementation("io.reactivex.rxjava3:rxjava:3.0.11")
-  implementation("com.google.guava:guava:32.0.1-jre")
+  implementation("com.google.guava:guava:32.1.2-jre")
 
   implementation("org.slf4j:slf4j-api:1.7.30")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")

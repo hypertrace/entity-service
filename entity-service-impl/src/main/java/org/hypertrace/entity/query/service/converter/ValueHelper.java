@@ -29,10 +29,12 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
@@ -45,6 +47,7 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 @Singleton
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class ValueHelper {
+
   public static final String VALUES_KEY = "values";
 
   public static final String VALUE_KEY = "value";
@@ -157,11 +160,13 @@ public class ValueHelper {
 
   public SubDocumentValue convertToSubDocumentValue(final Value value) throws ConversionException {
     final ValueType type = value.getValueType();
-
     if (isArray(type)) {
       final List<Document> documents = getDocumentListFromArrayValue(value);
-
       return SubDocumentValue.of(documents);
+    }
+
+    if (isMap(type)) {
+      return SubDocumentValue.of(getDocumentFromMapValue(value));
     }
 
     if (isPrimitive(type)) {
@@ -171,15 +176,40 @@ public class ValueHelper {
     throw new ConversionException(String.format("Unsupported value type: %s", type));
   }
 
+  public Document getDocumentFromMapValue(final Value value) throws ConversionException {
+    switch (value.getValueType()) {
+      case STRING_MAP:
+        return convertStringMapToDocument(value.getStringMap());
+      default:
+        throw new ConversionException(
+            String.format("Unsupported map value: %s", value.getValueType()));
+    }
+  }
+
+  private Document convertStringMapToDocument(final Map<String, String> stringMap)
+      throws ConversionException {
+    try {
+      final String dataType = getStringValue(STRING);
+      return new JSONDocument(
+          stringMap.entrySet().stream()
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      Entry::getKey,
+                      entry -> Map.of(VALUE_KEY, Map.of(dataType, entry.getValue())))));
+    } catch (final IOException e) {
+      throw new ConversionException(e.getMessage(), e);
+    }
+  }
+
   public List<Document> getDocumentListFromArrayValue(final Value value)
       throws ConversionException {
     final List<Value> values =
         ARRAY_TO_PRIMITIVE_CONVERTER_MAP.get().get(value.getValueType()).apply(value);
     final List<Document> documents = new ArrayList<>();
-
     for (final Value singleValue : values) {
       documents.add(convertToDocument(singleValue));
     }
+
     return documents;
   }
 
@@ -363,6 +393,7 @@ public class ValueHelper {
 
   @AllArgsConstructor
   private static class ArrayToPrimitiveValuesConverter<T> {
+
     private final Function<Value, List<T>> arrayValueGetter;
     private final BiFunction<Value.Builder, T, Value.Builder> primitiveSetter;
     private final ValueType primitiveType;

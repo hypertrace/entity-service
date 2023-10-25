@@ -18,7 +18,9 @@ import org.hypertrace.entity.query.service.v1.ResultSetChunk;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesRequest;
 import org.hypertrace.entity.query.service.v1.TotalEntitiesResponse;
 
-/** @deprecated Use gRPC stub clients instead */
+/**
+ * @deprecated Use gRPC stub clients instead
+ */
 @Deprecated(forRemoval = true)
 public class EntityQueryServiceClient {
 

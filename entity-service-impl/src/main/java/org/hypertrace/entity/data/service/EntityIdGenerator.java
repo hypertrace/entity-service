@@ -6,7 +6,7 @@ import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.service.util.UUIDGenerator;
 
-class EntityIdGenerator {
+public class EntityIdGenerator {
 
   String generateEntityId(
       String tenantId, String entityType, Map<String, AttributeValue> attributeMap) {

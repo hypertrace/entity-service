@@ -134,7 +134,7 @@ public class EntityAttributeMapping {
     return PRIMITIVE_ATTRIBUTE_KINDS.contains(attributeKind);
   }
 
-  private boolean isMap(final AttributeKind attributeKind) {
+  public boolean isMap(final AttributeKind attributeKind) {
     return MAP_ATTRIBUTE_KINDS.contains(attributeKind);
   }
 

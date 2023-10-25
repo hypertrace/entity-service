@@ -3,12 +3,12 @@ package org.hypertrace.entity.data.service;
 import java.util.Objects;
 import org.hypertrace.core.documentstore.Key;
 
-class EntityV2TypeDocKey implements Key {
+public class EntityV2TypeDocKey implements Key {
   private final String tenantId;
   private final String entityType;
   private final String entityId;
 
-  EntityV2TypeDocKey(String tenantId, String entityType, String entityId) {
+  public EntityV2TypeDocKey(String tenantId, String entityType, String entityId) {
     this.tenantId = tenantId;
     this.entityType = entityType;
     this.entityId = entityId;
