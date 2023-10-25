@@ -60,3 +60,14 @@ data:
   {{- end }}
     ]
   {{- end -}}
+  {{- if .Values.idAttributes }}
+    entity.service.idAttributeMap = [
+  {{- range $i, $v := .Values.idAttributes }}
+  {{- if gt $i 0 }},{{- end }}
+      {
+        "scope": {{ $v.scope | quote }},
+        "attribute": {{ $v.attribute | quote }},
+      }
+  {{- end }}
+    ]
+  {{- end -}}
