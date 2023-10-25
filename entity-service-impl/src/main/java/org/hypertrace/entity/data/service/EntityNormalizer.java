@@ -13,12 +13,12 @@ import org.hypertrace.entity.service.util.StringUtils;
 import org.hypertrace.entity.type.service.rxclient.EntityTypeClient;
 import org.hypertrace.entity.type.service.v1.AttributeType;
 
-class EntityNormalizer {
+public class EntityNormalizer {
   private final EntityTypeClient entityTypeV2Client;
   private final EntityIdGenerator idGenerator;
   private final IdentifyingAttributeCache identifyingAttributeCache;
 
-  EntityNormalizer(
+  public EntityNormalizer(
       EntityTypeClient entityTypeClient,
       EntityIdGenerator idGenerator,
       IdentifyingAttributeCache identifyingAttributeCache) {
@@ -57,7 +57,7 @@ class EntityNormalizer {
     return this.getEntityDocKey(tenantId, entity.getEntityType(), entityId);
   }
 
-  Key getEntityDocKey(String tenantId, String entityType, String entityId) {
+  public Key getEntityDocKey(String tenantId, String entityType, String entityId) {
     if (!entityType.isEmpty() && this.isV2Type(entityType)) {
       return new EntityV2TypeDocKey(tenantId, entityType, entityId);
     }

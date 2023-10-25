@@ -22,10 +22,10 @@ tasks.integrationTest {
 dependencies {
   implementation(project(":entity-service-factory"))
 
-  implementation("org.hypertrace.core.serviceframework:platform-grpc-service-framework:0.1.52")
+  implementation("org.hypertrace.core.serviceframework:platform-grpc-service-framework:0.1.62")
   implementation("org.hypertrace.core.documentstore:document-store:0.7.32")
 
-  runtimeOnly("io.grpc:grpc-netty:1.56.0")
+  runtimeOnly("io.grpc:grpc-netty:1.57.2")
 
   // Logging
   implementation("org.slf4j:slf4j-api:1.7.30")
@@ -37,9 +37,9 @@ dependencies {
   // integration test
   integrationTestImplementation(project(":entity-service-client"))
   integrationTestImplementation(project(":entity-service-impl"))
-  integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.1")
+  integrationTestImplementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.6")
   integrationTestImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
-  integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.52")
+  integrationTestImplementation("org.hypertrace.core.serviceframework:integrationtest-service-framework:0.1.62")
   integrationTestImplementation("org.testcontainers:testcontainers:1.16.1")
   integrationTestImplementation("com.github.stefanbirkner:system-lambda:1.2.0")
   integrationTestImplementation("org.hypertrace.core.attribute.service:attribute-service-api:0.13.6")

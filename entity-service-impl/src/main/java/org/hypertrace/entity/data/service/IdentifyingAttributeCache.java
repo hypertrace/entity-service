@@ -23,12 +23,12 @@ import org.hypertrace.entity.service.util.TenantUtils;
 import org.hypertrace.entity.type.service.v1.AttributeType;
 import org.hypertrace.entity.type.service.v1.EntityType;
 
-class IdentifyingAttributeCache {
+public class IdentifyingAttributeCache {
   private static final DocumentParser PARSER = new DocumentParser();
   private final LoadingCache<String, Map<String, List<AttributeType>>> cache;
   private final Collection entityTypesCollection;
 
-  IdentifyingAttributeCache(Datastore datastore) {
+  public IdentifyingAttributeCache(Datastore datastore) {
     this.entityTypesCollection = datastore.getCollection(ENTITY_TYPES_COLLECTION);
     this.cache =
         CacheBuilder.newBuilder()

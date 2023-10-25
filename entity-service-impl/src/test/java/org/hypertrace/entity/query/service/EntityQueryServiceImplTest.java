@@ -19,6 +19,7 @@ import static org.mockito.quality.Strictness.LENIENT;
 
 import com.google.common.collect.Streams;
 import com.google.protobuf.util.JsonFormat;
+import io.grpc.Channel;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
 import java.util.LinkedHashSet;
@@ -31,6 +32,7 @@ import java.util.stream.IntStream;
 import org.hypertrace.core.documentstore.BulkArrayValueUpdateRequest;
 import org.hypertrace.core.documentstore.BulkUpdateResult;
 import org.hypertrace.core.documentstore.Collection;
+import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.JSONDocument;
@@ -127,11 +129,13 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       entitiesCollection,
+                      mock(Datastore.class),
                       mockAttributeMapping,
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
+                      mock(Channel.class),
                       1,
                       1000);
 
@@ -155,11 +159,13 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       entitiesCollection,
+                      mock(Datastore.class),
                       mockAttributeMapping,
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
+                      mock(Channel.class),
                       1,
                       1000);
 
@@ -184,11 +190,13 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       entitiesCollection,
+                      mock(Datastore.class),
                       mockAttributeMapping,
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
+                      mock(Channel.class),
                       1,
                       1000);
 
@@ -215,11 +223,13 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       entitiesCollection,
+                      mock(Datastore.class),
                       mockAttributeMapping,
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
+                      mock(Channel.class),
                       1,
                       1000);
 
@@ -275,11 +285,13 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       mockEntitiesCollection,
+                      mock(Datastore.class),
                       mockMappingForAttributes1And2(),
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
+                      mock(Channel.class),
                       1,
                       1000);
               eqs.update(updateRequest, mockResponseObserver);
@@ -310,11 +322,13 @@ public class EntityQueryServiceImplTest {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
                         entitiesCollection,
+                        mock(Datastore.class),
                         mockAttributeMapping,
                         entityChangeEventGenerator,
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
+                        mock(Channel.class),
                         1,
                         1000);
 
@@ -339,11 +353,13 @@ public class EntityQueryServiceImplTest {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
                         entitiesCollection,
+                        mock(Datastore.class),
                         mockAttributeMapping,
                         entityChangeEventGenerator,
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
+                        mock(Channel.class),
                         1,
                         1000);
 
@@ -368,11 +384,13 @@ public class EntityQueryServiceImplTest {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
                         entitiesCollection,
+                        mock(Datastore.class),
                         mockAttributeMapping,
                         entityChangeEventGenerator,
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
+                        mock(Channel.class),
                         1,
                         1000);
 
@@ -406,11 +424,13 @@ public class EntityQueryServiceImplTest {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
                         entitiesCollection,
+                        mock(Datastore.class),
                         mockAttributeMapping,
                         entityChangeEventGenerator,
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
+                        mock(Channel.class),
                         1,
                         1000);
                 eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
@@ -450,11 +470,13 @@ public class EntityQueryServiceImplTest {
                 EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
                         mockEntitiesCollection,
+                        mock(Datastore.class),
                         mockMappingForAttribute1(),
                         entityChangeEventGenerator,
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
+                        mock(Channel.class),
                         1,
                         1000);
                 eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
@@ -488,11 +510,13 @@ public class EntityQueryServiceImplTest {
                 final EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
                         entitiesCollection,
+                        mock(Datastore.class),
                         mockAttributeMapping,
                         entityChangeEventGenerator,
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
+                        mock(Channel.class),
                         1,
                         1000);
 
@@ -519,11 +543,13 @@ public class EntityQueryServiceImplTest {
                 final EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
                         entitiesCollection,
+                        mock(Datastore.class),
                         mockAttributeMapping,
                         entityChangeEventGenerator,
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
+                        mock(Channel.class),
                         1,
                         1000);
 
@@ -554,11 +580,13 @@ public class EntityQueryServiceImplTest {
                 final EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
                         entitiesCollection,
+                        mock(Datastore.class),
                         mockAttributeMapping,
                         entityChangeEventGenerator,
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
+                        mock(Channel.class),
                         1,
                         1000);
                 eqs.bulkUpdateAllMatchingFilter(bulkUpdateRequest, mockResponseObserver);
@@ -648,11 +676,13 @@ public class EntityQueryServiceImplTest {
                 final EntityQueryServiceImpl eqs =
                     new EntityQueryServiceImpl(
                         mockEntitiesCollection,
+                        mock(Datastore.class),
                         mockMappingForAttribute1(),
                         entityChangeEventGenerator,
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
+                        mock(Channel.class),
                         1,
                         1000);
                 eqs.bulkUpdateAllMatchingFilter(bulkUpdateRequest, mockResponseObserver);
@@ -689,11 +719,13 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       entitiesCollection,
+                      mock(Datastore.class),
                       mockAttributeMapping,
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
+                      mock(Channel.class),
                       1,
                       1000);
 
@@ -764,10 +796,12 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       mockEntitiesCollection,
+                      mock(Datastore.class),
                       mockMappingForAttributes1And2(),
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
+                      mock(Channel.class),
                       1,
                       1000);
 
@@ -853,10 +887,12 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       mockEntitiesCollection,
+                      mock(Datastore.class),
                       mockMappingForAttributes1And2(),
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
+                      mock(Channel.class),
                       2,
                       1000);
 
@@ -904,11 +940,13 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       entitiesCollection,
+                      mock(Datastore.class),
                       mockAttributeMapping,
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
+                      mock(Channel.class),
                       1,
                       1000);
               eqs.bulkUpdateEntityArrayAttribute(request, mockResponseObserver);
@@ -975,11 +1013,13 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       mockEntitiesCollection,
+                      mock(Datastore.class),
                       mockMappingForAttributes(),
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
+                      mock(Channel.class),
                       100,
                       1000);
 
@@ -1046,11 +1086,13 @@ public class EntityQueryServiceImplTest {
               EntityQueryServiceImpl eqs =
                   new EntityQueryServiceImpl(
                       mockEntitiesCollection,
+                      mock(Datastore.class),
                       mockMappingForAttributes1And2(),
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
+                      mock(Channel.class),
                       100,
                       1000);
 
@@ -1091,11 +1133,13 @@ public class EntityQueryServiceImplTest {
       EntityQueryServiceImpl eqs =
           new EntityQueryServiceImpl(
               entitiesCollection,
+              mock(Datastore.class),
               mockAttributeMapping,
               entityChangeEventGenerator,
               entityAttributeChangeEvaluator,
               new EntityCounterMetricSender(),
               entityFetcher,
+              mock(Channel.class),
               1,
               1000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
@@ -1135,11 +1179,13 @@ public class EntityQueryServiceImplTest {
       EntityQueryServiceImpl eqs =
           new EntityQueryServiceImpl(
               entitiesCollection,
+              mock(Datastore.class),
               mockAttributeMapping,
               entityChangeEventGenerator,
               entityAttributeChangeEvaluator,
               new EntityCounterMetricSender(),
               entityFetcher,
+              mock(Channel.class),
               1,
               1000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
