@@ -85,8 +85,3 @@ enum K8sEntityAttribute {
   K8S_ENTITY_ATTRIBUTE_SELECTOR = 28 [(string_value) = "selector"];
   K8S_ENTITY_ATTRIBUTE_LABELS = 29 [(string_value) = "labels"];
 }
-
-enum AgentEntityAttribute {
-  AGENT_ENTITY_ATTRIBUTE_UNSPECIFIED = 0 [(string_value) = "UNSPECIFIED"];
-  AGENT_ENTITY_ATTRIBUTE_ID = 1 [(string_value) = "AGENT_ENTITY_ID"];
-}
