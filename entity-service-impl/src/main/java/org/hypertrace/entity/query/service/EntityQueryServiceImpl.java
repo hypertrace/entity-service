@@ -7,11 +7,13 @@ import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
+import static org.hypertrace.core.documentstore.model.options.UpdateOptions.DEFAULT_UPDATE_OPTIONS;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Streams;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
@@ -818,12 +820,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       final boolean shouldSendNotification =
           entityAttributeChangeEvaluator.shouldSendNotificationForAttributeUpdates(
               requestContext, entityType, updateOperations);
-      entitiesCollection.bulkUpdate(
-          updateFilterQuery, updates, UpdateOptions.DEFAULT_UPDATE_OPTIONS);
+      final List<Entity> updatedEntities =
+          bulkUpdateAndGetEntities(updateFilterQuery, updates, DEFAULT_UPDATE_OPTIONS);
 
       if (shouldSendNotification) {
-        final List<Entity> updatedEntities =
-            entityFetcher.getEntitiesByEntityIds(tenantId, entityIds);
         this.entityCounterMetricSender.sendEntitiesMetrics(
             requestContext, request.getEntityType(), existingEntities, updatedEntities);
         entityChangeEventGenerator.sendChangeNotification(
@@ -832,6 +832,24 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     return responseBuilder.build();
+  }
+
+  private List<Entity> bulkUpdateAndGetEntities(
+      org.hypertrace.core.documentstore.query.Query updateFilterQuery,
+      List<SubDocumentUpdate> updates,
+      UpdateOptions defaultUpdateOptions)
+      throws IOException {
+    return Streams.stream(
+            entitiesCollection.bulkUpdate(updateFilterQuery, updates, DEFAULT_UPDATE_OPTIONS))
+        .map(this::entityFromDocument)
+        .flatMap(Optional::stream)
+        .map(Entity::toBuilder)
+        .map(Entity.Builder::build)
+        .collect(toUnmodifiableList());
+  }
+
+  private Optional<Entity> entityFromDocument(Document document) {
+    return DOCUMENT_PARSER.parseOrLog(document, Entity.newBuilder());
   }
 
   private FilterTypeExpression getFilterForKeys(final List<SingleValueKey> keys) {
