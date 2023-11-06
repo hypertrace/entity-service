@@ -785,7 +785,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     final BulkUpdateAllMatchingFilterResponse.Builder responseBuilder =
         BulkUpdateAllMatchingFilterResponse.newBuilder();
     final String entityType = request.getEntityType();
-    final String tenantId = requestContext.getTenantId().orElseThrow();
     final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
         queryConverter = getQueryConverter();
 
@@ -811,8 +810,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         continue;
       }
 
-      final List<String> entityIds =
-          keys.stream().map(SingleValueKey::getValue).collect(toUnmodifiableList());
       final List<AttributeUpdateOperation> updateOperations = update.getOperationsList();
 
       final List<SubDocumentUpdate> updates = convertUpdates(requestContext, updateOperations);
@@ -837,10 +834,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private List<Entity> bulkUpdateAndGetEntities(
       org.hypertrace.core.documentstore.query.Query updateFilterQuery,
       List<SubDocumentUpdate> updates,
-      UpdateOptions defaultUpdateOptions)
+      UpdateOptions updateOptions)
       throws IOException {
-    return Streams.stream(
-            entitiesCollection.bulkUpdate(updateFilterQuery, updates, DEFAULT_UPDATE_OPTIONS))
+    return Streams.stream(entitiesCollection.bulkUpdate(updateFilterQuery, updates, updateOptions))
         .map(this::entityFromDocument)
         .flatMap(Optional::stream)
         .map(Entity::toBuilder)
