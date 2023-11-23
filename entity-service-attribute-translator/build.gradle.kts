@@ -10,6 +10,7 @@ dependencies {
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.6")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.14.25")
   implementation("com.typesafe:config:1.4.2")
+  implementation("org.slf4j:slf4j-api:1.7.30")
 
   annotationProcessor("org.projectlombok:lombok:1.18.18")
   compileOnly("org.projectlombok:lombok:1.18.18")

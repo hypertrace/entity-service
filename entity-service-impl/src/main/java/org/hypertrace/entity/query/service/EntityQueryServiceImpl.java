@@ -821,6 +821,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           bulkUpdateAndGetEntities(updateFilterQuery, updates, DEFAULT_UPDATE_OPTIONS);
 
       if (shouldSendNotification) {
+        LOG.debug("Generating entity-change-event for entityType: {}", entityType);
         this.entityCounterMetricSender.sendEntitiesMetrics(
             requestContext, request.getEntityType(), existingEntities, updatedEntities);
         entityChangeEventGenerator.sendChangeNotification(
