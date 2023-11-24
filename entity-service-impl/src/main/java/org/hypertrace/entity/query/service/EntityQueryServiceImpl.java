@@ -806,7 +806,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
 
       if (keys.isEmpty()) {
         // Nothing to update
-        LOG.info("No entity found with filter {} for updating", update.getFilter());
+        LOG.debug("No entity found with filter {} for updating", update.getFilter());
         continue;
       }
 
