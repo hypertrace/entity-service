@@ -207,4 +207,9 @@ public class EdsCacheClientTest {
     verify(entityDataServiceClient, times(2))
         .getById("tenant", ByIdRequest.newBuilder().setEntityId("entity-12346").build());
   }
+
+  @Test
+  void testUpdateCachesBasedOnChangeEvent() {
+    // TODO: write ut
+  }
 }

@@ -1,5 +1,6 @@
 package org.hypertrace.entity.data.service.client;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -254,15 +255,15 @@ public class EdsCacheClient implements EdsClient {
     client.upsertRelationships(tenantId, relationships);
   }
 
-  private void updateCachesBasedOnChangeEvent(
+  @VisibleForTesting
+  void updateCachesBasedOnChangeEvent(
       EntityChangeEventKey entityChangeEventKey, EntityChangeEventValue entityChangeEventValue) {
     LOG.debug("Entity change event is {}, {} ", entityChangeEventKey, entityChangeEventValue);
     Entity entity;
 
     switch (entityChangeEventValue.getEventCase()) {
       case CREATE_EVENT:
-        entity = entityChangeEventValue.getCreateEvent().getCreatedEntity();
-        updateCacheValue(entityChangeEventKey, entity);
+        // ignore create events, don't populate caches if not necessary
         break;
       case UPDATE_EVENT:
         entity = entityChangeEventValue.getUpdateEvent().getLatestEntity();
