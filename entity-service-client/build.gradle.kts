@@ -11,11 +11,14 @@ tasks.test {
 
 dependencies {
   api(project(":entity-service-api"))
+  api(project(":entity-service-change-event-api"))
   api("com.typesafe:config:1.4.1")
 
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.6")
-  implementation("org.slf4j:slf4j-api:1.7.30")
+  implementation("org.hypertrace.core.kafkastreams.framework:kafka-event-listener:0.4.4")
   implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.62")
+  implementation("org.slf4j:slf4j-api:1.7.30")
+  implementation("io.confluent:kafka-streams-protobuf-serde:7.2.1")
 
   testImplementation("io.grpc:grpc-core:1.57.2")
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")

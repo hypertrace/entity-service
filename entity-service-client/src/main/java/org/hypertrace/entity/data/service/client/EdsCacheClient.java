@@ -3,16 +3,24 @@ package org.hypertrace.entity.data.service.client;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.typesafe.config.Config;
+import io.confluent.kafka.streams.serdes.protobuf.KafkaProtobufSerde;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
+import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.serialization.Serde;
+import org.hypertrace.core.kafka.event.listener.KafkaLiveEventListener;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
+import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
+import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
 import org.hypertrace.entity.data.service.client.exception.NotFoundException;
 import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
@@ -29,10 +37,13 @@ import org.slf4j.LoggerFactory;
 public class EdsCacheClient implements EdsClient {
 
   private static final Logger LOG = LoggerFactory.getLogger(EdsCacheClient.class);
+  private static final String SCHEMA_REGISTRY_URL_KEY = "schema.registry.url";
   private final EntityDataServiceClient client;
   private LoadingCache<EdsCacheKey, EnrichedEntity> enrichedEntityCache;
   private LoadingCache<EdsCacheKey, Entity> entityCache;
   private LoadingCache<EdsTypeAndIdAttributesCacheKey, String> entityIdsCache;
+  private KafkaLiveEventListener<EntityChangeEventKey, EntityChangeEventValue>
+      entityChangeEventListener;
 
   public EdsCacheClient(
       EntityDataServiceClient client, EntityServiceClientCacheConfig cacheConfig) {
@@ -45,6 +56,24 @@ public class EdsCacheClient implements EdsClient {
       Executor cacheLoaderExecutor) {
     this.client = client;
     initCache(cacheConfig, cacheLoaderExecutor);
+  }
+
+  public EdsCacheClient(
+      EntityDataServiceClient client,
+      EntityServiceClientCacheConfig cacheConfig,
+      Executor cacheLoaderExecutor,
+      String changeEventConsumerName,
+      Config kafkaConfig,
+      String schemaRegistryUrl) {
+    this(client, cacheConfig, cacheLoaderExecutor);
+    entityChangeEventListener =
+        new KafkaLiveEventListener.Builder<EntityChangeEventKey, EntityChangeEventValue>()
+            .registerCallback(this::updateCachesBasedOnChangeEvent)
+            .build(
+                changeEventConsumerName,
+                kafkaConfig,
+                getKeySerde(schemaRegistryUrl),
+                getValueSerde(schemaRegistryUrl));
   }
 
   private void initCache(EntityServiceClientCacheConfig cacheConfig, Executor executor) {
@@ -223,5 +252,75 @@ public class EdsCacheClient implements EdsClient {
   @Override
   public void upsertRelationships(String tenantId, EntityRelationships relationships) {
     client.upsertRelationships(tenantId, relationships);
+  }
+
+  private void updateCachesBasedOnChangeEvent(
+      EntityChangeEventKey entityChangeEventKey, EntityChangeEventValue entityChangeEventValue) {
+    LOG.debug("Entity change event is {}, {} ", entityChangeEventKey, entityChangeEventValue);
+    Entity entity;
+
+    switch (entityChangeEventValue.getEventCase()) {
+      case CREATE_EVENT:
+        entity = entityChangeEventValue.getCreateEvent().getCreatedEntity();
+        updateCacheValue(entityChangeEventKey, entity);
+        break;
+      case UPDATE_EVENT:
+        entity = entityChangeEventValue.getUpdateEvent().getLatestEntity();
+        updateCacheValue(entityChangeEventKey, entity);
+        break;
+      case DELETE_EVENT:
+        entityCache.invalidate(getEntityCacheKey(entityChangeEventKey));
+        break;
+      default:
+        LOG.warn(
+            "Entity change event value has invalid event type -> {}",
+            entityChangeEventValue.getEventCase());
+    }
+  }
+
+  private void updateCacheValue(EntityChangeEventKey entityChangeEventKey, Entity entity) {
+    EdsCacheKey entityCacheKey = getEntityCacheKey(entityChangeEventKey);
+    EdsTypeAndIdAttributesCacheKey idsCacheKey = getIdsCacheKey(entityChangeEventKey, entity);
+    entityCache.asMap().computeIfPresent(entityCacheKey, (cacheKey, oldEntity) -> entity);
+    entityIdsCache
+        .asMap()
+        .computeIfPresent(idsCacheKey, (cacheKey, oldEntity) -> entity.getEntityId());
+  }
+
+  private EdsCacheKey getEntityCacheKey(EntityChangeEventKey entityChangeEventKey) {
+    return new EdsCacheKey(
+        entityChangeEventKey.getTenantId(),
+        entityChangeEventKey.getEntityId(),
+        entityChangeEventKey.getEntityType());
+  }
+
+  private EdsTypeAndIdAttributesCacheKey getIdsCacheKey(
+      EntityChangeEventKey entityChangeEventKey, Entity entity) {
+    return new EdsTypeAndIdAttributesCacheKey(
+        entityChangeEventKey.getTenantId(),
+        ByTypeAndIdentifyingAttributes.newBuilder()
+            .setEntityType(entity.getEntityType())
+            .putAllIdentifyingAttributes(entity.getIdentifyingAttributesMap())
+            .build());
+  }
+
+  private static Deserializer<EntityChangeEventKey> getKeySerde(String schemaRegistryUrl) {
+    final Map<String, Object> serdeConfig =
+        Collections.singletonMap(SCHEMA_REGISTRY_URL_KEY, schemaRegistryUrl);
+    try (KafkaProtobufSerde<EntityChangeEventKey> entityChangeEventKeySerde =
+        new KafkaProtobufSerde<>(EntityChangeEventKey.class)) {
+      entityChangeEventKeySerde.configure(serdeConfig, true);
+      return entityChangeEventKeySerde.deserializer();
+    }
+  }
+
+  private static Deserializer<EntityChangeEventValue> getValueSerde(String schemaRegistryUrl) {
+    final Map<String, Object> serdeConfig =
+        Collections.singletonMap(SCHEMA_REGISTRY_URL_KEY, schemaRegistryUrl);
+    try (Serde<EntityChangeEventValue> entityChangeEventValueSerde =
+        new KafkaProtobufSerde<>(EntityChangeEventValue.class)) {
+      entityChangeEventValueSerde.configure(serdeConfig, false);
+      return entityChangeEventValueSerde.deserializer();
+    }
   }
 }
