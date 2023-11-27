@@ -230,20 +230,21 @@ public class EdsCacheClient implements EdsClient {
   public void updateBasedOnChangeEvent(
       EntityChangeEventKey entityChangeEventKey, EntityChangeEventValue entityChangeEventValue) {
     LOG.debug("Entity change event is {}, {} ", entityChangeEventKey, entityChangeEventValue);
-    Entity entity;
 
     switch (entityChangeEventValue.getEventCase()) {
       case CREATE_EVENT:
         // ignore create events, don't populate caches if not necessary
         break;
       case UPDATE_EVENT:
-        entity = entityChangeEventValue.getUpdateEvent().getLatestEntity();
-        updateCacheValues(entityChangeEventKey, entity);
+        updateCacheValues(
+            entityChangeEventKey, entityChangeEventValue.getUpdateEvent().getLatestEntity());
         break;
       case DELETE_EVENT:
-        entity = entityChangeEventValue.getDeleteEvent().getDeletedEntity();
-        entityCache.invalidate(getEntityCacheKeyWithoutEntityType(entityChangeEventKey));
-        entityIdsCache.invalidate(getIdsCacheKey(entityChangeEventKey, entity));
+        getEntityCacheKeys(entityChangeEventKey)
+            .forEach(cacheKey -> entityCache.invalidate(cacheKey));
+        entityIdsCache.invalidate(
+            getIdsCacheKey(
+                entityChangeEventKey, entityChangeEventValue.getDeleteEvent().getDeletedEntity()));
         break;
       default:
         LOG.warn(
@@ -253,19 +254,9 @@ public class EdsCacheClient implements EdsClient {
   }
 
   private void updateCacheValues(EntityChangeEventKey entityChangeEventKey, Entity entity) {
-    // handles cache key without entity type as part of it. `getById(String tenantId, String
-    // entityId)`
-    entityCache
-        .asMap()
-        .computeIfPresent(
-            getEntityCacheKeyWithoutEntityType(entityChangeEventKey),
-            (cacheKey, oldEntity) -> entity);
-    // handles cache key with entity type used as part of it `getById(String tenantId, ByIdRequest
-    // byIdRequest)`
-    entityCache
-        .asMap()
-        .computeIfPresent(
-            getEntityCacheKeyWithEntityType(entityChangeEventKey), (cacheKey, oldEntity) -> entity);
+    getEntityCacheKeys(entityChangeEventKey)
+        .forEach(
+            cacheKey -> entityCache.asMap().computeIfPresent(cacheKey, (key, oldEntity) -> entity));
     entityIdsCache
         .asMap()
         .computeIfPresent(
@@ -273,12 +264,20 @@ public class EdsCacheClient implements EdsClient {
             (cacheKey, oldEntity) -> entity.getEntityId());
   }
 
+  private Iterable<EdsCacheKey> getEntityCacheKeys(EntityChangeEventKey entityChangeEventKey) {
+    return List.of(
+        getEntityCacheKeyWithoutEntityType(entityChangeEventKey),
+        getEntityCacheKeyWithEntityType(entityChangeEventKey));
+  }
+
   private EdsCacheKey getEntityCacheKeyWithoutEntityType(
+      // used by - `getById(String tenantId, String entityId)`
       EntityChangeEventKey entityChangeEventKey) {
     return new EdsCacheKey(entityChangeEventKey.getTenantId(), entityChangeEventKey.getEntityId());
   }
 
   private EdsCacheKey getEntityCacheKeyWithEntityType(EntityChangeEventKey entityChangeEventKey) {
+    // used by `getById(String tenantId, ByIdRequest byIdRequest)`
     return new EdsCacheKey(
         entityChangeEventKey.getTenantId(),
         entityChangeEventKey.getEntityId(),
