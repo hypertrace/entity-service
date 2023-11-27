@@ -302,24 +302,4 @@ public class EdsCacheClient implements EdsClient {
             .putAllIdentifyingAttributes(entity.getIdentifyingAttributesMap())
             .build());
   }
-
-  private static Deserializer<EntityChangeEventKey> getKeySerde(String schemaRegistryUrl) {
-    final Map<String, Object> serdeConfig =
-        Collections.singletonMap(SCHEMA_REGISTRY_URL_KEY, schemaRegistryUrl);
-    try (KafkaProtobufSerde<EntityChangeEventKey> entityChangeEventKeySerde =
-        new KafkaProtobufSerde<>(EntityChangeEventKey.class)) {
-      entityChangeEventKeySerde.configure(serdeConfig, true);
-      return entityChangeEventKeySerde.deserializer();
-    }
-  }
-
-  private static Deserializer<EntityChangeEventValue> getValueSerde(String schemaRegistryUrl) {
-    final Map<String, Object> serdeConfig =
-        Collections.singletonMap(SCHEMA_REGISTRY_URL_KEY, schemaRegistryUrl);
-    try (Serde<EntityChangeEventValue> entityChangeEventValueSerde =
-        new KafkaProtobufSerde<>(EntityChangeEventValue.class)) {
-      entityChangeEventValueSerde.configure(serdeConfig, false);
-      return entityChangeEventValueSerde.deserializer();
-    }
-  }
 }
