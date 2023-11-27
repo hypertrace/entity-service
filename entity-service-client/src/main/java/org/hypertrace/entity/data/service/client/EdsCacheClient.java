@@ -1,10 +1,8 @@
 package org.hypertrace.entity.data.service.client;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.typesafe.config.Config;
 import io.confluent.kafka.streams.serdes.protobuf.KafkaProtobufSerde;
 import java.util.Collection;
 import java.util.Collections;
@@ -57,24 +55,6 @@ public class EdsCacheClient implements EdsClient {
       Executor cacheLoaderExecutor) {
     this.client = client;
     initCache(cacheConfig, cacheLoaderExecutor);
-  }
-
-  public EdsCacheClient(
-      EntityDataServiceClient client,
-      EntityServiceClientCacheConfig cacheConfig,
-      Executor cacheLoaderExecutor,
-      String changeEventConsumerName,
-      Config kafkaConfig,
-      String schemaRegistryUrl) {
-    this(client, cacheConfig, cacheLoaderExecutor);
-    entityChangeEventListener =
-        new KafkaLiveEventListener.Builder<EntityChangeEventKey, EntityChangeEventValue>()
-            .registerCallback(this::updateBasedOnChangeEvent)
-            .build(
-                changeEventConsumerName,
-                kafkaConfig,
-                getKeySerde(schemaRegistryUrl),
-                getValueSerde(schemaRegistryUrl));
   }
 
   private void initCache(EntityServiceClientCacheConfig cacheConfig, Executor executor) {
@@ -255,8 +235,7 @@ public class EdsCacheClient implements EdsClient {
     client.upsertRelationships(tenantId, relationships);
   }
 
-  @VisibleForTesting
-  void updateBasedOnChangeEvent(
+  public void updateBasedOnChangeEvent(
       EntityChangeEventKey entityChangeEventKey, EntityChangeEventValue entityChangeEventValue) {
     LOG.debug("Entity change event is {}, {} ", entityChangeEventKey, entityChangeEventValue);
     Entity entity;
