@@ -240,11 +240,8 @@ public class EdsCacheClient implements EdsClient {
             entityChangeEventKey, entityChangeEventValue.getUpdateEvent().getLatestEntity());
         break;
       case DELETE_EVENT:
-        getEntityCacheKeys(entityChangeEventKey)
-            .forEach(cacheKey -> entityCache.invalidate(cacheKey));
-        entityIdsCache.invalidate(
-            getIdsCacheKey(
-                entityChangeEventKey, entityChangeEventValue.getDeleteEvent().getDeletedEntity()));
+        invalidateCacheEntries(
+            entityChangeEventKey, entityChangeEventValue.getDeleteEvent().getDeletedEntity());
         break;
       default:
         LOG.warn(
@@ -256,12 +253,20 @@ public class EdsCacheClient implements EdsClient {
   private void updateCacheValues(EntityChangeEventKey entityChangeEventKey, Entity entity) {
     getEntityCacheKeys(entityChangeEventKey)
         .forEach(
-            cacheKey -> entityCache.asMap().computeIfPresent(cacheKey, (key, oldEntity) -> entity));
-    entityIdsCache
-        .asMap()
-        .computeIfPresent(
-            getIdsCacheKey(entityChangeEventKey, entity),
-            (cacheKey, oldEntity) -> entity.getEntityId());
+            cacheKey -> {
+              if (entityCache.asMap().containsKey(cacheKey)) {
+                entityCache.put(cacheKey, entity);
+              }
+            });
+    EdsTypeAndIdAttributesCacheKey idsCacheKey = getIdsCacheKey(entityChangeEventKey, entity);
+    if (entityIdsCache.asMap().containsKey(idsCacheKey)) {
+      entityIdsCache.put(idsCacheKey, entity.getEntityId());
+    }
+  }
+
+  private void invalidateCacheEntries(EntityChangeEventKey entityChangeEventKey, Entity entity) {
+    getEntityCacheKeys(entityChangeEventKey).forEach(cacheKey -> entityCache.invalidate(cacheKey));
+    entityIdsCache.invalidate(getIdsCacheKey(entityChangeEventKey, entity));
   }
 
   private Iterable<EdsCacheKey> getEntityCacheKeys(EntityChangeEventKey entityChangeEventKey) {
