@@ -3,20 +3,15 @@ package org.hypertrace.entity.data.service.client;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import io.confluent.kafka.streams.serdes.protobuf.KafkaProtobufSerde;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
-import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.Serde;
-import org.hypertrace.core.kafka.event.listener.KafkaLiveEventListener;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
 import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
@@ -36,13 +31,10 @@ import org.slf4j.LoggerFactory;
 public class EdsCacheClient implements EdsClient {
 
   private static final Logger LOG = LoggerFactory.getLogger(EdsCacheClient.class);
-  private static final String SCHEMA_REGISTRY_URL_KEY = "schema.registry.url";
   private final EntityDataServiceClient client;
   private LoadingCache<EdsCacheKey, EnrichedEntity> enrichedEntityCache;
   private LoadingCache<EdsCacheKey, Entity> entityCache;
   private LoadingCache<EdsTypeAndIdAttributesCacheKey, String> entityIdsCache;
-  private KafkaLiveEventListener<EntityChangeEventKey, EntityChangeEventValue>
-      entityChangeEventListener;
 
   public EdsCacheClient(
       EntityDataServiceClient client, EntityServiceClientCacheConfig cacheConfig) {
