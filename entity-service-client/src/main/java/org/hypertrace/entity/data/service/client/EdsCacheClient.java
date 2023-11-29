@@ -71,11 +71,7 @@ public class EdsCacheClient implements EdsClient {
                     executor));
 
     this.entityCache =
-        CacheBuilder.newBuilder()
-            .refreshAfterWrite(cacheConfig.getEntityCacheRefreshMs(), TimeUnit.MILLISECONDS)
-            .expireAfterWrite(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
-            .maximumSize(cacheConfig.getEntityMaxCacheSize())
-            .recordStats()
+        getEntityCacheBuilder(cacheConfig)
             .build(
                 CacheLoader.asyncReloading(
                     new CacheLoader<>() {
@@ -96,11 +92,7 @@ public class EdsCacheClient implements EdsClient {
                     executor));
 
     this.entityIdsCache =
-        CacheBuilder.newBuilder()
-            .refreshAfterWrite(cacheConfig.getEntityIdsCacheRefreshMs(), TimeUnit.MILLISECONDS)
-            .expireAfterWrite(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS)
-            .maximumSize(cacheConfig.getEntityIdsMaxCacheSize())
-            .recordStats()
+        getEntityIdsCacheBUilder(cacheConfig)
             .build(
                 CacheLoader.asyncReloading(
                     new CacheLoader<>() {
@@ -297,5 +289,29 @@ public class EdsCacheClient implements EdsClient {
             .setEntityType(entity.getEntityType())
             .putAllIdentifyingAttributes(entity.getIdentifyingAttributesMap())
             .build());
+  }
+
+  private static CacheBuilder<Object, Object> getEntityIdsCacheBUilder(
+      EntityServiceClientCacheConfig cacheConfig) {
+    CacheBuilder<Object, Object> builder =
+        CacheBuilder.newBuilder()
+            .refreshAfterWrite(cacheConfig.getEntityIdsCacheRefreshMs(), TimeUnit.MILLISECONDS)
+            .maximumSize(cacheConfig.getEntityIdsMaxCacheSize())
+            .recordStats();
+    return cacheConfig.isExpiredAfterAcesss()
+        ? builder.expireAfterAccess(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS)
+        : builder.expireAfterWrite(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS);
+  }
+
+  private static CacheBuilder<Object, Object> getEntityCacheBuilder(
+      EntityServiceClientCacheConfig cacheConfig) {
+    CacheBuilder<Object, Object> builder =
+        CacheBuilder.newBuilder()
+            .refreshAfterWrite(cacheConfig.getEntityCacheRefreshMs(), TimeUnit.MILLISECONDS)
+            .maximumSize(cacheConfig.getEntityMaxCacheSize())
+            .recordStats();
+    return cacheConfig.isExpiredAfterAcesss()
+        ? builder.expireAfterAccess(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
+        : builder.expireAfterWrite(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS);
   }
 }

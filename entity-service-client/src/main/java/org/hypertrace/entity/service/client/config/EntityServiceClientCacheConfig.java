@@ -25,6 +25,8 @@ public class EntityServiceClientCacheConfig {
   private static final String ENTITY_IDS_CACHE_REFRESH_MS = "entity.ids.cache.refresh.ms";
   private static final String ENTITY_IDS_CACHE_EXPIRY_MS = "entity.ids.cache.expiry.ms";
   private static final String ENTITY_IDS_MAX_CACHE_SIZE = "entity.ids.max.cache.size";
+  private static final String ENTITY_CACHE_EXPIRE_AFTER_ACCESS_MODE =
+      "entity.cache.expire.after.access";
 
   public static final EntityServiceClientCacheConfig DEFAULT = new EntityServiceClientCacheConfig();
 
@@ -37,6 +39,7 @@ public class EntityServiceClientCacheConfig {
   private final long entityIdsCacheRefreshMs;
   private final long entityIdsCacheExpiryMs;
   private final long entityIdsMaxCacheSize;
+  private final boolean isExpiredAfterAccess;
 
   public EntityServiceClientCacheConfig(Config clientCacheConfig) {
     entityCacheRefreshMs =
@@ -77,6 +80,9 @@ public class EntityServiceClientCacheConfig {
         clientCacheConfig.hasPath(ENTITY_IDS_MAX_CACHE_SIZE)
             ? clientCacheConfig.getLong(ENTITY_IDS_MAX_CACHE_SIZE)
             : DEFAULT_MAX_CACHE_SIZE;
+    isExpiredAfterAccess =
+        clientCacheConfig.hasPath(ENTITY_CACHE_EXPIRE_AFTER_ACCESS_MODE)
+            && clientCacheConfig.getBoolean(ENTITY_CACHE_EXPIRE_AFTER_ACCESS_MODE);
   }
 
   public EntityServiceClientCacheConfig() {
@@ -89,6 +95,7 @@ public class EntityServiceClientCacheConfig {
     entityIdsCacheRefreshMs = DEFAULT_CACHE_REFRESH_MS;
     entityIdsCacheExpiryMs = DEFAULT_CACHE_EXPIRY_MS;
     entityIdsMaxCacheSize = DEFAULT_MAX_CACHE_SIZE;
+    isExpiredAfterAccess = false;
   }
 
   public long getEnrichedEntityCacheRefreshMs() {
@@ -125,5 +132,9 @@ public class EntityServiceClientCacheConfig {
 
   public long getEntityIdsMaxCacheSize() {
     return entityIdsMaxCacheSize;
+  }
+
+  public boolean isExpiredAfterAcesss() {
+    return isExpiredAfterAccess;
   }
 }
