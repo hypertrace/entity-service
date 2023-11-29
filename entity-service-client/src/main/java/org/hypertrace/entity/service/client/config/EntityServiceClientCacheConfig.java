@@ -26,7 +26,7 @@ public class EntityServiceClientCacheConfig {
   private static final String ENTITY_IDS_CACHE_EXPIRY_MS = "entity.ids.cache.expiry.ms";
   private static final String ENTITY_IDS_MAX_CACHE_SIZE = "entity.ids.max.cache.size";
   private static final String ENTITY_CACHE_EXPIRE_AFTER_ACCESS_MODE =
-      "entity.cache.expire.after.access";
+      "entity.cache.expire.after.access"; // not used for enriched entity cache
 
   public static final EntityServiceClientCacheConfig DEFAULT = new EntityServiceClientCacheConfig();
 
