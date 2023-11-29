@@ -53,7 +53,7 @@ public class EdsCacheClient implements EdsClient {
     this.enrichedEntityCache =
         CacheBuilder.newBuilder()
             .refreshAfterWrite(cacheConfig.getEnrichedEntityCacheRefreshMs(), TimeUnit.MILLISECONDS)
-            .expireAfterWrite(cacheConfig.getEnrichedEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
+            .expireAfterAccess(cacheConfig.getEnrichedEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEnrichedEntityMaxCacheSize())
             .recordStats()
             .build(
@@ -73,7 +73,7 @@ public class EdsCacheClient implements EdsClient {
     this.entityCache =
         CacheBuilder.newBuilder()
             .refreshAfterWrite(cacheConfig.getEntityCacheRefreshMs(), TimeUnit.MILLISECONDS)
-            .expireAfterWrite(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
+            .expireAfterAccess(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEntityMaxCacheSize())
             .recordStats()
             .build(
@@ -98,7 +98,7 @@ public class EdsCacheClient implements EdsClient {
     this.entityIdsCache =
         CacheBuilder.newBuilder()
             .refreshAfterWrite(cacheConfig.getEntityIdsCacheRefreshMs(), TimeUnit.MILLISECONDS)
-            .expireAfterWrite(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS)
+            .expireAfterAccess(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEntityIdsMaxCacheSize())
             .recordStats()
             .build(
