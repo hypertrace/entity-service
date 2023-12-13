@@ -7,13 +7,12 @@ import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
-import static org.hypertrace.core.documentstore.model.options.UpdateOptions.DEFAULT_UPDATE_OPTIONS;
+import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
 import static org.hypertrace.entity.data.service.v1.AttributeValueList.VALUES_FIELD_NUMBER;
 import static org.hypertrace.entity.service.constants.EntityCollectionConstants.RAW_ENTITIES_COLLECTION;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Streams;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
@@ -47,9 +46,7 @@ import org.hypertrace.core.documentstore.Key;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.impl.KeyExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
-import org.hypertrace.core.documentstore.expression.type.FilterTypeExpression;
 import org.hypertrace.core.documentstore.model.options.UpdateOptions;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentUpdate;
 import org.hypertrace.core.documentstore.query.Filter;
@@ -782,6 +779,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private BulkUpdateAllMatchingFilterResponse doBulkUpdate(
       final BulkUpdateAllMatchingFilterRequest request, final RequestContext requestContext)
       throws ConversionException, IOException, StatusException {
+    final String tenantId = requestContext.getTenantId().orElseThrow();
     final BulkUpdateAllMatchingFilterResponse.Builder responseBuilder =
         BulkUpdateAllMatchingFilterResponse.newBuilder();
     final String entityType = request.getEntityType();
@@ -800,7 +798,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           entityFetcher.query(updateFilterQuery).collect(Collectors.toUnmodifiableList());
 
       final List<SingleValueKey> keys = getKeysToUpdate(entityType, existingEntities);
-      final List<UpdatedEntity> updatedEntityResponses = buildUpdatedEntities(keys);
+      final List<UpdatedEntity> updatedEntityResponses = buildUpdatedEntityResponse(keys);
       responseBuilder.addSummaries(
           UpdateSummary.newBuilder().addAllUpdatedEntities(updatedEntityResponses));
 
@@ -817,11 +815,14 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       final boolean shouldSendNotification =
           entityAttributeChangeEvaluator.shouldSendNotificationForAttributeUpdates(
               requestContext, entityType, updateOperations);
-      final List<Entity> updatedEntities =
-          bulkUpdateAndGetEntities(updateFilterQuery, updates, DEFAULT_UPDATE_OPTIONS);
-
+      entitiesCollection.bulkUpdate(
+          updateFilterQuery, updates, UpdateOptions.builder().returnDocumentType(NONE).build());
       if (shouldSendNotification) {
         LOG.debug("Generating entity-change-event for entityType: {}", entityType);
+        List<String> updatedEntityIds =
+            existingEntities.stream().map(Entity::getEntityId).collect(Collectors.toList());
+        List<Entity> updatedEntities =
+            entityFetcher.getEntitiesByEntityIds(tenantId, updatedEntityIds);
         this.entityCounterMetricSender.sendEntitiesMetrics(
             requestContext, request.getEntityType(), existingEntities, updatedEntities);
         entityChangeEventGenerator.sendChangeNotification(
@@ -832,28 +833,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return responseBuilder.build();
   }
 
-  private List<Entity> bulkUpdateAndGetEntities(
-      org.hypertrace.core.documentstore.query.Query updateFilterQuery,
-      List<SubDocumentUpdate> updates,
-      UpdateOptions updateOptions)
-      throws IOException {
-    return Streams.stream(entitiesCollection.bulkUpdate(updateFilterQuery, updates, updateOptions))
-        .map(this::entityFromDocument)
-        .flatMap(Optional::stream)
-        .map(Entity::toBuilder)
-        .map(Entity.Builder::build)
-        .collect(toUnmodifiableList());
-  }
-
-  private Optional<Entity> entityFromDocument(Document document) {
-    return DOCUMENT_PARSER.parseOrLog(document, Entity.newBuilder());
-  }
-
-  private FilterTypeExpression getFilterForKeys(final List<SingleValueKey> keys) {
-    return KeyExpression.of(keys.stream().map(key -> (Key) key).collect(toUnmodifiableList()));
-  }
-
-  private List<UpdatedEntity> buildUpdatedEntities(final List<SingleValueKey> keys) {
+  private List<UpdatedEntity> buildUpdatedEntityResponse(final List<SingleValueKey> keys) {
     return keys.stream()
         .map(SingleValueKey::getValue)
         .map(id -> UpdatedEntity.newBuilder().setId(id))
