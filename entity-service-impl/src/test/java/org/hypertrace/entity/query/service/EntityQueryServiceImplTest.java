@@ -2,6 +2,7 @@ package org.hypertrace.entity.query.service;
 
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING;
 import static org.hypertrace.core.documentstore.expression.impl.LogicalExpression.and;
+import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
 import static org.hypertrace.entity.TestUtils.convertToCloseableIterator;
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_SET;
 import static org.hypertrace.entity.service.constants.EntityConstants.ENTITY_ID;
@@ -703,7 +704,7 @@ public class EntityQueryServiceImplTest {
                           "attributes.entity_id",
                           SubDocumentValue.of(
                               new JSONDocument("{\"value\":{\"string\":\"NEW_STATUS\"}}"))))),
-              eq(UpdateOptions.DEFAULT_UPDATE_OPTIONS));
+              eq(UpdateOptions.builder().returnDocumentType(NONE).build()));
     }
   }
 
