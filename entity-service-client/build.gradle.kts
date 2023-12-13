@@ -19,7 +19,6 @@ dependencies {
   implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.62")
 
   testImplementation("io.grpc:grpc-core:1.59.1")
-  testImplementation("io.grpc:grpc-inprocess:1.59.1")
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   testImplementation("org.mockito:mockito-core:3.8.0")
   testImplementation("org.mockito:mockito-junit-jupiter:3.8.0")
