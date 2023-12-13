@@ -25,7 +25,7 @@ dependencies {
   implementation("org.hypertrace.core.serviceframework:platform-grpc-service-framework:0.1.62")
   implementation("org.hypertrace.core.documentstore:document-store:0.7.48")
 
-  runtimeOnly("io.grpc:grpc-netty:1.57.2")
+  runtimeOnly("io.grpc:grpc-netty:1.59.1")
 
   // Logging
   implementation("org.slf4j:slf4j-api:1.7.30")
