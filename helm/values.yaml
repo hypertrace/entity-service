@@ -92,15 +92,6 @@ serviceSelectorLabels:
 entityServiceConfig:
   name: entity-service-config
   publishChangeEvents: false
-  dataStoreType: "mongo"
-  mongo:
-    endpoints:
-      - host: mongo
-        port: 27017
-  # credentials:
-  #  secretName: <k8s secret name>
-  #  secretUsernameKey: <secret key for username>
-  #  secretPasswordKey: <secret key for password>
   postgres:
     host: postgres
     port: 5432
@@ -111,8 +102,21 @@ entityServiceConfig:
     host: attribute-service
     port: 9012
 
-database:
-  mongoAuthEnabled: true
+datasbase:
+  type: mongo
+  mongo:
+    authEnabled: false
+    endpoints:
+      - host: mongo-primary-0.mongo-headless
+        port: 27017
+      - host: mongo-secondary-0.mongo-headless
+        port: 27017
+    replicaSet: rs0
+    authDb: admin
+    credentials:
+      secretName: mongodb-credentials
+      secretUsernameKey: mongodb-service-username
+      secretPasswordKey: mongodb-service-password
 
 attributes: []
 idAttributes:

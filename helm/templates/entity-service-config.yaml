@@ -8,24 +8,24 @@ data:
   application.conf: |-
     entity.service.config = {
       document.store {
-        {{- $dst := .Values.configMap.dataStoreType }}
-          dataStoreType = {{ $dst }}
-          appName = {{ .Values.service.name }}
-          {{ $dst }} {
-            {{- range $key, $value := (index .Values "configMap" (printf "%s" $dst)) }}
-            {{- if $value }}
-              {{- if hasPrefix "${?" (printf "%s" $value) }}
-            {{ $key }} = {{ $value }}
+        {{- $dst := .Values.database.type }}
+        dataStoreType = {{ $dst }}
+        appName = {{ .Values.service.name }}
+        {{ $dst }} {
+          {{- range $key, $value := (index .Values "database" (printf "%s" $dst)) }}
+          {{- if $value }}
+            {{- if hasPrefix "${?" (printf "%s" $value) }}
+          {{ $key }} = {{ $value }}
+            {{- else }}
+              {{- if eq $key "endpoints" }}
+          endpoints = {{- toJson $value }}
               {{- else }}
-                {{- if eq $key "endpoints" }}
-            endpoints = {{- toJson $value }}
-                {{- else }}
-            {{ $key }} = {{ $value | quote }}
-                {{- end }}
+          {{ $key }} = {{ $value | quote }}
               {{- end }}
             {{- end }}
-            {{- end }}
-          }
+          {{- end }}
+          {{- end }}
+        }
       }
       publish.change.events = {{ .Values.entityServiceConfig.publishChangeEvents }}
     }
