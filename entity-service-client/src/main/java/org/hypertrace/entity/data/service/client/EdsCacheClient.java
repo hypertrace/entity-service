@@ -13,6 +13,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
+import org.hypertrace.entity.change.event.v1.EntityChangeEventKey;
+import org.hypertrace.entity.change.event.v1.EntityChangeEventValue;
 import org.hypertrace.entity.data.service.client.exception.NotFoundException;
 import org.hypertrace.entity.data.service.v1.ByIdRequest;
 import org.hypertrace.entity.data.service.v1.ByTypeAndIdentifyingAttributes;
@@ -51,7 +53,7 @@ public class EdsCacheClient implements EdsClient {
     this.enrichedEntityCache =
         CacheBuilder.newBuilder()
             .refreshAfterWrite(cacheConfig.getEnrichedEntityCacheRefreshMs(), TimeUnit.MILLISECONDS)
-            .expireAfterWrite(cacheConfig.getEnrichedEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
+            .expireAfterAccess(cacheConfig.getEnrichedEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEnrichedEntityMaxCacheSize())
             .recordStats()
             .build(
@@ -71,7 +73,7 @@ public class EdsCacheClient implements EdsClient {
     this.entityCache =
         CacheBuilder.newBuilder()
             .refreshAfterWrite(cacheConfig.getEntityCacheRefreshMs(), TimeUnit.MILLISECONDS)
-            .expireAfterWrite(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
+            .expireAfterAccess(cacheConfig.getEntityCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEntityMaxCacheSize())
             .recordStats()
             .build(
@@ -96,7 +98,7 @@ public class EdsCacheClient implements EdsClient {
     this.entityIdsCache =
         CacheBuilder.newBuilder()
             .refreshAfterWrite(cacheConfig.getEntityIdsCacheRefreshMs(), TimeUnit.MILLISECONDS)
-            .expireAfterWrite(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS)
+            .expireAfterAccess(cacheConfig.getEntityIdsCacheExpiryMs(), TimeUnit.MILLISECONDS)
             .maximumSize(cacheConfig.getEntityIdsMaxCacheSize())
             .recordStats()
             .build(
@@ -223,5 +225,77 @@ public class EdsCacheClient implements EdsClient {
   @Override
   public void upsertRelationships(String tenantId, EntityRelationships relationships) {
     client.upsertRelationships(tenantId, relationships);
+  }
+
+  public void updateBasedOnChangeEvent(
+      EntityChangeEventKey entityChangeEventKey, EntityChangeEventValue entityChangeEventValue) {
+    LOG.debug("Entity change event is {}, {} ", entityChangeEventKey, entityChangeEventValue);
+
+    switch (entityChangeEventValue.getEventCase()) {
+      case CREATE_EVENT:
+        // ignore create events, don't populate caches if not necessary
+        break;
+      case UPDATE_EVENT:
+        updateCacheValues(
+            entityChangeEventKey, entityChangeEventValue.getUpdateEvent().getLatestEntity());
+        break;
+      case DELETE_EVENT:
+        invalidateCacheEntries(
+            entityChangeEventKey, entityChangeEventValue.getDeleteEvent().getDeletedEntity());
+        break;
+      default:
+        LOG.warn(
+            "Entity change event value has invalid event type -> {}",
+            entityChangeEventValue.getEventCase());
+    }
+  }
+
+  private void updateCacheValues(EntityChangeEventKey entityChangeEventKey, Entity entity) {
+    getEntityCacheKeys(entityChangeEventKey)
+        .forEach(
+            cacheKey -> {
+              if (entityCache.asMap().containsKey(cacheKey)) {
+                entityCache.put(cacheKey, entity);
+              }
+            });
+    EdsTypeAndIdAttributesCacheKey idsCacheKey = getIdsCacheKey(entityChangeEventKey, entity);
+    if (entityIdsCache.asMap().containsKey(idsCacheKey)) {
+      entityIdsCache.put(idsCacheKey, entity.getEntityId());
+    }
+  }
+
+  private void invalidateCacheEntries(EntityChangeEventKey entityChangeEventKey, Entity entity) {
+    getEntityCacheKeys(entityChangeEventKey).forEach(cacheKey -> entityCache.invalidate(cacheKey));
+    entityIdsCache.invalidate(getIdsCacheKey(entityChangeEventKey, entity));
+  }
+
+  private Iterable<EdsCacheKey> getEntityCacheKeys(EntityChangeEventKey entityChangeEventKey) {
+    return List.of(
+        getEntityCacheKeyWithoutEntityType(entityChangeEventKey),
+        getEntityCacheKeyWithEntityType(entityChangeEventKey));
+  }
+
+  private EdsCacheKey getEntityCacheKeyWithoutEntityType(
+      // used by - `getById(String tenantId, String entityId)`
+      EntityChangeEventKey entityChangeEventKey) {
+    return new EdsCacheKey(entityChangeEventKey.getTenantId(), entityChangeEventKey.getEntityId());
+  }
+
+  private EdsCacheKey getEntityCacheKeyWithEntityType(EntityChangeEventKey entityChangeEventKey) {
+    // used by `getById(String tenantId, ByIdRequest byIdRequest)`
+    return new EdsCacheKey(
+        entityChangeEventKey.getTenantId(),
+        entityChangeEventKey.getEntityId(),
+        entityChangeEventKey.getEntityType());
+  }
+
+  private EdsTypeAndIdAttributesCacheKey getIdsCacheKey(
+      EntityChangeEventKey entityChangeEventKey, Entity entity) {
+    return new EdsTypeAndIdAttributesCacheKey(
+        entityChangeEventKey.getTenantId(),
+        ByTypeAndIdentifyingAttributes.newBuilder()
+            .setEntityType(entity.getEntityType())
+            .putAllIdentifyingAttributes(entity.getIdentifyingAttributesMap())
+            .build());
   }
 }

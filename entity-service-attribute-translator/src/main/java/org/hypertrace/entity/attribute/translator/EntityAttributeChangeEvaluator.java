@@ -9,12 +9,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.data.service.v1.Entity;
 import org.hypertrace.entity.query.service.v1.AttributeUpdateOperation;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.UpdateOperation;
 
+@Slf4j
 public class EntityAttributeChangeEvaluator {
 
   private static final String SKIP_ATTRIBUTES_CONFIG_PATH = "entity.service.change.skip.attributes";
@@ -45,6 +47,8 @@ public class EntityAttributeChangeEvaluator {
 
     Entity.Builder prevEntityBuilder = prevEntity.toBuilder();
     Entity.Builder currEntityBuilder = currEntity.toBuilder();
+    log.debug("PrevEntity: {}", prevEntity);
+    log.debug("CurrEntity: {}", currEntity);
     this.changeNotificationSkipAttributeList.forEach(
         attributeId ->
             removeAttributeFromEntity(
@@ -62,6 +66,8 @@ public class EntityAttributeChangeEvaluator {
       return false;
     }
     String attributeId = columnIdentifier.getColumnName();
+    log.debug("AttributeId : {} for shouldSendNotification", attributeId);
+    log.debug("Skipped attributes: {}", changeNotificationSkipAttributeList);
     return !this.changeNotificationSkipAttributeList.contains(attributeId);
   }
 
@@ -77,8 +83,13 @@ public class EntityAttributeChangeEvaluator {
   public boolean shouldSendNotification(
       RequestContext requestContext, String entityType, List<UpdateOperation> updateOperations) {
     if (!isEntityTypeAllowed(entityType)) {
+      log.debug(
+          "Entity type : {} not allowed for change event creation. Allowed entityTypes: {}",
+          entityType,
+          allowedEntityTypes);
       return false;
     }
+    log.debug("Update Operations: {}", updateOperations);
     List<UpdateOperation> validUpdateOperations =
         updateOperations.stream()
             .filter(UpdateOperation::hasSetAttribute)

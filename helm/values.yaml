@@ -115,6 +115,13 @@ database:
   mongoAuthEnabled: true
 
 attributes: []
+idAttributes:
+  - scope: API
+    attribute: API.id
+  - scope: SERVICE
+    attribute: SERVICE.id
+  - scope: BACKEND
+    attribute: BACKEND.id
 extraAttributes: []
 
 logConfig:

@@ -22,6 +22,7 @@ import com.google.protobuf.util.JsonFormat;
 import io.grpc.Channel;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,6 @@ import org.hypertrace.core.documentstore.Query;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.impl.KeyExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
 import org.hypertrace.core.documentstore.model.options.UpdateOptions;
@@ -643,14 +643,18 @@ public class EntityQueryServiceImplTest {
       final StreamObserver<BulkUpdateAllMatchingFilterResponse> mockResponseObserver =
           mock(StreamObserver.class);
 
-      final List<Document> documents =
-          List.of(new JSONDocument("{ \"entityId\": \"" + entityId + "\" }"));
+      final List<Entity> existingEntities =
+          Collections.singletonList(
+              Entity.newBuilder()
+                  .setTenantId("tenant1")
+                  .setEntityId(entityId)
+                  .setEntityType("API")
+                  .build());
       when(mockMappingForAttributes().getIdentifierAttributeId(EntityType.API.name()))
           .thenReturn(Optional.of(ENTITY_ID));
 
       final org.hypertrace.core.documentstore.query.Query query =
           org.hypertrace.core.documentstore.query.Query.builder()
-              .addSelection(IdentifierExpression.of(ENTITY_ID), ENTITY_ID)
               .setFilter(
                   and(
                       RelationalExpression.of(
@@ -666,8 +670,7 @@ public class EntityQueryServiceImplTest {
                           RelationalOperator.EQ,
                           ConstantExpression.of(EntityType.API.name()))))
               .build();
-      when(mockEntitiesCollection.aggregate(query))
-          .thenReturn(convertToCloseableIterator(documents.iterator()));
+      when(entityFetcher.query(query)).thenReturn(existingEntities.stream());
 
       Context.current()
           .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
@@ -692,13 +695,9 @@ public class EntityQueryServiceImplTest {
       final ArgumentCaptor<List<SubDocumentUpdate>> valueCaptor =
           ArgumentCaptor.forClass(List.class);
 
-      verify(mockEntitiesCollection, times(1)).aggregate(query);
       verify(mockEntitiesCollection, times(1))
           .bulkUpdate(
-              eq(
-                  org.hypertrace.core.documentstore.query.Query.builder()
-                      .setFilter(KeyExpression.of(new SingleValueKey(TENANT_ID, entityId)))
-                      .build()),
+              eq(query),
               eq(
                   List.of(
                       SubDocumentUpdate.of(

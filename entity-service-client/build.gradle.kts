@@ -11,11 +11,12 @@ tasks.test {
 
 dependencies {
   api(project(":entity-service-api"))
+  api(project(":entity-service-change-event-api"))
   api("com.typesafe:config:1.4.1")
 
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.5")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.6")
   implementation("org.slf4j:slf4j-api:1.7.30")
-  implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.60")
+  implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.62")
 
   testImplementation("io.grpc:grpc-core:1.57.2")
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
