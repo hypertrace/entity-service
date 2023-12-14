@@ -39,22 +39,9 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
     this.grpcServiceContainerEnvironment = grpcServiceContainerEnvironment;
     Config config = grpcServiceContainerEnvironment.getConfig(SERVICE_NAME);
     EntityServiceDataStoreConfig dataStoreConfig = new EntityServiceDataStoreConfig(config);
-    final String dataStoreType = dataStoreConfig.getDataStoreType();
     final DatastoreConfig datastoreConfig =
         TypesafeConfigDatastoreConfigExtractor.from(
                 dataStoreConfig.getDataStoreConfig(), DATASTORE_TYPE_CONFIG)
-            .hostKey(dataStoreType + ".host")
-            .portKey(dataStoreType + ".port")
-            .keysForEndpoints(dataStoreType + ".endpoints", "host", "port")
-            .authDatabaseKey(dataStoreType + ".authDb")
-            .replicaSetKey(dataStoreType + ".replicaSet")
-            .databaseKey(dataStoreType + ".database")
-            .usernameKey(dataStoreType + ".user")
-            .passwordKey(dataStoreType + ".password")
-            .applicationNameKey("appName")
-            .poolMaxConnectionsKey("maxPoolSize")
-            .poolConnectionAccessTimeoutKey("connectionAccessTimeout")
-            .poolConnectionSurrenderTimeoutKey("connectionIdleTime")
             .extract();
 
     datastore = DatastoreProvider.getDatastore(datastoreConfig);
