@@ -102,7 +102,7 @@ entityServiceConfig:
     host: attribute-service
     port: 9012
 
-datasbase:
+database:
   type: mongo
   mongo:
     authEnabled: false
