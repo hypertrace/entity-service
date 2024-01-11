@@ -17,7 +17,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.quality.Strictness.LENIENT;
 
-import com.google.common.collect.Streams;
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Channel;
 import io.grpc.Context;
@@ -671,7 +670,7 @@ public class EntityQueryServiceImplTest {
                           RelationalOperator.EQ,
                           ConstantExpression.of(EntityType.API.name()))))
               .build();
-      when(entityFetcher.query(query)).thenReturn(existingEntities.stream());
+      when(entityFetcher.query(query)).thenReturn(existingEntities);
 
       Context.current()
           .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
@@ -979,7 +978,7 @@ public class EntityQueryServiceImplTest {
     List<Entity> docs = List.of(Entity.newBuilder().setEntityId(entityId.toString()).build());
 
     when(this.entityFetcher.query(any(org.hypertrace.core.documentstore.query.Query.class)))
-        .thenReturn(Streams.stream(docs.iterator()));
+        .thenReturn(docs);
     when(mockAttributeMapping.getIdentifierAttributeId(TEST_ENTITY_TYPE))
         .thenReturn(Optional.of("API.id"));
 
