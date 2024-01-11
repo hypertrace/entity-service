@@ -1,7 +1,6 @@
 package org.hypertrace.entity.service;
 
 import static java.util.Objects.isNull;
-import static org.hypertrace.entity.service.EntityServiceDataStoreConfig.DATASTORE_TYPE_CONFIG;
 
 import com.typesafe.config.Config;
 import io.grpc.Channel;
@@ -12,8 +11,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.DatastoreProvider;
-import org.hypertrace.core.documentstore.model.config.DatastoreConfig;
-import org.hypertrace.core.documentstore.model.config.TypesafeConfigDatastoreConfigExtractor;
 import org.hypertrace.core.serviceframework.grpc.GrpcPlatformService;
 import org.hypertrace.core.serviceframework.grpc.GrpcPlatformServiceFactory;
 import org.hypertrace.core.serviceframework.grpc.GrpcServiceContainerEnvironment;
@@ -38,14 +35,8 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
       GrpcServiceContainerEnvironment grpcServiceContainerEnvironment) {
     this.grpcServiceContainerEnvironment = grpcServiceContainerEnvironment;
     Config config = grpcServiceContainerEnvironment.getConfig(SERVICE_NAME);
-    EntityServiceDataStoreConfig dataStoreConfig = new EntityServiceDataStoreConfig(config);
-    final DatastoreConfig datastoreConfig =
-        TypesafeConfigDatastoreConfigExtractor.from(
-                dataStoreConfig.getDataStoreConfig(), DATASTORE_TYPE_CONFIG)
-            .extract();
-
-    datastore = DatastoreProvider.getDatastore(datastoreConfig);
-
+    EntityServiceDataStoreConfig entityServiceDatastoreConfig = new EntityServiceDataStoreConfig(config);
+    datastore = DatastoreProvider.getDatastore(entityServiceDatastoreConfig.getDataStoreConfig());
     grpcServiceContainerEnvironment.getLifecycle().shutdownComplete().thenRun(datastore::close);
 
     EntityAttributeMapping entityAttributeMapping =

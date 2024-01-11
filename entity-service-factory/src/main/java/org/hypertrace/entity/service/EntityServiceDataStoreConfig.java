@@ -1,25 +1,28 @@
 package org.hypertrace.entity.service;
 
 import com.typesafe.config.Config;
+import org.hypertrace.core.documentstore.model.config.DatastoreConfig;
+import org.hypertrace.core.documentstore.model.config.TypesafeConfigDatastoreConfigExtractor;
 
 public class EntityServiceDataStoreConfig {
 
-  public static final String DATASTORE_TYPE_CONFIG = "dataStoreType";
+  private static final String DATASTORE_TYPE_CONFIG = "dataStoreType";
 
   private final String dataStoreType;
 
-  private final Config entityServiceConfig;
+  private final Config documentStoreConfig;
 
   public EntityServiceDataStoreConfig(Config config) {
-    entityServiceConfig = config.getConfig("entity.service.config.document.store");
-    this.dataStoreType = entityServiceConfig.getString(DATASTORE_TYPE_CONFIG);
+    documentStoreConfig = config.getConfig("entity.service.config.document.store");
+    this.dataStoreType = documentStoreConfig.getString(DATASTORE_TYPE_CONFIG);
   }
 
   public String getDataStoreType() {
     return dataStoreType;
   }
 
-  public Config getDataStoreConfig() {
-    return entityServiceConfig;
+  public DatastoreConfig getDataStoreConfig() {
+    return TypesafeConfigDatastoreConfigExtractor.from(
+        documentStoreConfig, DATASTORE_TYPE_CONFIG).extract();
   }
 }
