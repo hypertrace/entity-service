@@ -8,21 +8,14 @@ public class EntityServiceDataStoreConfig {
 
   private static final String DATASTORE_TYPE_CONFIG = "dataStoreType";
 
-  private final String dataStoreType;
-
   private final Config documentStoreConfig;
 
   public EntityServiceDataStoreConfig(Config config) {
     documentStoreConfig = config.getConfig("entity.service.config.document.store");
-    this.dataStoreType = documentStoreConfig.getString(DATASTORE_TYPE_CONFIG);
-  }
-
-  public String getDataStoreType() {
-    return dataStoreType;
   }
 
   public DatastoreConfig getDataStoreConfig() {
-    return TypesafeConfigDatastoreConfigExtractor.from(
-        documentStoreConfig, DATASTORE_TYPE_CONFIG).extract();
+    return TypesafeConfigDatastoreConfigExtractor.from(documentStoreConfig, DATASTORE_TYPE_CONFIG)
+        .extract();
   }
 }

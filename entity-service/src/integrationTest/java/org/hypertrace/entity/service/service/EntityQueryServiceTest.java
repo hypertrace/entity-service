@@ -2945,15 +2945,7 @@ public class EntityQueryServiceTest {
 
   private static Datastore getDatastore() {
     EntityServiceDataStoreConfig entityServiceConfig = new EntityServiceDataStoreConfig(config);
-
-    Map<String, String> mongoConfig = new HashMap<>();
-    mongoConfig.putIfAbsent(
-        "host", config.getConfigList(MONGO_ENDPOINTS_KEY).get(0).getString(MONGO_HOST_KEY));
-    mongoConfig.putIfAbsent(
-        "port", config.getConfigList(MONGO_ENDPOINTS_KEY).get(0).getString(MONGO_PORT_KEY));
-    Config dataStoreConfig = ConfigFactory.parseMap(mongoConfig);
-    String dataStoreType = entityServiceConfig.getDataStoreType();
-    return DatastoreProvider.getDatastore(dataStoreType, dataStoreConfig);
+    return DatastoreProvider.getDatastore(entityServiceConfig.getDataStoreConfig());
   }
 
   private static Map<String, Map<String, String>> getAttributesMap() {
