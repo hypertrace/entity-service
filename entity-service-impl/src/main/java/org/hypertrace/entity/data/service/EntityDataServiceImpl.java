@@ -11,17 +11,18 @@ import com.google.protobuf.GeneratedMessageV3;
 import com.google.protobuf.Message;
 import com.google.protobuf.ServiceException;
 import io.grpc.Channel;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.hypertrace.core.documentstore.CloseableIterator;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
@@ -188,14 +189,18 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         documentMap.put(key, doc);
       }
 
-      List<Entity> existingEntities =
-          Streams.stream(entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap))
-              .flatMap(
-                  document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
-              .map(Entity::toBuilder)
-              .map(builder -> builder.setTenantId(tenantId))
-              .map(Entity.Builder::build)
-              .collect(Collectors.toList());
+      List<Entity> existingEntities;
+      try (final CloseableIterator<Document> iterator =
+          entitiesCollection.bulkUpsertAndReturnOlderDocuments(documentMap)) {
+        existingEntities =
+            Streams.stream(iterator)
+                .flatMap(
+                    document -> PARSER.<Entity>parseOrLog(document, Entity.newBuilder()).stream())
+                .map(Entity::toBuilder)
+                .map(builder -> builder.setTenantId(tenantId))
+                .map(Builder::build)
+                .collect(Collectors.toList());
+      }
 
       existingEntities.forEach(responseObserver::onNext);
       responseObserver.onCompleted();
@@ -225,19 +230,28 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
+    final RequestContext requestContext = RequestContext.CURRENT.get();
+    Optional<String> tenantId = requestContext.getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
 
-    searchByIdAndStreamSingleResponse(
-        tenantId.get(),
-        request.getEntityId(),
-        request.getEntityType(),
-        entitiesCollection,
-        Entity.newBuilder(),
-        responseObserver);
+    try {
+      searchByIdAndStreamSingleResponse(
+          tenantId.get(),
+          request.getEntityId(),
+          request.getEntityType(),
+          entitiesCollection,
+          Entity.newBuilder(),
+          responseObserver);
+    } catch (final Exception e) {
+      LOG.error("Unknown error occurred", e);
+      responseObserver.onError(
+          Status.INTERNAL
+              .withDescription("Unknown error occurred")
+              .asRuntimeException(requestContext.buildTrailers()));
+    }
   }
 
   /**
@@ -256,7 +270,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    String tenantId = RequestContext.CURRENT.get().getTenantId().orElse(null);
+    final RequestContext requestContext = RequestContext.CURRENT.get();
+    String tenantId = requestContext.getTenantId().orElse(null);
     if (tenantId == null) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
@@ -265,13 +280,21 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     String entityId =
         this.entityIdGenerator.generateEntityId(
             tenantId, request.getEntityType(), request.getIdentifyingAttributesMap());
-    searchByIdAndStreamSingleResponse(
-        tenantId,
-        entityId,
-        request.getEntityType(),
-        entitiesCollection,
-        Entity.newBuilder(),
-        responseObserver);
+    try {
+      searchByIdAndStreamSingleResponse(
+          tenantId,
+          entityId,
+          request.getEntityType(),
+          entitiesCollection,
+          Entity.newBuilder(),
+          responseObserver);
+    } catch (final Exception e) {
+      LOG.error("Unknown error occurred", e);
+      responseObserver.onError(
+          Status.INTERNAL
+              .withDescription("Unknown error occurred")
+              .asRuntimeException(requestContext.buildTrailers()));
+    }
   }
 
   /**
@@ -299,21 +322,30 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     Key key =
         this.entityNormalizer.getEntityDocKey(
             tenantId, request.getEntityType(), request.getEntityId());
-    Optional<Entity> existingEntity =
-        this.entityFetcher.getEntitiesByEntityIds(tenantId, List.of(key.toString())).stream()
-            .findFirst();
 
-    if (entitiesCollection.delete(key)) {
-      responseObserver.onNext(Empty.newBuilder().build());
-      responseObserver.onCompleted();
-      existingEntity.ifPresent(
-          entity -> {
-            this.entityCounterMetricSender.sendEntitiesDeleteMetrics(
-                requestContext, request.getEntityType(), List.of(entity));
-            entityChangeEventGenerator.sendDeleteNotification(requestContext, List.of(entity));
-          });
-    } else {
-      responseObserver.onError(new RuntimeException("Could not delete the entity."));
+    try {
+      Optional<Entity> existingEntity =
+          this.entityFetcher.getEntitiesByEntityIds(tenantId, List.of(key.toString())).stream()
+              .findFirst();
+
+      if (entitiesCollection.delete(key)) {
+        responseObserver.onNext(Empty.newBuilder().build());
+        responseObserver.onCompleted();
+        existingEntity.ifPresent(
+            entity -> {
+              this.entityCounterMetricSender.sendEntitiesDeleteMetrics(
+                  requestContext, request.getEntityType(), List.of(entity));
+              entityChangeEventGenerator.sendDeleteNotification(requestContext, List.of(entity));
+            });
+      } else {
+        responseObserver.onError(new RuntimeException("Could not delete the entity."));
+      }
+    } catch (final Exception e) {
+      LOG.error("Unknown error occurred", e);
+      responseObserver.onError(
+          Status.INTERNAL
+              .withDescription("Unknown error occurred")
+              .asRuntimeException(requestContext.buildTrailers()));
     }
   }
 
@@ -326,15 +358,24 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   @Override
   public void query(Query request, StreamObserver<Entity> responseObserver) {
     logQuery(request);
-    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
+    final RequestContext requestContext = RequestContext.CURRENT.get();
+    Optional<String> tenantId = requestContext.getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
 
-    this.entityFetcher
-        .query(DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList()))
-        .forEach(responseObserver::onNext);
+    try {
+      this.entityFetcher
+          .query(DocStoreConverter.transform(tenantId.get(), request, Collections.emptyList()))
+          .forEach(responseObserver::onNext);
+    } catch (final Exception e) {
+      LOG.error("Unknown error occurred", e);
+      responseObserver.onError(
+          Status.INTERNAL
+              .withDescription("Unknown error occurred")
+              .asRuntimeException(requestContext.buildTrailers()));
+    }
 
     responseObserver.onCompleted();
   }
@@ -388,7 +429,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       RelationshipsQuery query, StreamObserver<EntityRelationship> responseObserver) {
     logQuery(query);
 
-    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
+    final RequestContext requestContext = RequestContext.CURRENT.get();
+    Optional<String> tenantId = requestContext.getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
@@ -426,7 +468,15 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       }
     }
 
-    searchByQueryAndStreamRelationships(docStoreQuery, responseObserver, tenantId.get());
+    try {
+      searchByQueryAndStreamRelationships(docStoreQuery, responseObserver, tenantId.get());
+    } catch (final Exception e) {
+      LOG.error("Unknown error occurred", e);
+      responseObserver.onError(
+          Status.INTERNAL
+              .withDescription("Unknown error occurred")
+              .asRuntimeException(requestContext.buildTrailers()));
+    }
   }
 
   @Override
@@ -511,19 +561,28 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
+    final RequestContext requestContext = RequestContext.CURRENT.get();
+    Optional<String> tenantId = requestContext.getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
 
-    searchByIdAndStreamSingleResponse(
-        tenantId.get(),
-        request.getEntityId(),
-        request.getEntityType(),
-        enrichedEntitiesCollection,
-        EnrichedEntity.newBuilder(),
-        responseObserver);
+    try {
+      searchByIdAndStreamSingleResponse(
+          tenantId.get(),
+          request.getEntityId(),
+          request.getEntityType(),
+          enrichedEntitiesCollection,
+          EnrichedEntity.newBuilder(),
+          responseObserver);
+    } catch (final Exception e) {
+      LOG.error("Unknown error occurred", e);
+      responseObserver.onError(
+          Status.INTERNAL
+              .withDescription("Unknown error occurred")
+              .asRuntimeException(requestContext.buildTrailers()));
+    }
   }
 
   @Override
@@ -536,7 +595,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    String tenantId = RequestContext.CURRENT.get().getTenantId().orElse(null);
+    final RequestContext requestContext = RequestContext.CURRENT.get();
+    String tenantId = requestContext.getTenantId().orElse(null);
     if (tenantId == null) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
@@ -545,13 +605,22 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     String entityId =
         this.entityIdGenerator.generateEntityId(
             tenantId, request.getEntityType(), request.getIdentifyingAttributesMap());
-    searchByIdAndStreamSingleResponse(
-        tenantId,
-        entityId,
-        request.getEntityType(),
-        enrichedEntitiesCollection,
-        EnrichedEntity.newBuilder(),
-        responseObserver);
+
+    try {
+      searchByIdAndStreamSingleResponse(
+          tenantId,
+          entityId,
+          request.getEntityType(),
+          enrichedEntitiesCollection,
+          EnrichedEntity.newBuilder(),
+          responseObserver);
+    } catch (final Exception e) {
+      LOG.error("Unknown error occurred", e);
+      responseObserver.onError(
+          Status.INTERNAL
+              .withDescription("Unknown error occurred")
+              .asRuntimeException(requestContext.buildTrailers()));
+    }
   }
 
   @Override
@@ -565,32 +634,32 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    Entity receivedEntity = this.entityNormalizer.normalize(tenantId, request.getEntity());
-    Optional<Entity> existingEntity =
-        getExistingEntity(tenantId, receivedEntity.getEntityType(), receivedEntity.getEntityId());
+    try {
+      Entity receivedEntity = this.entityNormalizer.normalize(tenantId, request.getEntity());
+      Optional<Entity> existingEntity =
+          getExistingEntity(tenantId, receivedEntity.getEntityType(), receivedEntity.getEntityId());
 
-    boolean rejectUpsertForConditionMismatch =
-        existingEntity
-            .map(
-                entity ->
-                    !this.upsertConditionMatcher.matches(entity, request.getUpsertCondition()))
-            .orElse(false);
-
-    if (rejectUpsertForConditionMismatch) {
-      // There's an existing entity and the update doesn't meet the condition, return existing
-      responseObserver.onNext(
-          MergeAndUpsertEntityResponse.newBuilder().setEntity(existingEntity.get()).build());
-      responseObserver.onCompleted();
-    } else {
-      // There's either a new entity or a valid update to upsert
-      Entity entityToUpsert =
+      boolean rejectUpsertForConditionMismatch =
           existingEntity
-              .map(Entity::toBuilder)
-              .map(Entity.Builder::clearCreatedTime)
-              .map(builder -> builder.mergeFrom(receivedEntity))
-              .map(Builder::build)
-              .orElse(receivedEntity);
-      try {
+              .map(
+                  entity ->
+                      !this.upsertConditionMatcher.matches(entity, request.getUpsertCondition()))
+              .orElse(false);
+
+      if (rejectUpsertForConditionMismatch) {
+        // There's an existing entity and the update doesn't meet the condition, return existing
+        responseObserver.onNext(
+            MergeAndUpsertEntityResponse.newBuilder().setEntity(existingEntity.get()).build());
+        responseObserver.onCompleted();
+      } else {
+        // There's either a new entity or a valid update to upsert
+        Entity entityToUpsert =
+            existingEntity
+                .map(Entity::toBuilder)
+                .map(Entity.Builder::clearCreatedTime)
+                .map(builder -> builder.mergeFrom(receivedEntity))
+                .map(Builder::build)
+                .orElse(receivedEntity);
         Entity upsertedEntity = this.upsertEntity(tenantId, entityToUpsert);
         responseObserver.onNext(
             MergeAndUpsertEntityResponse.newBuilder().setEntity(upsertedEntity).build());
@@ -604,9 +673,13 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
             List.of(upsertedEntity));
         entityChangeEventGenerator.sendChangeNotification(
             requestContext, existingEntities, List.of(upsertedEntity));
-      } catch (IOException e) {
-        responseObserver.onError(e);
       }
+    } catch (final Exception e) {
+      LOG.error("Unknown error occurred", e);
+      responseObserver.onError(
+          Status.INTERNAL
+              .withDescription("Unknown error occurred")
+              .asRuntimeException(requestContext.buildTrailers()));
     }
   }
 
@@ -711,28 +784,30 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       String entityType,
       Collection collection,
       Message.Builder builder,
-      StreamObserver<T> responseObserver) {
+      StreamObserver<T> responseObserver)
+      throws IOException {
     org.hypertrace.core.documentstore.Query query = new org.hypertrace.core.documentstore.Query();
     String docId = this.entityNormalizer.getEntityDocKey(tenantId, entityType, entityId).toString();
     query.setFilter(new Filter(Filter.Op.EQ, EntityServiceConstants.ID, docId));
 
-    Iterator<Document> result = collection.search(query);
     List<T> entities = new ArrayList<>();
-    while (result.hasNext()) {
-      PARSER
-          .<T>parseOrLog(result.next(), builder.clone())
-          .map(
-              entity -> {
-                // Populate the tenant id field with the tenant id that's received for backward
-                // compatibility.
-                Descriptors.FieldDescriptor fieldDescriptor =
-                    entity.getDescriptorForType().findFieldByName("tenant_id");
-                if (fieldDescriptor != null) {
-                  return (T) entity.toBuilder().setField(fieldDescriptor, tenantId).build();
-                }
-                return entity;
-              })
-          .ifPresent(entities::add);
+    try (final CloseableIterator<Document> result = collection.search(query)) {
+      while (result.hasNext()) {
+        PARSER
+            .<T>parseOrLog(result.next(), builder.clone())
+            .map(
+                entity -> {
+                  // Populate the tenant id field with the tenant id that's received for backward
+                  // compatibility.
+                  Descriptors.FieldDescriptor fieldDescriptor =
+                      entity.getDescriptorForType().findFieldByName("tenant_id");
+                  if (fieldDescriptor != null) {
+                    return (T) entity.toBuilder().setField(fieldDescriptor, tenantId).build();
+                  }
+                  return entity;
+                })
+            .ifPresent(entities::add);
+      }
     }
 
     if (LOG.isDebugEnabled()) {
@@ -754,7 +829,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     }
   }
 
-  private List<Entity> getExistingEntities(String tenantId, java.util.Collection<Entity> entities) {
+  private List<Entity> getExistingEntities(String tenantId, java.util.Collection<Entity> entities)
+      throws IOException {
     List<String> docIds = entities.stream().map(this::getDocId).collect(Collectors.toList());
     return this.entityFetcher.getEntitiesByDocIds(tenantId, docIds);
   }
@@ -765,7 +841,8 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         .toString();
   }
 
-  private Optional<Entity> getExistingEntity(String tenantId, String entityType, String entityId) {
+  private Optional<Entity> getExistingEntity(String tenantId, String entityType, String entityId)
+      throws IOException {
     String docId = this.entityNormalizer.getEntityDocKey(tenantId, entityType, entityId).toString();
     return this.entityFetcher.getEntitiesByDocIds(tenantId, List.of(docId)).stream().findFirst();
   }
@@ -777,24 +854,26 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private void searchByQueryAndStreamRelationships(
       org.hypertrace.core.documentstore.Query query,
       StreamObserver<EntityRelationship> responseObserver,
-      String tenantId) {
-    List<EntityRelationship> relationships =
-        Streams.stream(relationshipsCollection.search(query))
-            .flatMap(
-                document ->
-                    PARSER
-                        .<EntityRelationship>parseOrLog(document, EntityRelationship.newBuilder())
-                        .stream())
-            .map(EntityRelationship::toBuilder)
-            .map(builder -> builder.setTenantId(tenantId))
-            .map(EntityRelationship.Builder::build)
-            .peek(responseObserver::onNext)
-            .collect(Collectors.toList());
+      String tenantId)
+      throws IOException {
+    try (final CloseableIterator<Document> documentIterator =
+        relationshipsCollection.search(query)) {
+      List<EntityRelationship> relationships =
+          Streams.stream(documentIterator)
+              .flatMap(
+                  document ->
+                      PARSER
+                          .<EntityRelationship>parseOrLog(document, EntityRelationship.newBuilder())
+                          .stream())
+              .map(EntityRelationship::toBuilder)
+              .map(builder -> builder.setTenantId(tenantId))
+              .map(EntityRelationship.Builder::build)
+              .peek(responseObserver::onNext)
+              .collect(Collectors.toList());
 
-    if (LOG.isDebugEnabled()) {
       LOG.debug("Docstore query has returned the result: {}", relationships);
+      responseObserver.onCompleted();
     }
-    responseObserver.onCompleted();
   }
 
   private void logQuery(Object query) {
