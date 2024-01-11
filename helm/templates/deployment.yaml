@@ -83,7 +83,7 @@ spec:
               value: "/var/{{ .Chart.Name }}/log/log4j2.properties"
             - name: JAVA_OPTS
               value: {{ .Values.javaOpts | quote }}
-            {{- if .Values.database and .Values.database.mongo.authEnabled }}
+            {{- if and .Values.database .Values.database.mongo.authEnabled }}
             {{- with .Values.database.mongo.credentials }}
             - name: MONGO_SERVICE_USERNAME
               valueFrom:
