@@ -102,16 +102,6 @@ entityServiceConfig:
     host: attribute-service
     port: 9012
 
-database:
-  type: mongo
-  mongo:
-    authEnabled: false
-    endpoints:
-      - host: mongo
-        port: 27017
-    replicaSet: rs0
-    authDb: admin
-
 attributes: []
 idAttributes:
   - scope: API

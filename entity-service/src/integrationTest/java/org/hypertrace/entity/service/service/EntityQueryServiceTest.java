@@ -146,11 +146,6 @@ public class EntityQueryServiceTest {
   private static final String ATTRIBUTE_SERVICE_HOST_KEY = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT_KEY = "attribute.service.config.port";
 
-  private static final String MONGO_ENDPOINTS_KEY =
-      "entity.service.config.document.store.mongo.endpoints";
-  private static final String MONGO_HOST_KEY = "host";
-  private static final String MONGO_PORT_KEY = "port";
-
   private static final Config config = getServiceConfig();
 
   @BeforeAll

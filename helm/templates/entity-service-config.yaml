@@ -8,6 +8,7 @@ data:
   application.conf: |-
     entity.service.config = {
       document.store {
+        {{- if .Values.database }}
         {{- $dst := .Values.database.type }}
         dataStoreType = {{ $dst }}
         appName = {{ .Values.service.name }}
@@ -26,6 +27,7 @@ data:
           {{- end }}
           {{- end }}
         }
+        {{- end }}
       }
       publish.change.events = {{ .Values.entityServiceConfig.publishChangeEvents }}
     }
