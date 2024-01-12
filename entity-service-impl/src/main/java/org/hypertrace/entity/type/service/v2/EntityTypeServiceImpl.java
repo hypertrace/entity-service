@@ -3,12 +3,11 @@ package org.hypertrace.entity.type.service.v2;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Strings;
 import com.google.protobuf.ServiceException;
-import io.grpc.Status;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import org.hypertrace.core.documentstore.CloseableIterator;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
@@ -60,22 +59,21 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
           new SingleValueKey(tenantId.get(), request.getEntityType().getName()), document);
 
       // Query the entity type again and return that.
-      try (final CloseableIterator<Document> entityTypes =
+      Iterator<Document> entityTypes =
           entityTypeCollection.search(
-              transform(tenantId.get(), List.of(request.getEntityType().getName())))) {
+              transform(tenantId.get(), List.of(request.getEntityType().getName())));
 
-        if (entityTypes.hasNext()) {
-          String json = entityTypes.next().toJson();
-          responseObserver.onNext(
-              UpsertEntityTypeResponse.newBuilder()
-                  .setEntityType(EntityTypeDocument.fromJson(json).toProto())
-                  .build());
-          responseObserver.onCompleted();
-        } else {
-          // This could happen if the upsert has failed to make the doc store.
-          // Return an error for now.
-          responseObserver.onError(new RuntimeException("Error upserting EntityType:" + request));
-        }
+      if (entityTypes.hasNext()) {
+        String json = entityTypes.next().toJson();
+        responseObserver.onNext(
+            UpsertEntityTypeResponse.newBuilder()
+                .setEntityType(EntityTypeDocument.fromJson(json).toProto())
+                .build());
+        responseObserver.onCompleted();
+      } else {
+        // This could happen if the upsert has failed to make the doc store.
+        // Return an error for now.
+        responseObserver.onError(new RuntimeException("Error upserting EntityType:" + request));
       }
     } catch (IOException e) {
       responseObserver.onError(new RuntimeException("Error upserting EntityType:" + request, e));
@@ -117,37 +115,29 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
       org.hypertrace.entity.type.service.v2.QueryEntityTypesRequest request,
       io.grpc.stub.StreamObserver<org.hypertrace.entity.type.service.v2.QueryEntityTypesResponse>
           responseObserver) {
-    final RequestContext requestContext = RequestContext.CURRENT.get();
-    Optional<String> tenantId = requestContext.getTenantId();
+    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
 
-    try (final CloseableIterator<Document> entityTypes =
-        entityTypeCollection.search(transform(tenantId.get(), request.getNameList()))) {
+    Iterator<Document> entityTypes =
+        entityTypeCollection.search(transform(tenantId.get(), request.getNameList()));
 
-      List<EntityType> entityTypeList = new ArrayList<>();
-      while (entityTypes.hasNext()) {
-        String json = entityTypes.next().toJson();
-        try {
-          entityTypeList.add(EntityTypeDocument.fromJson(json).toProto());
-        } catch (JsonProcessingException e) {
-          LOGGER.warn("Failed to parse the EntityType json: {}", json, e);
-          responseObserver.onError(new RuntimeException("Error querying the entity types."));
-          return;
-        }
+    List<EntityType> entityTypeList = new ArrayList<>();
+    while (entityTypes.hasNext()) {
+      String json = entityTypes.next().toJson();
+      try {
+        entityTypeList.add(EntityTypeDocument.fromJson(json).toProto());
+      } catch (JsonProcessingException e) {
+        LOGGER.warn("Failed to parse the EntityType json: {}", json, e);
+        responseObserver.onError(new RuntimeException("Error querying the entity types."));
+        return;
       }
-      responseObserver.onNext(
-          QueryEntityTypesResponse.newBuilder().addAllEntityType(entityTypeList).build());
-      responseObserver.onCompleted();
-    } catch (final Exception e) {
-      LOGGER.error("Unknown error occurred", e);
-      responseObserver.onError(
-          Status.INTERNAL
-              .withDescription("Unknown error occurred")
-              .asRuntimeException(requestContext.buildTrailers()));
     }
+    responseObserver.onNext(
+        QueryEntityTypesResponse.newBuilder().addAllEntityType(entityTypeList).build());
+    responseObserver.onCompleted();
   }
 
   private static Query transform(String tenantId, List<String> entityTypeNames) {

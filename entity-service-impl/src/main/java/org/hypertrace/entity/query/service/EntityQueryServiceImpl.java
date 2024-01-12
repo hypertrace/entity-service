@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -224,13 +225,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
         queryConverter = getQueryConverter();
     final org.hypertrace.core.documentstore.query.Query query;
+    final CloseableIterator<Document> documentIterator;
 
     try {
       query = queryConverter.convert(request, requestContext);
-      try (final CloseableIterator<Document> documentIterator =
-          entitiesCollection.aggregate(query)) {
-        streamResponse(request, responseObserver, documentIterator);
-      }
+      documentIterator = entitiesCollection.aggregate(query);
+      streamResponse(request, responseObserver, documentIterator);
     } catch (Exception ex) {
       LOG.error("Error while executing entity query request ", ex);
       responseObserver.onError(new ServiceException(ex));
@@ -525,7 +525,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       final Iterable<String> entityIds,
       final List<Expression> selectionList,
       final RequestContext requestContext)
-      throws ConversionException, IOException {
+      throws ConversionException {
     final List<String> entityIdList = newArrayList(entityIds);
 
     if (entityIdList.isEmpty()) {
@@ -548,9 +548,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             .setSelection(selection)
             .setFilter(filter)
             .build();
-    try (final CloseableIterator<Document> documentIterator = entitiesCollection.aggregate(query)) {
-      return newArrayList(documentIterator);
-    }
+    final Iterator<Document> documentIterator = entitiesCollection.find(query);
+
+    return newArrayList(documentIterator);
   }
 
   private void doBulkUpdate(

@@ -5,16 +5,15 @@ import static org.hypertrace.entity.service.constants.EntityCollectionConstants.
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
-import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Spliterators;
 import java.util.stream.StreamSupport;
-import org.hypertrace.core.documentstore.CloseableIterator;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
@@ -117,8 +116,9 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
       return;
     }
 
-    try (final CloseableIterator<Document> documents =
-        entityTypeCol.search(transform(tenantId.get(), request, false))) {
+    try {
+      Iterator<Document> documents =
+          entityTypeCol.search(transform(tenantId.get(), request, false));
       StreamSupport.stream(Spliterators.spliteratorUnknownSize(documents, 0), false)
           .map(
               document -> {
@@ -153,8 +153,9 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
       return;
     }
 
-    try (final CloseableIterator<Document> documents =
-        entityTypeRelationsCol.search(transform(tenantId.get(), request, false))) {
+    try {
+      Iterator<Document> documents =
+          entityTypeRelationsCol.search(transform(tenantId.get(), request, false));
       StreamSupport.stream(Spliterators.spliteratorUnknownSize(documents, 0), false)
           .map(
               document -> {
@@ -186,83 +187,71 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
   @Override
   public void queryEntityTypes(
       EntityTypeFilter request, StreamObserver<EntityType> responseObserver) {
-    final RequestContext requestContext = RequestContext.CURRENT.get();
-    Optional<String> tenantId = requestContext.getTenantId();
+    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
 
-    try (final CloseableIterator<Document> entityTypes =
-        entityTypeCol.search(transform(tenantId.get(), request, true))) {
+    Iterator<Document> entityTypes = entityTypeCol.search(transform(tenantId.get(), request, true));
 
-      while (entityTypes.hasNext()) {
-        Document entityType = entityTypes.next();
+    while (entityTypes.hasNext()) {
+      Document entityType = entityTypes.next();
 
-        EntityType.Builder builder = EntityType.newBuilder();
-        try {
-          PARSER.merge(entityType.toJson(), builder);
+      EntityType.Builder builder = EntityType.newBuilder();
+      try {
+        PARSER.merge(entityType.toJson(), builder);
 
-          // Populate the tenant id field with the tenant id that's received for backward
-          // compatibility.
-          builder.setTenantId(tenantId.get());
-        } catch (InvalidProtocolBufferException e) {
-          LOG.error("Error processing entityType: {}", entityType.toJson(), e);
-          responseObserver.onError(e);
-          return;
-        }
-        responseObserver.onNext(builder.build());
+        // Populate the tenant id field with the tenant id that's received for backward
+        // compatibility.
+        builder.setTenantId(tenantId.get());
+      } catch (InvalidProtocolBufferException e) {
+        LOG.error("Error processing entityType: {}", entityType.toJson(), e);
+        responseObserver.onError(e);
+        return;
       }
-      responseObserver.onCompleted();
-    } catch (final Exception e) {
-      LOG.error("Unknown error occurred", e);
-      responseObserver.onError(
-          Status.INTERNAL
-              .withDescription("Unknown error occurred")
-              .asRuntimeException(requestContext.buildTrailers()));
+      responseObserver.onNext(builder.build());
     }
+    responseObserver.onCompleted();
   }
 
   @Override
   public void queryRelationshipTypes(
       EntityRelationshipTypeFilter request,
       StreamObserver<EntityRelationshipType> responseObserver) {
-    final RequestContext requestContext = RequestContext.CURRENT.get();
-    Optional<String> tenantId = requestContext.getTenantId();
+    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
 
-    try (final CloseableIterator<Document> entityTypeRels =
-        entityTypeRelationsCol.search(transform(tenantId.get(), request, true))) {
+    searchByQueryAndStreamResponse(
+        responseObserver, transform(tenantId.get(), request, true), tenantId.get());
+  }
 
-      while (entityTypeRels.hasNext()) {
-        Document relation = entityTypeRels.next();
+  private void searchByQueryAndStreamResponse(
+      StreamObserver<EntityRelationshipType> responseObserver, Query query, String tenantId) {
+    Iterator<Document> entityTypeRels = entityTypeRelationsCol.search(query);
 
-        EntityRelationshipType.Builder builder = EntityRelationshipType.newBuilder();
-        try {
-          PARSER.merge(relation.toJson(), builder);
+    while (entityTypeRels.hasNext()) {
+      Document relation = entityTypeRels.next();
 
-          // Populate the tenant id field with the tenant id that's received for backward
-          // compatibility.
-          builder.setTenantId(tenantId.get());
+      EntityRelationshipType.Builder builder = EntityRelationshipType.newBuilder();
+      try {
+        PARSER.merge(relation.toJson(), builder);
 
-        } catch (InvalidProtocolBufferException e) {
-          LOG.error("Error processing entityType: {}", relation.toJson(), e);
-          responseObserver.onError(e);
-          return;
-        }
-        responseObserver.onNext(builder.build());
+        // Populate the tenant id field with the tenant id that's received for backward
+        // compatibility.
+        builder.setTenantId(tenantId);
+
+      } catch (InvalidProtocolBufferException e) {
+        LOG.error("Error processing entityType: {}", relation.toJson(), e);
+        responseObserver.onError(e);
+        return;
       }
-      responseObserver.onCompleted();
-    } catch (final Exception e) {
-      LOG.error("Unknown error occurred", e);
-      responseObserver.onError(
-          Status.INTERNAL
-              .withDescription("Unknown error occurred")
-              .asRuntimeException(requestContext.buildTrailers()));
+      responseObserver.onNext(builder.build());
     }
+    responseObserver.onCompleted();
   }
 
   private static Query transform(

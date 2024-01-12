@@ -22,7 +22,6 @@ import com.google.protobuf.util.JsonFormat;
 import io.grpc.Channel;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -973,7 +972,7 @@ public class EntityQueryServiceImplTest {
   }
 
   @Test
-  public void testDeleteEntities() throws IOException {
+  public void testDeleteEntities() {
     Collection mockEntitiesCollection = mock(Collection.class);
     UUID entityId = UUID.randomUUID();
     List<Entity> docs = List.of(Entity.newBuilder().setEntityId(entityId.toString()).build());

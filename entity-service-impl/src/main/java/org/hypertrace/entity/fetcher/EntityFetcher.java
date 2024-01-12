@@ -1,14 +1,12 @@
 package org.hypertrace.entity.fetcher;
 
 import com.google.common.collect.Streams;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.hypertrace.core.documentstore.CloseableIterator;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.Filter.Op;
@@ -29,14 +27,13 @@ public class EntityFetcher {
     this.parser = documentParser;
   }
 
-  public List<Entity> getEntitiesByDocIds(String tenantId, Collection<String> docIds)
-      throws IOException {
+  public List<Entity> getEntitiesByDocIds(String tenantId, Collection<String> docIds) {
     return query(buildExistingEntitiesByDocIdQuery(tenantId, docIds))
         .collect(Collectors.toUnmodifiableList());
   }
 
   public List<Entity> getEntitiesByEntityIds(
-      String tenantId, java.util.Collection<String> entityIds) throws IOException {
+      String tenantId, java.util.Collection<String> entityIds) {
     if (entityIds.isEmpty()) {
       return Collections.emptyList();
     }
@@ -44,25 +41,20 @@ public class EntityFetcher {
         .collect(Collectors.toUnmodifiableList());
   }
 
-  public Stream<Entity> query(org.hypertrace.core.documentstore.Query query) throws IOException {
-    try (final CloseableIterator<Document> iterator = this.entitiesCollection.search(query)) {
-      return Streams.stream(iterator)
-          .map(this::entityFromDocument)
-          .flatMap(Optional::stream)
-          .map(Entity::toBuilder)
-          .map(Entity.Builder::build);
-    }
+  public Stream<Entity> query(org.hypertrace.core.documentstore.Query query) {
+    return Streams.stream(this.entitiesCollection.search(query))
+        .map(this::entityFromDocument)
+        .flatMap(Optional::stream)
+        .map(Entity::toBuilder)
+        .map(Entity.Builder::build);
   }
 
-  public Stream<Entity> query(org.hypertrace.core.documentstore.query.Query query)
-      throws IOException {
-    try (final CloseableIterator<Document> iterator = this.entitiesCollection.aggregate(query)) {
-      return Streams.stream(iterator)
-          .map(this::entityFromDocument)
-          .flatMap(Optional::stream)
-          .map(Entity::toBuilder)
-          .map(Entity.Builder::build);
-    }
+  public Stream<Entity> query(org.hypertrace.core.documentstore.query.Query query) {
+    return Streams.stream(this.entitiesCollection.find(query))
+        .map(this::entityFromDocument)
+        .flatMap(Optional::stream)
+        .map(Entity::toBuilder)
+        .map(Entity.Builder::build);
   }
 
   private org.hypertrace.core.documentstore.Query buildExistingEntitiesByDocIdQuery(
