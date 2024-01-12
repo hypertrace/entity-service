@@ -548,7 +548,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             .setSelection(selection)
             .setFilter(filter)
             .build();
-    try (final CloseableIterator<Document> documentIterator = entitiesCollection.find(query)) {
+    try (final CloseableIterator<Document> documentIterator = entitiesCollection.aggregate(query)) {
       return newArrayList(documentIterator);
     }
   }
@@ -794,7 +794,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
               .build();
       final org.hypertrace.core.documentstore.query.Query updateFilterQuery =
           queryConverter.convert(entityQueryRequest, requestContext);
-      final List<Entity> existingEntities = entityFetcher.query(updateFilterQuery);
+      final List<Entity> existingEntities =
+          entityFetcher.query(updateFilterQuery).collect(Collectors.toUnmodifiableList());
 
       final List<SingleValueKey> keys = getKeysToUpdate(entityType, existingEntities);
       final List<UpdatedEntity> updatedEntityResponses = buildUpdatedEntityResponse(keys);
@@ -898,7 +899,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           queryConverter = getQueryConverter();
       final org.hypertrace.core.documentstore.query.Query query;
       query = queryConverter.convert(entityQueryRequest, requestContext);
-      return this.entityFetcher.query(query);
+      return this.entityFetcher.query(query).collect(toUnmodifiableList());
     } catch (Exception ex) {
       LOG.error("Error while getting entity ids to delete", ex);
       throw Status.INVALID_ARGUMENT
