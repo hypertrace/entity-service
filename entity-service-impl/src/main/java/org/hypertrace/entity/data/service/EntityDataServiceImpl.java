@@ -230,8 +230,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    final RequestContext requestContext = RequestContext.CURRENT.get();
-    Optional<String> tenantId = requestContext.getTenantId();
+    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
@@ -262,8 +261,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    final RequestContext requestContext = RequestContext.CURRENT.get();
-    String tenantId = requestContext.getTenantId().orElse(null);
+    String tenantId = RequestContext.CURRENT.get().getTenantId().orElse(null);
     if (tenantId == null) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
@@ -413,8 +411,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       RelationshipsQuery query, StreamObserver<EntityRelationship> responseObserver) {
     logQuery(query);
 
-    final RequestContext requestContext = RequestContext.CURRENT.get();
-    Optional<String> tenantId = requestContext.getTenantId();
+    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
@@ -452,15 +449,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       }
     }
 
-    try {
-      searchByQueryAndStreamRelationships(docStoreQuery, responseObserver, tenantId.get());
-    } catch (final Exception e) {
-      LOG.error("Unknown error occurred", e);
-      responseObserver.onError(
-          Status.INTERNAL
-              .withDescription("Unknown error occurred")
-              .asRuntimeException(requestContext.buildTrailers()));
-    }
+    searchByQueryAndStreamRelationships(docStoreQuery, responseObserver, tenantId.get());
   }
 
   @Override
@@ -545,8 +534,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    final RequestContext requestContext = RequestContext.CURRENT.get();
-    Optional<String> tenantId = requestContext.getTenantId();
+    Optional<String> tenantId = RequestContext.CURRENT.get().getTenantId();
     if (tenantId.isEmpty()) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
@@ -571,8 +559,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    final RequestContext requestContext = RequestContext.CURRENT.get();
-    String tenantId = requestContext.getTenantId().orElse(null);
+    String tenantId = RequestContext.CURRENT.get().getTenantId().orElse(null);
     if (tenantId == null) {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
@@ -645,9 +632,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     } catch (final Exception e) {
       LOG.error("Unknown error occurred", e);
       responseObserver.onError(
-          Status.INTERNAL
-              .withDescription("Unknown error occurred")
-              .asRuntimeException(requestContext.buildTrailers()));
+          Status.INTERNAL.withDescription("Unknown error occurred").asRuntimeException());
     }
   }
 
@@ -829,8 +814,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
   private void searchByQueryAndStreamRelationships(
       org.hypertrace.core.documentstore.Query query,
       StreamObserver<EntityRelationship> responseObserver,
-      String tenantId)
-      throws IOException {
+      String tenantId) {
     try (final CloseableIterator<Document> documentIterator =
         relationshipsCollection.search(query)) {
       List<EntityRelationship> relationships =
@@ -848,6 +832,11 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
 
       LOG.debug("Docstore query has returned the result: {}", relationships);
       responseObserver.onCompleted();
+    } catch (final IOException e) {
+      final String message =
+          String.format("Unknown error occurred for query: %s on tenant: %s", query, tenantId);
+      LOG.warn(message, e);
+      responseObserver.onError(Status.INTERNAL.withDescription(message).asRuntimeException());
     }
   }
 
