@@ -7,20 +7,24 @@ metadata:
 data:
   application.conf: |-
     entity.service.config = {
-      entity-service {
-        {{- $dst := .Values.entityServiceConfig.dataStoreType }}
+      document.store {
+        {{- if .Values.database }}
+        {{- $dst := .Values.database.type }}
         dataStoreType = {{ $dst }}
+        appName = {{ .Values.service.name }}
+
         {{ $dst }} {
-          {{- range $key, $value := (index .Values "entityServiceConfig" (printf "%s" $dst)) }}
+          {{- range $key, $value := (index .Values "database" (printf "%s" $dst)) }}
           {{- if $value }}
-            {{- if eq $key "password" }}
+            {{- if hasPrefix "${?" (printf "%s" $value) }}
           {{ $key }} = {{ $value }}
             {{- else }}
-          {{ $key }} = {{ $value | quote }}
+          {{ $key }} = {{- toJson $value }}
             {{- end }}
           {{- end }}
           {{- end }}
         }
+        {{- end }}
       }
       publish.change.events = {{ .Values.entityServiceConfig.publishChangeEvents }}
     }

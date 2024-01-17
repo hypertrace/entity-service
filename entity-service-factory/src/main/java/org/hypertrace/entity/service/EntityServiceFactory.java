@@ -35,10 +35,11 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
       GrpcServiceContainerEnvironment grpcServiceContainerEnvironment) {
     this.grpcServiceContainerEnvironment = grpcServiceContainerEnvironment;
     Config config = grpcServiceContainerEnvironment.getConfig(SERVICE_NAME);
-    EntityServiceDataStoreConfig dataStoreConfig = new EntityServiceDataStoreConfig(config);
-    this.datastore =
-        DatastoreProvider.getDatastore(
-            dataStoreConfig.getDataStoreType(), dataStoreConfig.getDataStoreConfig());
+    EntityServiceDataStoreConfig entityServiceDatastoreConfig =
+        new EntityServiceDataStoreConfig(config);
+    datastore = DatastoreProvider.getDatastore(entityServiceDatastoreConfig.getDataStoreConfig());
+    grpcServiceContainerEnvironment.getLifecycle().shutdownComplete().thenRun(datastore::close);
+
     EntityAttributeMapping entityAttributeMapping =
         new EntityAttributeMapping(config, grpcServiceContainerEnvironment.getChannelRegistry());
     EntityChangeEventGenerator entityChangeEventGenerator =
