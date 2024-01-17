@@ -19,11 +19,7 @@ data:
             {{- if hasPrefix "${?" (printf "%s" $value) }}
           {{ $key }} = {{ $value }}
             {{- else }}
-              {{- if eq $key "endpoints" }}
-          endpoints = {{- toJson $value }}
-              {{- else }}
-          {{ $key }} = {{ $value | quote }}
-              {{- end }}
+          {{ $key }} = {{- toJson $value }}
             {{- end }}
           {{- end }}
           {{- end }}
