@@ -237,21 +237,13 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    try {
-      searchByIdAndStreamSingleResponse(
-          tenantId.get(),
-          request.getEntityId(),
-          request.getEntityType(),
-          entitiesCollection,
-          Entity.newBuilder(),
-          responseObserver);
-    } catch (final Exception e) {
-      LOG.error("Unknown error occurred", e);
-      responseObserver.onError(
-          Status.INTERNAL
-              .withDescription("Unknown error occurred")
-              .asRuntimeException(requestContext.buildTrailers()));
-    }
+    searchByIdAndStreamSingleResponse(
+        tenantId.get(),
+        request.getEntityId(),
+        request.getEntityType(),
+        entitiesCollection,
+        Entity.newBuilder(),
+        responseObserver);
   }
 
   /**
@@ -280,21 +272,13 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
     String entityId =
         this.entityIdGenerator.generateEntityId(
             tenantId, request.getEntityType(), request.getIdentifyingAttributesMap());
-    try {
-      searchByIdAndStreamSingleResponse(
-          tenantId,
-          entityId,
-          request.getEntityType(),
-          entitiesCollection,
-          Entity.newBuilder(),
-          responseObserver);
-    } catch (final Exception e) {
-      LOG.error("Unknown error occurred", e);
-      responseObserver.onError(
-          Status.INTERNAL
-              .withDescription("Unknown error occurred")
-              .asRuntimeException(requestContext.buildTrailers()));
-    }
+    searchByIdAndStreamSingleResponse(
+        tenantId,
+        entityId,
+        request.getEntityType(),
+        entitiesCollection,
+        Entity.newBuilder(),
+        responseObserver);
   }
 
   /**
@@ -568,21 +552,13 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       return;
     }
 
-    try {
-      searchByIdAndStreamSingleResponse(
-          tenantId.get(),
-          request.getEntityId(),
-          request.getEntityType(),
-          enrichedEntitiesCollection,
-          EnrichedEntity.newBuilder(),
-          responseObserver);
-    } catch (final Exception e) {
-      LOG.error("Unknown error occurred", e);
-      responseObserver.onError(
-          Status.INTERNAL
-              .withDescription("Unknown error occurred")
-              .asRuntimeException(requestContext.buildTrailers()));
-    }
+    searchByIdAndStreamSingleResponse(
+        tenantId.get(),
+        request.getEntityId(),
+        request.getEntityType(),
+        enrichedEntitiesCollection,
+        EnrichedEntity.newBuilder(),
+        responseObserver);
   }
 
   @Override
@@ -606,21 +582,13 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
         this.entityIdGenerator.generateEntityId(
             tenantId, request.getEntityType(), request.getIdentifyingAttributesMap());
 
-    try {
-      searchByIdAndStreamSingleResponse(
-          tenantId,
-          entityId,
-          request.getEntityType(),
-          enrichedEntitiesCollection,
-          EnrichedEntity.newBuilder(),
-          responseObserver);
-    } catch (final Exception e) {
-      LOG.error("Unknown error occurred", e);
-      responseObserver.onError(
-          Status.INTERNAL
-              .withDescription("Unknown error occurred")
-              .asRuntimeException(requestContext.buildTrailers()));
-    }
+    searchByIdAndStreamSingleResponse(
+        tenantId,
+        entityId,
+        request.getEntityType(),
+        enrichedEntitiesCollection,
+        EnrichedEntity.newBuilder(),
+        responseObserver);
   }
 
   @Override
@@ -784,8 +752,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
       String entityType,
       Collection collection,
       Message.Builder builder,
-      StreamObserver<T> responseObserver)
-      throws IOException {
+      StreamObserver<T> responseObserver) {
     org.hypertrace.core.documentstore.Query query = new org.hypertrace.core.documentstore.Query();
     String docId = this.entityNormalizer.getEntityDocKey(tenantId, entityType, entityId).toString();
     query.setFilter(new Filter(Filter.Op.EQ, EntityServiceConstants.ID, docId));
@@ -808,6 +775,14 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
                 })
             .ifPresent(entities::add);
       }
+    } catch (final IOException e) {
+      final String message =
+          String.format(
+              "Unable to search for tenant: %s, entityType: %s, entityId: %s",
+              tenantId, entityType, entityId);
+      LOG.warn(message, e);
+      responseObserver.onError(Status.INTERNAL.withDescription(message).asRuntimeException());
+      return;
     }
 
     if (LOG.isDebugEnabled()) {

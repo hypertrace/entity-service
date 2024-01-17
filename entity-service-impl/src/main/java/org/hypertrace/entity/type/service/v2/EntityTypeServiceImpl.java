@@ -144,9 +144,7 @@ public class EntityTypeServiceImpl extends EntityTypeServiceImplBase {
     } catch (final Exception e) {
       LOGGER.error("Unknown error occurred", e);
       responseObserver.onError(
-          Status.INTERNAL
-              .withDescription("Unknown error occurred")
-              .asRuntimeException(requestContext.buildTrailers()));
+          Status.INTERNAL.withDescription("Unknown error occurred").asRuntimeException());
     }
   }
 

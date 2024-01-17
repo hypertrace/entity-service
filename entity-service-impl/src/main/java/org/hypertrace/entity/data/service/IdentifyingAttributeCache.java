@@ -6,6 +6,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Streams;
+import io.grpc.Status;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -57,7 +58,9 @@ public class IdentifyingAttributeCache {
               Collectors.toUnmodifiableMap(
                   EntityType::getName, this::getIdentifyingAttributesFromType));
     } catch (final IOException e) {
-      throw new RuntimeException(e);
+      throw Status.INTERNAL
+          .withDescription("Unable to fetch entity types for tenant: " + tenantId)
+          .asRuntimeException();
     }
   }
 

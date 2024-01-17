@@ -60,7 +60,7 @@ public class EntityFetcher {
 
   public List<Entity> query(org.hypertrace.core.documentstore.query.Query query)
       throws IOException {
-    try (final CloseableIterator<Document> iterator = this.entitiesCollection.find(query)) {
+    try (final CloseableIterator<Document> iterator = this.entitiesCollection.aggregate(query)) {
       return Streams.stream(iterator)
           .map(this::entityFromDocument)
           .flatMap(Optional::stream)

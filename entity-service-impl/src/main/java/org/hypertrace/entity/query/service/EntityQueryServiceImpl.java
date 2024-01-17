@@ -548,7 +548,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             .setSelection(selection)
             .setFilter(filter)
             .build();
-    try (final CloseableIterator<Document> documentIterator = entitiesCollection.find(query)) {
+    try (final CloseableIterator<Document> documentIterator = entitiesCollection.aggregate(query)) {
       return newArrayList(documentIterator);
     }
   }
