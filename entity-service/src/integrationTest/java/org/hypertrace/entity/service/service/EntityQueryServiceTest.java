@@ -146,9 +146,6 @@ public class EntityQueryServiceTest {
   private static final String ATTRIBUTE_SERVICE_HOST_KEY = "attribute.service.config.host";
   private static final String ATTRIBUTE_SERVICE_PORT_KEY = "attribute.service.config.port";
 
-  private static final String MONGO_HOST_KEY = "entity.service.config.entity-service.mongo.host";
-  private static final String MONGO_PORT_KEY = "entity.service.config.entity-service.mongo.port";
-
   private static final Config config = getServiceConfig();
 
   @BeforeAll
@@ -2943,13 +2940,7 @@ public class EntityQueryServiceTest {
 
   private static Datastore getDatastore() {
     EntityServiceDataStoreConfig entityServiceConfig = new EntityServiceDataStoreConfig(config);
-
-    Map<String, String> mongoConfig = new HashMap<>();
-    mongoConfig.putIfAbsent("host", config.getString(MONGO_HOST_KEY));
-    mongoConfig.putIfAbsent("port", config.getString(MONGO_PORT_KEY));
-    Config dataStoreConfig = ConfigFactory.parseMap(mongoConfig);
-    String dataStoreType = entityServiceConfig.getDataStoreType();
-    return DatastoreProvider.getDatastore(dataStoreType, dataStoreConfig);
+    return DatastoreProvider.getDatastore(entityServiceConfig.getDataStoreConfig());
   }
 
   private static Map<String, Map<String, String>> getAttributesMap() {
