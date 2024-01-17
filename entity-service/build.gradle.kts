@@ -47,7 +47,7 @@ dependencies {
 }
 
 application {
-  mainClassName = "org.hypertrace.core.serviceframework.PlatformServiceLauncher"
+  mainClass.set("org.hypertrace.core.serviceframework.PlatformServiceLauncher")
 }
 
 // Config for gw run to be able to run this locally. Just execute gw run here on Intellij or on the console.
