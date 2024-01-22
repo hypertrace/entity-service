@@ -8,7 +8,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 import org.hypertrace.core.documentstore.CloseableIterator;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.Filter;
@@ -32,7 +31,7 @@ public class EntityFetcher {
 
   public List<Entity> getEntitiesByDocIds(String tenantId, Collection<String> docIds)
       throws IOException {
-    return query(buildExistingEntitiesByDocIdQuery(tenantId, docIds)).collect(toUnmodifiableList());
+    return query(buildExistingEntitiesByDocIdQuery(tenantId, docIds));
   }
 
   public List<Entity> getEntitiesByEntityIds(
@@ -40,18 +39,18 @@ public class EntityFetcher {
     if (entityIds.isEmpty()) {
       return Collections.emptyList();
     }
-    return query(buildExistingEntitiesByEntityIdQuery(tenantId, entityIds))
-        .collect(toUnmodifiableList());
+    return query(buildExistingEntitiesByEntityIdQuery(tenantId, entityIds));
   }
 
-  public Stream<Entity> query(org.hypertrace.core.documentstore.Query query) throws IOException {
+  public List<Entity> query(org.hypertrace.core.documentstore.Query query) throws IOException {
     final CloseableIterator<Document> iterator = this.entitiesCollection.search(query);
     try {
       return Streams.stream(iterator)
           .map(this::entityFromDocument)
           .flatMap(Optional::stream)
           .map(Entity::toBuilder)
-          .map(Entity.Builder::build);
+          .map(Entity.Builder::build)
+          .collect(toUnmodifiableList());
     } catch (final Exception e) {
       iterator.close();
       throw e;
