@@ -320,7 +320,7 @@ public class EntityDataServiceImpl extends EntityDataServiceImplBase {
               entityChangeEventGenerator.sendDeleteNotification(requestContext, List.of(entity));
             });
       } else {
-        responseObserver.onError(new RuntimeException("Could not delete the entity."));
+        responseObserver.onError(new RuntimeException("Could not delete the entity"));
       }
     } catch (final Exception e) {
       LOG.error("Unknown error occurred", e);
