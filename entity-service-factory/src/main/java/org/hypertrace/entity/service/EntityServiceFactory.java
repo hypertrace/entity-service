@@ -11,13 +11,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.DatastoreProvider;
-import org.hypertrace.core.serviceframework.docstore.metrics.DocStoreMetricsRegistry;
 import org.hypertrace.core.serviceframework.grpc.GrpcPlatformService;
 import org.hypertrace.core.serviceframework.grpc.GrpcPlatformServiceFactory;
 import org.hypertrace.core.serviceframework.grpc.GrpcServiceContainerEnvironment;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl;
 import org.hypertrace.entity.metric.EntityCounterMetricSender;
+import org.hypertrace.entity.metric.EntityMetricsReporter;
 import org.hypertrace.entity.query.service.EntityQueryServiceImpl;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorFactory;
@@ -39,9 +39,8 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
     EntityServiceDataStoreConfig entityServiceDatastoreConfig =
         new EntityServiceDataStoreConfig(config);
     datastore = DatastoreProvider.getDatastore(entityServiceDatastoreConfig.getDataStoreConfig());
-    new DocStoreMetricsRegistry(datastore)
-        .withPlatformLifecycle(grpcServiceContainerEnvironment.getLifecycle())
-        .monitor();
+
+    new EntityMetricsReporter(datastore, grpcServiceContainerEnvironment.getLifecycle()).monitor();
     grpcServiceContainerEnvironment.getLifecycle().shutdownComplete().thenRun(datastore::close);
 
     EntityAttributeMapping entityAttributeMapping =
