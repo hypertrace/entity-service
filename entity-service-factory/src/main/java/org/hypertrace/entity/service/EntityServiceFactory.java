@@ -17,6 +17,7 @@ import org.hypertrace.core.serviceframework.grpc.GrpcServiceContainerEnvironment
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl;
 import org.hypertrace.entity.metric.EntityCounterMetricSender;
+import org.hypertrace.entity.metric.EntityMetricsReporter;
 import org.hypertrace.entity.query.service.EntityQueryServiceImpl;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.change.event.impl.EntityChangeEventGeneratorFactory;
@@ -39,6 +40,9 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
         new EntityServiceDataStoreConfig(config);
     datastore = DatastoreProvider.getDatastore(entityServiceDatastoreConfig.getDataStoreConfig());
     grpcServiceContainerEnvironment.getLifecycle().shutdownComplete().thenRun(datastore::close);
+
+    EntityMetricsReporter entityMetricsReporter = new EntityMetricsReporter(datastore);
+    entityMetricsReporter.monitor();
 
     EntityAttributeMapping entityAttributeMapping =
         new EntityAttributeMapping(config, grpcServiceContainerEnvironment.getChannelRegistry());
