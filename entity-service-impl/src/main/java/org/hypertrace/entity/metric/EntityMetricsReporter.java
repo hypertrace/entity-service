@@ -9,7 +9,6 @@ import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.expression.impl.AggregateExpression;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
-import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
 import org.hypertrace.core.documentstore.model.config.CustomMetricConfig;
@@ -70,12 +69,10 @@ public class EntityMetricsReporter {
   private Filter getFilter() {
     return Filter.builder()
         .expression(
-            LogicalExpression.and(
-                List.of(
-                    RelationalExpression.of(
-                        IdentifierExpression.of(ENTITY_TYPE_ENTITY_PATH),
-                        RelationalOperator.EQ,
-                        ConstantExpression.of(EntityType.API.name())))))
+            RelationalExpression.of(
+                IdentifierExpression.of(ENTITY_TYPE_ENTITY_PATH),
+                RelationalOperator.EQ,
+                ConstantExpression.of(EntityType.API.name())))
         .build();
   }
 }
