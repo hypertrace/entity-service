@@ -25,14 +25,17 @@ public class EntityMetricsReporter {
   private static final String ALL_API_COUNT_METRIC_NAME = "all.api.entities.count";
   private static final String RAW_ENTITIES_COLLECTION = "raw_entities";
   private static final String API_DISCOVERY_STATE_ENTITY_PATH =
-      "attributes.api_discovery_state.value.string";
+      "attributes.api_discovery_state" + ".value.string";
   private static final String TENANT_ID_ENTITY_PATH = "tenantId";
   private static final String ENTITY_TYPE_ENTITY_PATH = "entityType";
   private final DocStoreMetricsRegistry metricsRegistry;
 
   public EntityMetricsReporter(
       final Datastore datastore, final PlatformServiceLifecycle lifecycle) {
-    metricsRegistry = new DocStoreMetricsRegistry(datastore).withPlatformLifecycle(lifecycle);
+    metricsRegistry =
+        new DocStoreMetricsRegistry(datastore)
+            .withPlatformLifecycle(lifecycle)
+            .withCustomMetrics(apiCounterConfig);
   }
 
   public void monitor() {
