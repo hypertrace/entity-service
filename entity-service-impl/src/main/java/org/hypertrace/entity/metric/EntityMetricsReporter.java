@@ -17,6 +17,7 @@ import org.hypertrace.core.documentstore.query.Filter;
 import org.hypertrace.core.documentstore.query.Query;
 import org.hypertrace.core.serviceframework.docstore.metrics.DocStoreCustomMetricReportingConfig;
 import org.hypertrace.core.serviceframework.docstore.metrics.DocStoreMetricsRegistry;
+import org.hypertrace.core.serviceframework.spi.PlatformServiceLifecycle;
 import org.hypertrace.entity.v1.entitytype.EntityType;
 
 public class EntityMetricsReporter {
@@ -31,8 +32,9 @@ public class EntityMetricsReporter {
   private static final String UNDER_DISCOVERY = "UNDER_DISCOVERY";
   private final DocStoreMetricsRegistry metricsRegistry;
 
-  public EntityMetricsReporter(final Datastore datastore) {
-    metricsRegistry = new DocStoreMetricsRegistry(datastore).withCustomMetrics(apiCounterConfig);
+  public EntityMetricsReporter(
+      final Datastore datastore, final PlatformServiceLifecycle lifecycle) {
+    metricsRegistry = new DocStoreMetricsRegistry(datastore).withPlatformLifecycle(lifecycle);
   }
 
   public void monitor() {

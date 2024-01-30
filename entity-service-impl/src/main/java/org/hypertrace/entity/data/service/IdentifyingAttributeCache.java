@@ -6,12 +6,15 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Streams;
+import io.grpc.Status;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.hypertrace.core.documentstore.CloseableIterator;
 import org.hypertrace.core.documentstore.Collection;
 import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
@@ -48,11 +51,17 @@ public class IdentifyingAttributeCache {
         new Filter(
             Op.IN, EntityServiceConstants.TENANT_ID, TenantUtils.getTenantHierarchy(tenantId)));
 
-    return Streams.stream(entityTypesCollection.search(query))
-        .flatMap(this::buildEntityType)
-        .collect(
-            Collectors.toUnmodifiableMap(
-                EntityType::getName, this::getIdentifyingAttributesFromType));
+    try (final CloseableIterator<Document> iterator = entityTypesCollection.search(query)) {
+      return Streams.stream(iterator)
+          .flatMap(this::buildEntityType)
+          .collect(
+              Collectors.toUnmodifiableMap(
+                  EntityType::getName, this::getIdentifyingAttributesFromType));
+    } catch (final IOException e) {
+      throw Status.INTERNAL
+          .withDescription("Unable to fetch entity types for tenant: " + tenantId)
+          .asRuntimeException();
+    }
   }
 
   private Stream<EntityType> buildEntityType(Document doc) {
