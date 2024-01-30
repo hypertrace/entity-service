@@ -43,9 +43,6 @@ public class EntityServiceFactory implements GrpcPlatformServiceFactory {
     new EntityMetricsReporter(datastore, grpcServiceContainerEnvironment.getLifecycle()).monitor();
     grpcServiceContainerEnvironment.getLifecycle().shutdownComplete().thenRun(datastore::close);
 
-    EntityMetricsReporter entityMetricsReporter = new EntityMetricsReporter(datastore);
-    entityMetricsReporter.monitor();
-
     EntityAttributeMapping entityAttributeMapping =
         new EntityAttributeMapping(config, grpcServiceContainerEnvironment.getChannelRegistry());
     EntityChangeEventGenerator entityChangeEventGenerator =

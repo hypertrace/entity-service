@@ -28,8 +28,6 @@ public class EntityMetricsReporter {
       "attributes.api_discovery_state.value.string";
   private static final String TENANT_ID_ENTITY_PATH = "tenantId";
   private static final String ENTITY_TYPE_ENTITY_PATH = "entityType";
-  private static final String DISCOVERED = "DISCOVERED";
-  private static final String UNDER_DISCOVERY = "UNDER_DISCOVERY";
   private final DocStoreMetricsRegistry metricsRegistry;
 
   public EntityMetricsReporter(
@@ -55,12 +53,13 @@ public class EntityMetricsReporter {
                               .setFilter(getFilter())
                               .addSelection(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
                               .addSelection(
-                                  IdentifierExpression.of(ENTITY_TYPE_ENTITY_PATH), "entity_type")
-                              .addSelection(
                                   AggregateExpression.of(COUNT, ConstantExpression.of(1)),
                                   VALUE_KEY)
+                              .addSelection(
+                                  IdentifierExpression.of(API_DISCOVERY_STATE_ENTITY_PATH))
                               .addAggregation(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
-                              .addAggregation(IdentifierExpression.of(ENTITY_TYPE_ENTITY_PATH))
+                              .addAggregation(
+                                  IdentifierExpression.of(API_DISCOVERY_STATE_ENTITY_PATH))
                               .build())
                       .build())
               .build());
@@ -73,11 +72,7 @@ public class EntityMetricsReporter {
                     RelationalExpression.of(
                         IdentifierExpression.of(ENTITY_TYPE_ENTITY_PATH),
                         RelationalOperator.EQ,
-                        ConstantExpression.of(EntityType.API.name())),
-                    RelationalExpression.of(
-                        IdentifierExpression.of(API_DISCOVERY_STATE_ENTITY_PATH),
-                        RelationalOperator.IN,
-                        ConstantExpression.ofStrings(List.of(UNDER_DISCOVERY, DISCOVERED))))))
+                        ConstantExpression.of(EntityType.API.name())))))
         .build();
   }
 }
