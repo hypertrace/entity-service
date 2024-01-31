@@ -25,6 +25,7 @@ public class EntityMetricsReporter {
   private static final String RAW_ENTITIES_COLLECTION = "raw_entities";
   private static final String API_DISCOVERY_STATE_ENTITY_PATH =
       "attributes.api_discovery_state.value.string";
+  private static final String API_DISCOVERY = "discoveryState";
   private static final String TENANT_ID_ENTITY_PATH = "tenantId";
   private static final String ENTITY_TYPE_ENTITY_PATH = "entityType";
   private final DocStoreMetricsRegistry metricsRegistry;
@@ -58,7 +59,8 @@ public class EntityMetricsReporter {
                                   AggregateExpression.of(COUNT, ConstantExpression.of(1)),
                                   VALUE_KEY)
                               .addSelection(
-                                  IdentifierExpression.of(API_DISCOVERY_STATE_ENTITY_PATH))
+                                  IdentifierExpression.of(API_DISCOVERY_STATE_ENTITY_PATH),
+                                  API_DISCOVERY)
                               .addAggregation(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
                               .addAggregation(
                                   IdentifierExpression.of(API_DISCOVERY_STATE_ENTITY_PATH))
