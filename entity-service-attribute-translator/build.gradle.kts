@@ -12,8 +12,8 @@ dependencies {
   implementation("com.typesafe:config:1.4.2")
   implementation("org.slf4j:slf4j-api:1.7.30")
 
-  annotationProcessor("org.projectlombok:lombok:1.18.18")
-  compileOnly("org.projectlombok:lombok:1.18.18")
+  annotationProcessor("org.projectlombok:lombok:1.18.30")
+  compileOnly("org.projectlombok:lombok:1.18.30")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   testImplementation("org.mockito:mockito-core:3.8.0")

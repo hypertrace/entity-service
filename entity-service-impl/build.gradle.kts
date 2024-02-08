@@ -9,8 +9,8 @@ dependencies {
   api(project(":entity-service-attribute-translator"))
   api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.62")
 
-  annotationProcessor("org.projectlombok:lombok:1.18.22")
-  compileOnly("org.projectlombok:lombok:1.18.18")
+  annotationProcessor("org.projectlombok:lombok:1.18.30")
+  compileOnly("org.projectlombok:lombok:1.18.30")
 
   implementation("org.hypertrace.core.documentstore:document-store:0.7.55")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.12.6")
@@ -32,8 +32,8 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
-  testImplementation("org.mockito:mockito-core:3.8.0")
-  testImplementation("org.mockito:mockito-junit-jupiter:3.8.0")
+  testImplementation("org.mockito:mockito-core:5.8.0")
+  testImplementation("org.mockito:mockito-junit-jupiter:5.8.0")
   testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:2.17.1")
 }
 
