@@ -34,7 +34,7 @@ dependencies {
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   testImplementation("org.mockito:mockito-core:5.8.0")
   testImplementation("org.mockito:mockito-junit-jupiter:5.8.0")
-  testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:2.17.1")
+  testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:2.20.0")
 }
 
 tasks.test {
