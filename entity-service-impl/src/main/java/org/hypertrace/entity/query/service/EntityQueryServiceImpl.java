@@ -113,6 +113,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private static final DocumentParser DOCUMENT_PARSER = new DocumentParser();
   private static final String CHUNK_SIZE_CONFIG = "entity.query.service.response.chunk.size";
   private static final String ENTITY_IDS_DELETE_LIMIT_CONFIG = "entity.delete.limit";
+  private static final String MAX_STRING_LENGTH_FOR_UPDATE_CONFIG =
+      "entity.query.service.max.string.length.for.update";
 
   private static final int DEFAULT_CHUNK_SIZE = 10_000;
   private static final String ARRAY_VALUE_PATH_SUFFIX =
@@ -125,7 +127,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
                   .findFieldByNumber(VALUES_FIELD_NUMBER)
                   .getJsonName())
           .collect(joining("."));
-  private static final int MAX_STRING_LENGTH_FOR_UPDATE = 1000;
 
   private final Collection entitiesCollection;
   private final EntityQueryConverter entityQueryConverter;
@@ -138,6 +139,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   private final EntityAttributeChangeEvaluator entityAttributeChangeEvaluator;
   private final EntityCounterMetricSender entityCounterMetricSender;
   private final EntityNormalizer entityNormalizer;
+  private final int maxStringLengthForUpdate;
 
   public EntityQueryServiceImpl(
       Datastore datastore,
@@ -159,7 +161,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             : config.getInt(CHUNK_SIZE_CONFIG),
         config.hasPath(ENTITY_IDS_DELETE_LIMIT_CONFIG)
             ? config.getInt(ENTITY_IDS_DELETE_LIMIT_CONFIG)
-            : 10000);
+            : 10000,
+        config.hasPath(MAX_STRING_LENGTH_FOR_UPDATE_CONFIG)
+            ? config.getInt(MAX_STRING_LENGTH_FOR_UPDATE_CONFIG)
+            : 5000);
   }
 
   public EntityQueryServiceImpl(
@@ -171,7 +176,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityCounterMetricSender entityCounterMetricSender,
       Channel entityTypeChannel,
       int chunkSize,
-      int maxEntitiesToDelete) {
+      int maxEntitiesToDelete,
+      int maxStringLengthForUpdate) {
     this(
         entitiesCollection,
         datastore,
@@ -182,7 +188,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         new EntityFetcher(entitiesCollection, DOCUMENT_PARSER),
         entityTypeChannel,
         chunkSize,
-        maxEntitiesToDelete);
+        maxEntitiesToDelete,
+        maxStringLengthForUpdate);
   }
 
   EntityQueryServiceImpl(
@@ -195,7 +202,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityFetcher entityFetcher,
       Channel entityTypeChannel,
       int chunkSize,
-      int maxEntitiesToDelete) {
+      int maxEntitiesToDelete,
+      int maxStringLengthForUpdate) {
     this.entitiesCollection = entitiesCollection;
     this.entityAttributeMapping = entityAttributeMapping;
     this.entityQueryConverter = new EntityQueryConverter(entityAttributeMapping);
@@ -210,6 +218,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     IdentifyingAttributeCache identifyingAttributeCache = new IdentifyingAttributeCache(datastore);
     this.entityNormalizer =
         new EntityNormalizer(entityTypeClient, new EntityIdGenerator(), identifyingAttributeCache);
+    this.maxStringLengthForUpdate = maxStringLengthForUpdate;
   }
 
   @Override
@@ -745,12 +754,12 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     if (anyStringUpdateViolatesLengthConstraint(request)) {
       LOG.warn(
           String.format(
-              "String update value exceeded %d characters", MAX_STRING_LENGTH_FOR_UPDATE));
+              "String update value exceeded %d characters", this.maxStringLengthForUpdate));
       responseObserver.onError(
           Status.INVALID_ARGUMENT
               .withDescription(
                   String.format(
-                      "Update value too long (> %d characters)", MAX_STRING_LENGTH_FOR_UPDATE))
+                      "Update value too long (> %d characters)", this.maxStringLengthForUpdate))
               .asException());
     }
 
@@ -991,7 +1000,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         .map(LiteralConstant::getValue)
         .flatMap(this::getStringStream)
         .map(String::length)
-        .anyMatch(length -> length > MAX_STRING_LENGTH_FOR_UPDATE);
+        .anyMatch(length -> length > this.maxStringLengthForUpdate);
   }
 
   private Stream<String> getStringStream(final Value value) {

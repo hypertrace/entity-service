@@ -19,7 +19,7 @@ dependencies {
     implementation("org.glassfish.jersey.core:jersey-common:2.34") {
       because("https://snyk.io/vuln/SNYK-JAVA-ORGGLASSFISHJERSEYCORE-1255637")
     }
-    implementation("org.apache.commons:commons-compress:1.21") {
+    implementation("org.apache.commons:commons-compress:1.26") {
       because("Multiple vulnerabilities")
     }
     runtimeOnly("org.jetbrains.kotlin:kotlin-stdlib:1.6.21") {
@@ -28,7 +28,7 @@ dependencies {
   }
 
   runtimeOnly("io.confluent:kafka-protobuf-serializer")
-  implementation(platform("org.hypertrace.core.kafkastreams.framework:kafka-bom:0.4.2"))
+  implementation(platform("org.hypertrace.core.kafkastreams.framework:kafka-bom:0.4.7"))
 
   annotationProcessor("org.projectlombok:lombok:1.18.18")
   compileOnly("org.projectlombok:lombok:1.18.18")

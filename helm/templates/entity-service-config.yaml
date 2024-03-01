@@ -44,6 +44,7 @@ data:
         schema.registry.url = "http://schema-registry-service:8081"
       }
     }
+    entity.query.service.max.string.length.for.update = {{ .Values.entityQueryService.maxStringLengthForUpdate }}
   {{- if .Values.attributes }}
     entity.service.attributeMap = [
   {{- range $i, $v := .Values.attributes }}

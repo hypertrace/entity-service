@@ -137,7 +137,8 @@ public class EntityQueryServiceImplTest {
                       entityFetcher,
                       mock(Channel.class),
                       1,
-                      1000);
+                      1000,
+                      5000);
 
               eqs.update(null, mockResponseObserver);
 
@@ -167,7 +168,8 @@ public class EntityQueryServiceImplTest {
                       entityFetcher,
                       mock(Channel.class),
                       1,
-                      1000);
+                      1000,
+                      5000);
 
               eqs.update(EntityUpdateRequest.newBuilder().build(), mockResponseObserver);
 
@@ -198,7 +200,8 @@ public class EntityQueryServiceImplTest {
                       entityFetcher,
                       mock(Channel.class),
                       1,
-                      1000);
+                      1000,
+                      5000);
 
               eqs.update(
                   EntityUpdateRequest.newBuilder().setEntityType(TEST_ENTITY_TYPE).build(),
@@ -231,7 +234,8 @@ public class EntityQueryServiceImplTest {
                       entityFetcher,
                       mock(Channel.class),
                       1,
-                      1000);
+                      1000,
+                      5000);
 
               eqs.update(
                   EntityUpdateRequest.newBuilder()
@@ -293,7 +297,8 @@ public class EntityQueryServiceImplTest {
                       entityFetcher,
                       mock(Channel.class),
                       1,
-                      1000);
+                      1000,
+                      5000);
               eqs.update(updateRequest, mockResponseObserver);
               return null;
             });
@@ -330,7 +335,8 @@ public class EntityQueryServiceImplTest {
                         entityFetcher,
                         mock(Channel.class),
                         1,
-                        1000);
+                        1000,
+                        5000);
 
                 eqs.bulkUpdate(null, mockResponseObserver);
 
@@ -361,7 +367,8 @@ public class EntityQueryServiceImplTest {
                         entityFetcher,
                         mock(Channel.class),
                         1,
-                        1000);
+                        1000,
+                        5000);
 
                 eqs.bulkUpdate(BulkEntityUpdateRequest.newBuilder().build(), mockResponseObserver);
 
@@ -392,7 +399,8 @@ public class EntityQueryServiceImplTest {
                         entityFetcher,
                         mock(Channel.class),
                         1,
-                        1000);
+                        1000,
+                        5000);
 
                 eqs.bulkUpdate(
                     BulkEntityUpdateRequest.newBuilder().setEntityType(TEST_ENTITY_TYPE).build(),
@@ -432,7 +440,8 @@ public class EntityQueryServiceImplTest {
                         entityFetcher,
                         mock(Channel.class),
                         1,
-                        1000);
+                        1000,
+                        5000);
                 eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
                 return null;
               });
@@ -478,7 +487,8 @@ public class EntityQueryServiceImplTest {
                         entityFetcher,
                         mock(Channel.class),
                         1,
-                        1000);
+                        1000,
+                        5000);
                 eqs.bulkUpdate(bulkUpdateRequest, mockResponseObserver);
                 return null;
               });
@@ -518,7 +528,8 @@ public class EntityQueryServiceImplTest {
                         entityFetcher,
                         mock(Channel.class),
                         1,
-                        1000);
+                        1000,
+                        5000);
 
                 eqs.bulkUpdateAllMatchingFilter(null, mockResponseObserver);
 
@@ -551,7 +562,8 @@ public class EntityQueryServiceImplTest {
                         entityFetcher,
                         mock(Channel.class),
                         1,
-                        1000);
+                        1000,
+                        5000);
 
                 eqs.bulkUpdateAllMatchingFilter(
                     BulkUpdateAllMatchingFilterRequest.newBuilder().build(), mockResponseObserver);
@@ -588,7 +600,8 @@ public class EntityQueryServiceImplTest {
                         entityFetcher,
                         mock(Channel.class),
                         1,
-                        1000);
+                        1000,
+                        5000);
                 eqs.bulkUpdateAllMatchingFilter(bulkUpdateRequest, mockResponseObserver);
 
                 verify(mockResponseObserver, times(1))
@@ -687,7 +700,8 @@ public class EntityQueryServiceImplTest {
                         entityFetcher,
                         mock(Channel.class),
                         1,
-                        1000);
+                        1000,
+                        5000);
                 eqs.bulkUpdateAllMatchingFilter(bulkUpdateRequest, mockResponseObserver);
                 return null;
               });
@@ -726,7 +740,8 @@ public class EntityQueryServiceImplTest {
                       entityFetcher,
                       mock(Channel.class),
                       1,
-                      1000);
+                      1000,
+                      5000);
 
               eqs.execute(null, mockResponseObserver);
 
@@ -802,7 +817,8 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       mock(Channel.class),
                       1,
-                      1000);
+                      1000,
+                      5000);
 
               eqs.execute(request, mockResponseObserver);
               return null;
@@ -893,7 +909,8 @@ public class EntityQueryServiceImplTest {
                       new EntityCounterMetricSender(),
                       mock(Channel.class),
                       2,
-                      1000);
+                      1000,
+                      5000);
 
               eqs.execute(request, mockResponseObserver);
               return null;
@@ -947,7 +964,8 @@ public class EntityQueryServiceImplTest {
                       entityFetcher,
                       mock(Channel.class),
                       1,
-                      1000);
+                      1000,
+                      5000);
               eqs.bulkUpdateEntityArrayAttribute(request, mockResponseObserver);
               return null;
             });
@@ -1020,7 +1038,8 @@ public class EntityQueryServiceImplTest {
                       entityFetcher,
                       mock(Channel.class),
                       100,
-                      1000);
+                      1000,
+                      5000);
 
               eqs.deleteEntities(request, mockResponseObserver);
             });
@@ -1093,7 +1112,8 @@ public class EntityQueryServiceImplTest {
                       entityFetcher,
                       mock(Channel.class),
                       100,
-                      1000);
+                      1000,
+                      5000);
 
               eqs.execute(request, mockResponseObserver);
             });
@@ -1140,7 +1160,8 @@ public class EntityQueryServiceImplTest {
               entityFetcher,
               mock(Channel.class),
               1,
-              1000);
+              1000,
+              5000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
 
       Context.current()
@@ -1186,7 +1207,8 @@ public class EntityQueryServiceImplTest {
               entityFetcher,
               mock(Channel.class),
               1,
-              1000);
+              1000,
+              5000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
 
       when(entitiesCollection.total(any())).thenReturn(123L);
