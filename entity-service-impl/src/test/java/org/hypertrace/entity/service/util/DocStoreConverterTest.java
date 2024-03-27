@@ -892,12 +892,6 @@ public class DocStoreConverterTest {
         () -> {
           createAndTransformQuery(Operator.UNDEFINED);
         });
-    // There's currently no op for NOT_IN
-    Assertions.assertThrows(
-        IllegalArgumentException.class,
-        () -> {
-          createAndTransformQuery(Operator.NOT_IN);
-        });
   }
 
   private void testFilterOpConversionForEntityServiceOp(

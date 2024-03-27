@@ -420,6 +420,7 @@ public class DocStoreConverter {
       case NOT_EXISTS:
         return Op.NOT_EXISTS;
       case NOT_IN:
+        return Op.NOT_IN;
       default:
         throw new IllegalArgumentException(
             String.format("Operator conversion is not supported for: %s", operator));
