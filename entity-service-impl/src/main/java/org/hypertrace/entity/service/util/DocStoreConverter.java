@@ -315,7 +315,7 @@ public class DocStoreConverter {
                       OBJECT_MAPPER.readTree(JSONFORMAT_PRINTER.print(v)), Map.class));
             }
             filter.setValue(listNodes);
-          } else if (filter.getOp().equals(Op.IN)) {
+          } else if (filter.getOp().equals(Op.IN) || filter.getOp().equals(Op.NOT_IN)) {
             List<Object> listNodes = new ArrayList<>();
             for (AttributeValue v : attributeValue.getValueList().getValuesList()) {
               listNodes.add(getValue(v.getValue()));
@@ -323,7 +323,7 @@ public class DocStoreConverter {
             filter.setValue(listNodes);
           } else {
             throw new UnsupportedOperationException(
-                "Only CONTAINS, EQ and IN conditions supported for attribute values of type list");
+                "Only CONTAINS, EQ, IN and NOT_IN conditions supported for attribute values of type list");
           }
         }
         break;
@@ -420,6 +420,7 @@ public class DocStoreConverter {
       case NOT_EXISTS:
         return Op.NOT_EXISTS;
       case NOT_IN:
+        return Op.NOT_IN;
       default:
         throw new IllegalArgumentException(
             String.format("Operator conversion is not supported for: %s", operator));
