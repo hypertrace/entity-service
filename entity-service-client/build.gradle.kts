@@ -14,7 +14,7 @@ dependencies {
   api(project(":entity-service-change-event-api"))
   api("com.typesafe:config:1.4.1")
 
-  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.12.6")
+  implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.13.1")
   implementation("org.slf4j:slf4j-api:1.7.30")
   implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.71")
 
