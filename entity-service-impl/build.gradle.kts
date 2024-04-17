@@ -29,7 +29,7 @@ dependencies {
   implementation("com.google.guava:guava:32.1.2-jre")
 
   implementation("org.slf4j:slf4j-api:1.7.30")
-  implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+  implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   testImplementation("org.mockito:mockito-core:3.8.0")
