@@ -6,6 +6,7 @@ import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableList;
+import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.EQ;
 import static org.hypertrace.core.documentstore.expression.operators.RelationalOperator.IN;
 import static org.hypertrace.core.documentstore.model.options.ReturnDocumentType.NONE;
 import static org.hypertrace.entity.data.service.v1.AttributeValue.VALUE_LIST_FIELD_NUMBER;
@@ -343,7 +344,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       // Finally, return the selections
       List<Document> documents =
           getProjectedDocuments(
-              request.getEntityIdsList(), request.getSelectionList(), requestContext);
+              maybeTenantId.get(),
+              request.getEntityIdsList(),
+              request.getSelectionList(),
+              requestContext);
 
       responseObserver.onNext(
           convertDocumentsToResultSetChunk(documents, request.getSelectionList()));
@@ -532,6 +536,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
   }
 
   private List<Document> getProjectedDocuments(
+      final String tenantId,
       final Iterable<String> entityIds,
       final List<Expression> selectionList,
       final RequestContext requestContext)
