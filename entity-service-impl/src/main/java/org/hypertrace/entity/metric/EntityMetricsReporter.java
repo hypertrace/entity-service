@@ -28,7 +28,8 @@ public class EntityMetricsReporter {
   private static final String API_DISCOVERY_STATE_ENTITY_PATH =
       "attributes.api_discovery_state.value.string";
   private static final String API_CATEGORIES_ENTITY_PATH = "attributes.categories.valueList.values";
-  private static final String API_CATEGORY_ENTITY_PATH = "attributes.categories.valueList.values.value.string";
+  private static final String API_CATEGORY_ENTITY_PATH =
+      "attributes.categories.valueList.values.value.string";
   private static final String API_DISCOVERY_STATE = "apiDiscoveryState";
   private static final String API_CATEGORY = "category";
   private static final String TENANT_ID_ENTITY_PATH = "tenantId";
