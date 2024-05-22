@@ -29,7 +29,7 @@ public class EntityMetricsReporter {
       "attributes.api_discovery_state.value.string";
   private static final String API_CATEGORIES_ENTITY_PATH = "attributes.categories.value";
   private static final String API_DISCOVERY_STATE = "apiDiscoveryState";
-  private static final String API_CATEGORIES = "categories";
+  private static final String API_CATEGORY = "category";
   private static final String TENANT_ID_ENTITY_PATH = "tenantId";
   private static final String ENTITY_TYPE_ENTITY_PATH = "entityType";
   private final DocStoreMetricsRegistry metricsRegistry;
@@ -87,8 +87,7 @@ public class EntityMetricsReporter {
                                       .build())
                               .addSelection(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
                               .addSelection(
-                                  IdentifierExpression.of(API_CATEGORIES_ENTITY_PATH),
-                                  API_CATEGORIES)
+                                  IdentifierExpression.of(API_CATEGORIES_ENTITY_PATH), API_CATEGORY)
                               .addSelection(
                                   AggregateExpression.of(COUNT, ConstantExpression.of(1)),
                                   VALUE_KEY)
