@@ -10,6 +10,7 @@ import org.hypertrace.core.documentstore.expression.impl.AggregateExpression;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
+import org.hypertrace.core.documentstore.expression.impl.UnnestExpression;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
 import org.hypertrace.core.documentstore.model.config.CustomMetricConfig;
 import org.hypertrace.core.documentstore.query.Filter;
@@ -22,10 +23,13 @@ import org.hypertrace.entity.v1.entitytype.EntityType;
 public class EntityMetricsReporter {
 
   private static final String API_COUNT_METRIC_NAME = "api.entities.count";
+  private static final String API_CATEGORY_METRIC_NAME = "api.categories.count";
   private static final String RAW_ENTITIES_COLLECTION = "raw_entities";
   private static final String API_DISCOVERY_STATE_ENTITY_PATH =
       "attributes.api_discovery_state.value.string";
+  private static final String API_CATEGORIES_ENTITY_PATH = "attributes.categories.value";
   private static final String API_DISCOVERY_STATE = "apiDiscoveryState";
+  private static final String API_CATEGORIES = "categories";
   private static final String TENANT_ID_ENTITY_PATH = "tenantId";
   private static final String ENTITY_TYPE_ENTITY_PATH = "entityType";
   private final DocStoreMetricsRegistry metricsRegistry;
@@ -64,6 +68,32 @@ public class EntityMetricsReporter {
                               .addAggregation(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
                               .addAggregation(
                                   IdentifierExpression.of(API_DISCOVERY_STATE_ENTITY_PATH))
+                              .build())
+                      .build())
+              .build(),
+          DocStoreCustomMetricReportingConfig.builder()
+              .reportingInterval(Duration.ofHours(6))
+              .config(
+                  CustomMetricConfig.builder()
+                      .metricName(API_CATEGORY_METRIC_NAME)
+                      .collectionName(RAW_ENTITIES_COLLECTION)
+                      .query(
+                          Query.builder()
+                              .setFilter(getFilter())
+                              .addFromClause(
+                                  UnnestExpression.builder()
+                                      .identifierExpression(
+                                          IdentifierExpression.of(API_CATEGORIES_ENTITY_PATH))
+                                      .build())
+                              .addSelection(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
+                              .addSelection(
+                                  IdentifierExpression.of(API_CATEGORIES_ENTITY_PATH),
+                                  API_CATEGORIES)
+                              .addSelection(
+                                  AggregateExpression.of(COUNT, ConstantExpression.of(1)),
+                                  VALUE_KEY)
+                              .addAggregation(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
+                              .addAggregation(IdentifierExpression.of(API_CATEGORIES_ENTITY_PATH))
                               .build())
                       .build())
               .build());
