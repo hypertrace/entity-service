@@ -37,15 +37,16 @@ import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.Filter;
 import org.hypertrace.core.documentstore.JSONDocument;
-import org.hypertrace.core.documentstore.Query;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
+import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
 import org.hypertrace.core.documentstore.expression.impl.RelationalExpression;
 import org.hypertrace.core.documentstore.expression.operators.RelationalOperator;
 import org.hypertrace.core.documentstore.model.options.UpdateOptions;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentUpdate;
 import org.hypertrace.core.documentstore.model.subdoc.SubDocumentValue;
+import org.hypertrace.core.documentstore.query.Query;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.attribute.translator.EntityAttributeChangeEvaluator;
 import org.hypertrace.entity.attribute.translator.EntityAttributeMapping;
@@ -1147,8 +1148,6 @@ public class EntityQueryServiceImplTest {
               .setFilter(org.hypertrace.entity.query.service.v1.Filter.getDefaultInstance())
               .build();
 
-      ArgumentCaptor<Query> docStoreQueryCaptor = ArgumentCaptor.forClass(Query.class);
-
       EntityQueryServiceImpl eqs =
           new EntityQueryServiceImpl(
               entitiesCollection,
@@ -1172,19 +1171,24 @@ public class EntityQueryServiceImplTest {
                 return null;
               });
 
-      verify(entitiesCollection, times(1)).total(docStoreQueryCaptor.capture());
-      Query query = docStoreQueryCaptor.getValue();
-      assertEquals(Filter.Op.AND, query.getFilter().getOp());
-      assertEquals(2, query.getFilter().getChildFilters().length);
-      // tenant id filter
-      assertEquals(Filter.Op.EQ, query.getFilter().getChildFilters()[0].getOp());
-      assertEquals("tenantId", query.getFilter().getChildFilters()[0].getFieldName());
-      assertEquals(TENANT_ID, query.getFilter().getChildFilters()[0].getValue());
-
-      // entity type filter
-      assertEquals(Filter.Op.EQ, query.getFilter().getChildFilters()[1].getOp());
-      assertEquals("entityType", query.getFilter().getChildFilters()[1].getFieldName());
-      assertEquals(TEST_ENTITY_TYPE, query.getFilter().getChildFilters()[1].getValue());
+      verify(entitiesCollection, times(1))
+          .count(
+              Query.builder()
+                  .setFilter(
+                      org.hypertrace.core.documentstore.query.Filter.builder()
+                          .expression(
+                              LogicalExpression.and(
+                                  List.of(
+                                      RelationalExpression.of(
+                                          IdentifierExpression.of("tenantId"),
+                                          RelationalOperator.EQ,
+                                          ConstantExpression.of(TENANT_ID)),
+                                      RelationalExpression.of(
+                                          IdentifierExpression.of("entityType"),
+                                          RelationalOperator.EQ,
+                                          ConstantExpression.of(TEST_ENTITY_TYPE)))))
+                          .build())
+                  .build());
     }
 
     @DisplayName("should send correct total response")
@@ -1211,7 +1215,7 @@ public class EntityQueryServiceImplTest {
               5000);
       StreamObserver<TotalEntitiesResponse> mockResponseObserver = mock(StreamObserver.class);
 
-      when(entitiesCollection.total(any())).thenReturn(123L);
+      when(entitiesCollection.count(any())).thenReturn(123L);
       Context.current()
           .withValue(RequestContext.CURRENT, mockRequestContextWithTenantId())
           .call(

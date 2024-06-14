@@ -62,7 +62,6 @@ import org.hypertrace.entity.data.service.IdentifyingAttributeCache;
 import org.hypertrace.entity.data.service.v1.AttributeValue;
 import org.hypertrace.entity.data.service.v1.AttributeValueList;
 import org.hypertrace.entity.data.service.v1.Entity;
-import org.hypertrace.entity.data.service.v1.Query;
 import org.hypertrace.entity.fetcher.EntityFetcher;
 import org.hypertrace.entity.metric.EntityCounterMetricSender;
 import org.hypertrace.entity.query.service.converter.AliasProvider;
@@ -131,7 +130,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           .collect(joining("."));
 
   private final Collection entitiesCollection;
-  private final EntityQueryConverter entityQueryConverter;
   private final EntityAttributeMapping entityAttributeMapping;
   private final int CHUNK_SIZE;
   private final Injector injector;
@@ -208,7 +206,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       int maxStringLengthForUpdate) {
     this.entitiesCollection = entitiesCollection;
     this.entityAttributeMapping = entityAttributeMapping;
-    this.entityQueryConverter = new EntityQueryConverter(entityAttributeMapping);
     this.CHUNK_SIZE = chunkSize;
     this.injector = Guice.createInjector(new ConverterModule(entityAttributeMapping));
     this.maxEntitiesToDelete = maxEntitiesToDelete;
@@ -667,11 +664,17 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             .build();
 
     // converting entity query request to entity data service query
-    Query query = entityQueryConverter.convertToEDSQuery(requestContext, entityQueryRequest);
+    org.hypertrace.core.documentstore.query.Query query;
+    try {
+      final Converter<EntityQueryRequest, org.hypertrace.core.documentstore.query.Query>
+          queryConverter = getQueryConverter();
+      query = queryConverter.convert(entityQueryRequest, requestContext);
+    } catch (Exception ex) {
+      responseObserver.onError(new ServiceException("Unable to parse query."));
+      return;
+    }
 
-    // TODO: Replace to use the new org.hypertrace.core.documentstore.query.Query DTO
-    long total =
-        entitiesCollection.total(DocStoreConverter.transform(tenantId.get(), query, emptyList()));
+    long total = entitiesCollection.count(query);
     responseObserver.onNext(TotalEntitiesResponse.newBuilder().setTotal(total).build());
     responseObserver.onCompleted();
   }
