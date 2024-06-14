@@ -12,10 +12,12 @@ import org.hypertrace.core.documentstore.query.SortingSpec;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.query.service.converter.accessor.ExpressionOneOfAccessor;
 import org.hypertrace.entity.query.service.converter.accessor.OneOfAccessor;
+import org.hypertrace.entity.query.service.converter.identifier.FunctionAliasProvider;
 import org.hypertrace.entity.query.service.converter.identifier.IdentifierAliasProvider;
 import org.hypertrace.entity.query.service.v1.ColumnIdentifier;
 import org.hypertrace.entity.query.service.v1.Expression;
 import org.hypertrace.entity.query.service.v1.Expression.ValueCase;
+import org.hypertrace.entity.query.service.v1.Function;
 import org.hypertrace.entity.query.service.v1.OrderByExpression;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,7 @@ class OrderByConverterTest {
   private Converter<List<OrderByExpression>, Sort> orderByConverter;
 
   private final AliasProvider<ColumnIdentifier> aliasProvider = new IdentifierAliasProvider();
+  private final AliasProvider<Function> functionAliasProvider = new FunctionAliasProvider();
   private final ColumnIdentifier columnIdentifier =
       ColumnIdentifier.newBuilder().setColumnName("Planet_Mars").build();
   private final IdentifierExpression identifierExpression = IdentifierExpression.of("Planet_Mars");
@@ -47,7 +50,8 @@ class OrderByConverterTest {
   @BeforeEach
   void setup() {
     OneOfAccessor<Expression, ValueCase> expressionAccessor = new ExpressionOneOfAccessor();
-    orderByConverter = new OrderByConverter(expressionAccessor, aliasProvider);
+    orderByConverter =
+        new OrderByConverter(expressionAccessor, aliasProvider, functionAliasProvider);
   }
 
   @Test
