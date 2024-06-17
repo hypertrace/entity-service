@@ -30,8 +30,8 @@ dependencies {
   runtimeOnly("io.confluent:kafka-protobuf-serializer")
   implementation(platform("org.hypertrace.core.kafkastreams.framework:kafka-bom:0.4.7"))
 
-  annotationProcessor("org.projectlombok:lombok:1.18.18")
-  compileOnly("org.projectlombok:lombok:1.18.18")
+  annotationProcessor("org.projectlombok:lombok:1.18.30")
+  compileOnly("org.projectlombok:lombok:1.18.30")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
   testImplementation("org.mockito:mockito-core:3.8.0")

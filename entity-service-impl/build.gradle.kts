@@ -9,8 +9,8 @@ dependencies {
   api(project(":entity-service-attribute-translator"))
   api("org.hypertrace.core.serviceframework:service-framework-spi:0.1.71")
 
-  annotationProcessor("org.projectlombok:lombok:1.18.22")
-  compileOnly("org.projectlombok:lombok:1.18.18")
+  annotationProcessor("org.projectlombok:lombok:1.18.30")
+  compileOnly("org.projectlombok:lombok:1.18.30")
 
   implementation("org.hypertrace.core.documentstore:document-store:0.7.59")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.13.1")
