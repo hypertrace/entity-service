@@ -2,7 +2,6 @@ package org.hypertrace.entity.query.service.converter;
 
 import static com.google.common.base.Suppliers.memoize;
 import static java.util.Collections.unmodifiableMap;
-import static org.hypertrace.core.documentstore.mongo.MongoUtils.encodeKey;
 import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.COLUMNIDENTIFIER;
 import static org.hypertrace.entity.query.service.v1.Expression.ValueCase.FUNCTION;
 import static org.hypertrace.entity.query.service.v1.SortOrder.ASC;
@@ -64,10 +63,11 @@ public class OrderByConverter implements Converter<List<OrderByExpression>, Sort
         alias = aliasProvider.getAlias((ColumnIdentifier) expression);
         break;
       case FUNCTION:
-        alias = getEncodedAlias(functionAliasProvider.getAlias((Function) expression));
+        alias = functionAliasProvider.getAlias((Function) expression);
         break;
       default:
-        throw new ConversionException("Unsupported expression type");
+        throw new ConversionException(
+            String.format("Unsupported expression type %s", innerExpression.getValueCase()));
     }
 
     final IdentifierExpression identifierExpression = IdentifierExpression.of(alias);
@@ -88,9 +88,5 @@ public class OrderByConverter implements Converter<List<OrderByExpression>, Sort
     map.put(DESC, SortOrder.DESC);
 
     return unmodifiableMap(map);
-  }
-
-  private String getEncodedAlias(final String alias) {
-    return encodeKey(alias);
   }
 }
