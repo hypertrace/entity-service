@@ -2,6 +2,7 @@ package org.hypertrace.entity.query.service.converter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.quality.Strictness.LENIENT;
 
 import java.util.List;
@@ -59,6 +60,32 @@ class OrderByConverterTest {
     Sort expected =
         Sort.builder().sortingSpec(SortingSpec.of(identifierExpression, SortOrder.ASC)).build();
     assertEquals(expected, orderByConverter.convert(List.of(orderByExpression), requestContext));
+  }
+
+  @Test
+  void testConvert_functionExpression() throws ConversionException {
+    IdentifierExpression aliasExpression = IdentifierExpression.of("agg_count");
+    OrderByExpression orderByExpressionWithAlias =
+        OrderByExpression.newBuilder()
+            .setExpression(
+                Expression.newBuilder()
+                    .setFunction(Function.newBuilder().setAlias("agg_count").build()))
+            .setOrder(org.hypertrace.entity.query.service.v1.SortOrder.ASC)
+            .build();
+
+    Sort expected =
+        Sort.builder().sortingSpec(SortingSpec.of(aliasExpression, SortOrder.ASC)).build();
+    assertEquals(
+        expected, orderByConverter.convert(List.of(orderByExpressionWithAlias), requestContext));
+
+    OrderByExpression orderByExpressionWithoutAlias =
+        OrderByExpression.newBuilder()
+            .setExpression(Expression.newBuilder().setFunction(Function.newBuilder().build()))
+            .setOrder(org.hypertrace.entity.query.service.v1.SortOrder.ASC)
+            .build();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> orderByConverter.convert(List.of(orderByExpressionWithoutAlias), requestContext));
   }
 
   @ParameterizedTest
