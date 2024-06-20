@@ -8,6 +8,7 @@ import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_INT64;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_MAP;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_TIMESTAMP;
 import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.ADD_TO_LIST_IF_ABSENT;
 import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.REMOVE_ALL_FROM_LIST;
 import static org.hypertrace.core.documentstore.model.subdoc.UpdateOperator.SET;
@@ -28,8 +29,10 @@ import static org.hypertrace.entity.query.service.v1.ValueType.LONG;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_ARRAY;
 import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
+import static org.hypertrace.entity.query.service.v1.ValueType.TIMESTAMP;
 
 import com.google.common.base.Joiner;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.inject.Inject;
@@ -49,19 +52,21 @@ import org.hypertrace.entity.query.service.v1.ValueType;
 
 @AllArgsConstructor(onConstructor_ = {@Inject})
 public class UpdateConverter implements Converter<AttributeUpdateOperation, SubDocumentUpdate> {
+
   private static final Joiner DOT_JOINER = Joiner.on(".");
 
-  private static final Map<ValueType, AttributeKind> VALUE_TYPE_TO_ATTRIBUTE_KIND_MAP =
+  private static final Map<ValueType, List<AttributeKind>> VALUE_TYPE_TO_ATTRIBUTE_KIND_MAP =
       Map.ofEntries(
-          entry(STRING, TYPE_STRING),
-          entry(LONG, TYPE_INT64),
-          entry(INT, TYPE_INT64),
-          entry(FLOAT, TYPE_DOUBLE),
-          entry(DOUBLE, TYPE_DOUBLE),
-          entry(BYTES, TYPE_BYTES),
-          entry(BOOL, TYPE_BOOL),
-          entry(STRING_ARRAY, TYPE_STRING_ARRAY),
-          entry(STRING_MAP, TYPE_STRING_MAP));
+          entry(STRING, List.of(TYPE_STRING)),
+          entry(LONG, List.of(TYPE_INT64, TYPE_TIMESTAMP)),
+          entry(INT, List.of(TYPE_INT64)),
+          entry(FLOAT, List.of(TYPE_DOUBLE)),
+          entry(DOUBLE, List.of(TYPE_DOUBLE)),
+          entry(BYTES, List.of(TYPE_BYTES)),
+          entry(BOOL, List.of(TYPE_BOOL)),
+          entry(TIMESTAMP, List.of(TYPE_TIMESTAMP)),
+          entry(STRING_ARRAY, List.of(TYPE_STRING_ARRAY)),
+          entry(STRING_MAP, List.of(TYPE_STRING_MAP)));
 
   private static final Map<AttributeUpdateOperator, UpdateOperator> OPERATOR_MAP =
       Map.ofEntries(
@@ -139,7 +144,7 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
       return;
     }
 
-    if (!attributeKind.equals(VALUE_TYPE_TO_ATTRIBUTE_KIND_MAP.get(valueType))) {
+    if (!VALUE_TYPE_TO_ATTRIBUTE_KIND_MAP.get(valueType).contains(attributeKind)) {
       throw new ConversionException(
           String.format(
               "Mismatching value type (%s) for attribute of type %s", valueType, attributeKind));
