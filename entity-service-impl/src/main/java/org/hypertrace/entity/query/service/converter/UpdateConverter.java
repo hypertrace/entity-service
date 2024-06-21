@@ -32,7 +32,8 @@ import static org.hypertrace.entity.query.service.v1.ValueType.STRING_MAP;
 import static org.hypertrace.entity.query.service.v1.ValueType.TIMESTAMP;
 
 import com.google.common.base.Joiner;
-import java.util.List;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Multimap;
 import java.util.Map;
 import java.util.Set;
 import javax.inject.Inject;
@@ -55,18 +56,20 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
 
   private static final Joiner DOT_JOINER = Joiner.on(".");
 
-  private static final Map<ValueType, List<AttributeKind>> VALUE_TYPE_TO_ATTRIBUTE_KIND_MAP =
-      Map.ofEntries(
-          entry(STRING, List.of(TYPE_STRING)),
-          entry(LONG, List.of(TYPE_INT64, TYPE_TIMESTAMP)),
-          entry(INT, List.of(TYPE_INT64)),
-          entry(FLOAT, List.of(TYPE_DOUBLE)),
-          entry(DOUBLE, List.of(TYPE_DOUBLE)),
-          entry(BYTES, List.of(TYPE_BYTES)),
-          entry(BOOL, List.of(TYPE_BOOL)),
-          entry(TIMESTAMP, List.of(TYPE_TIMESTAMP)),
-          entry(STRING_ARRAY, List.of(TYPE_STRING_ARRAY)),
-          entry(STRING_MAP, List.of(TYPE_STRING_MAP)));
+  private static final Multimap<ValueType, AttributeKind> VALUE_TYPE_TO_ATTRIBUTE_KIND_MAP =
+      new ImmutableMultimap.Builder<ValueType, AttributeKind>()
+          .put(entry(STRING, TYPE_STRING))
+          .put(entry(LONG, TYPE_INT64))
+          .put(entry(INT, TYPE_INT64))
+          .put(entry(FLOAT, TYPE_DOUBLE))
+          .put(entry(DOUBLE, TYPE_DOUBLE))
+          .put(entry(BYTES, TYPE_BYTES))
+          .put(entry(BOOL, TYPE_BOOL))
+          .put(entry(LONG, TYPE_TIMESTAMP))
+          .put(entry(TIMESTAMP, TYPE_TIMESTAMP))
+          .put(entry(STRING_ARRAY, TYPE_STRING_ARRAY))
+          .put(entry(STRING_MAP, TYPE_STRING_MAP))
+          .build();
 
   private static final Map<AttributeUpdateOperator, UpdateOperator> OPERATOR_MAP =
       Map.ofEntries(

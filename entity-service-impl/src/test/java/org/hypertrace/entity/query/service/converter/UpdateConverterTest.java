@@ -8,6 +8,7 @@ import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_DOUBLE
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_INT64;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING;
 import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_STRING_ARRAY;
+import static org.hypertrace.core.attribute.service.v1.AttributeKind.TYPE_TIMESTAMP;
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATION_UNSPECIFIED;
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_ADD_TO_LIST_IF_ABSENT;
 import static org.hypertrace.entity.query.service.v1.AttributeUpdateOperation.AttributeUpdateOperator.ATTRIBUTE_UPDATE_OPERATOR_REMOVE_FROM_LIST;
@@ -72,6 +73,30 @@ class UpdateConverterTest {
   void setUp() {
     updateConverter =
         new UpdateConverter(mockEntityAttributeMapping, new ValueHelper(new ValueOneOfAccessor()));
+  }
+
+  @Test
+  void testConvert_updateTimestamp_withValueTypeLong() throws Exception {
+    final AttributeUpdateOperation operation =
+        AttributeUpdateOperation.newBuilder()
+            .setAttribute(ColumnIdentifier.newBuilder().setColumnName("columnName"))
+            .setOperator(ATTRIBUTE_UPDATE_OPERATOR_SET)
+            .setValue(
+                LiteralConstant.newBuilder()
+                    .setValue(Value.newBuilder().setValueType(LONG).setLong(123)))
+            .build();
+    final RequestContext requestContext = new RequestContext();
+    final SubDocumentUpdate expectedResult =
+        SubDocumentUpdate.of(
+            "attributes.subDocPath",
+            SubDocumentValue.of(new JSONDocument("{\"value\":{\"long\":123}}")));
+    when(mockEntityAttributeMapping.getDocStorePathByAttributeId(requestContext, "columnName"))
+        .thenReturn(Optional.of("attributes.subDocPath"));
+    when(mockEntityAttributeMapping.getAttributeKind(requestContext, "columnName"))
+        .thenReturn(Optional.of(TYPE_TIMESTAMP));
+    final SubDocumentUpdate result = updateConverter.convert(operation, requestContext);
+
+    assertEquals(expectedResult, result);
   }
 
   @Test
