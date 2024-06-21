@@ -48,10 +48,9 @@ class EntityTypeCachingClient implements EntityTypeClient {
   }
 
   @Override
-  public Single<EntityType> get(String name) {
+  public Single<Optional<EntityType>> get(String name) {
     return this.getOrInvalidate(TenantBasedCacheKey.forCurrentContext())
-        .mapOptional(map -> Optional.ofNullable(map.get(name)))
-        .switchIfEmpty(Single.error(this.buildErrorForMissingType(name)));
+        .map(map -> Optional.ofNullable(map.get(name)));
   }
 
   private Single<Map<String, EntityType>> fetchTypes(TenantBasedCacheKey key) {

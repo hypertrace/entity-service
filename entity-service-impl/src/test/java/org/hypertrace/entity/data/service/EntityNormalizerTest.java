@@ -8,6 +8,7 @@ import io.reactivex.rxjava3.core.Single;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl.ErrorMessages;
@@ -26,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class EntityNormalizerTest {
+
   private static final String TENANT_ID = "tenant";
   private static final String V1_ENTITY_TYPE = "v1-entity";
   private static final String V2_ENTITY_TYPE = "v2-entity";
@@ -58,8 +60,7 @@ class EntityNormalizerTest {
   void throwsOnV1EntityTypeMissingIdAttr() {
     when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
         .thenReturn(List.of(V1_ID_ATTR));
-    when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new RuntimeException()));
+    when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE)).thenReturn(Single.just(Optional.empty()));
     Entity inputEntity = Entity.newBuilder().setEntityType(V1_ENTITY_TYPE).build();
 
     Exception exception =
@@ -67,7 +68,8 @@ class EntityNormalizerTest {
             IllegalArgumentException.class,
             () -> this.normalizer.normalize(TENANT_ID, inputEntity));
     assertEquals(
-        "Received and expected identifying attributes differ. Received: [] . Expected: [required-attr]",
+        "Received and expected identifying attributes differ. Received: [] . Expected: "
+            + "[required-attr]",
         exception.getMessage());
   }
 
@@ -79,8 +81,7 @@ class EntityNormalizerTest {
         .thenReturn("generated-id");
     when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
         .thenReturn(List.of(V1_ID_ATTR));
-    when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new RuntimeException()));
+    when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE)).thenReturn(Single.just(Optional.empty()));
     Entity inputEntity =
         Entity.newBuilder()
             .setEntityType(V1_ENTITY_TYPE)
@@ -99,7 +100,7 @@ class EntityNormalizerTest {
   @Test
   void throwsOnV2EntityMissingId() {
     when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
-        .thenReturn(Single.just(EntityType.getDefaultInstance()));
+        .thenReturn(Single.just(Optional.of(EntityType.getDefaultInstance())));
     Entity inputEntity = Entity.newBuilder().setEntityType(V2_ENTITY_TYPE).build();
 
     Exception exception =
@@ -116,8 +117,7 @@ class EntityNormalizerTest {
         .thenReturn("generated-id");
     when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
         .thenReturn(List.of(V1_ID_ATTR));
-    when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new RuntimeException()));
+    when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE)).thenReturn(Single.just(Optional.empty()));
     Entity inputEntity =
         Entity.newBuilder()
             .setEntityType(V1_ENTITY_TYPE)
@@ -136,7 +136,7 @@ class EntityNormalizerTest {
   @Test
   void normalizesV2EntityWithId() {
     when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
-        .thenReturn(Single.just(EntityType.getDefaultInstance()));
+        .thenReturn(Single.just(Optional.of(EntityType.getDefaultInstance())));
     Entity inputEntity =
         Entity.newBuilder().setEntityType(V2_ENTITY_TYPE).setEntityId("input-id").build();
 
@@ -147,7 +147,7 @@ class EntityNormalizerTest {
   @Test
   void returnsV2TypeKeyForV2Entity() {
     when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
-        .thenReturn(Single.just(EntityType.getDefaultInstance()));
+        .thenReturn(Single.just(Optional.of(EntityType.getDefaultInstance())));
 
     assertEquals(
         new EntityV2TypeDocKey(TENANT_ID, V2_ENTITY_TYPE, "id-in"),
@@ -161,8 +161,7 @@ class EntityNormalizerTest {
 
   @Test
   void returnsSimpleKeyForV1Entity() {
-    when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new RuntimeException()));
+    when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE)).thenReturn(Single.just(Optional.empty()));
 
     // Getting a key for a v1 entity when provided with direct id
     assertEquals(

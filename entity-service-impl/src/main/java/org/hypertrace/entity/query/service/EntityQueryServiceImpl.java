@@ -154,7 +154,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         entityChangeEventGenerator,
         new EntityAttributeChangeEvaluator(config, entityAttributeMapping),
         entityCounterMetricSender,
-        entityTypeChannel,
+        EntityTypeClient.builder(entityTypeChannel).build(),
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),
@@ -173,7 +173,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityChangeEventGenerator entityChangeEventGenerator,
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
       EntityCounterMetricSender entityCounterMetricSender,
-      Channel entityTypeChannel,
+      EntityTypeClient entityTypeClient,
       int chunkSize,
       int maxEntitiesToDelete,
       int maxStringLengthForUpdate) {
@@ -185,7 +185,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         entityAttributeChangeEvaluator,
         entityCounterMetricSender,
         new EntityFetcher(entitiesCollection, DOCUMENT_PARSER),
-        entityTypeChannel,
+        entityTypeClient,
         chunkSize,
         maxEntitiesToDelete,
         maxStringLengthForUpdate);
@@ -199,7 +199,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
       EntityCounterMetricSender entityCounterMetricSender,
       EntityFetcher entityFetcher,
-      Channel entityTypeChannel,
+      EntityTypeClient entityTypeClient,
       int chunkSize,
       int maxEntitiesToDelete,
       int maxStringLengthForUpdate) {
@@ -212,7 +212,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     this.entityFetcher = entityFetcher;
     this.entityAttributeChangeEvaluator = entityAttributeChangeEvaluator;
     this.entityCounterMetricSender = entityCounterMetricSender;
-    EntityTypeClient entityTypeClient = EntityTypeClient.builder(entityTypeChannel).build();
     IdentifyingAttributeCache identifyingAttributeCache = new IdentifyingAttributeCache(datastore);
     this.entityNormalizer =
         new EntityNormalizer(entityTypeClient, new EntityIdGenerator(), identifyingAttributeCache);

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -23,7 +24,6 @@ import io.grpc.stub.StreamObserver;
 import io.reactivex.rxjava3.core.Single;
 import java.io.IOException;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.type.service.v2.EntityType;
@@ -109,32 +109,36 @@ class EntityTypeCachingClientTest {
   @Test
   void cachesConsecutiveGetAllCallsInSameContext() throws Exception {
     assertSame(
-        this.type1, this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet()));
+        this.type1,
+        this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet().get()));
     verify(this.mockTypeService, times(1)).queryEntityTypes(any(), any());
     verifyNoMoreInteractions(this.mockTypeService);
     assertSame(
-        this.type2, this.grpcTestContext.call(() -> this.typeClient.get("second").blockingGet()));
+        this.type2,
+        this.grpcTestContext.call(() -> this.typeClient.get("second").blockingGet().get()));
   }
 
   @Test
-  void throwsErrorIfNoKeyMatch() {
-    assertThrows(
-        NoSuchElementException.class,
-        () -> this.grpcTestContext.run(() -> this.typeClient.get("third").blockingGet()));
+  void throwsErrorIfNoKeyMatch() throws Exception {
+    assertTrue(
+        this.grpcTestContext.call(() -> this.typeClient.get("third").blockingGet().isEmpty()));
   }
 
   @Test
   void lazilyFetchesOnSubscribe() throws Exception {
-    Single<EntityType> type = this.grpcTestContext.call(() -> this.typeClient.get("first"));
+    Single<Optional<EntityType>> maybeType =
+        this.grpcTestContext.call(() -> this.typeClient.get("first"));
     verifyNoInteractions(this.mockTypeService);
-    type.subscribe();
+    maybeType.subscribe();
     verify(this.mockTypeService, times(1)).queryEntityTypes(any(), any());
   }
 
   @Test
   void supportsMultipleConcurrentCacheKeys() throws Exception {
-    EntityType defaultRetrieved =
+    Optional<EntityType> maybeDefaultRetrieved =
         this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet());
+    assertTrue(maybeDefaultRetrieved.isPresent());
+    EntityType defaultRetrieved = maybeDefaultRetrieved.get();
     assertSame(this.type1, defaultRetrieved);
     verify(this.mockTypeService, times(1)).queryEntityTypes(any(), any());
 
@@ -146,8 +150,10 @@ class EntityTypeCachingClientTest {
 
     this.responseTypes = List.of(otherContextType);
 
-    EntityType otherRetrieved =
+    Optional<EntityType> maybeOtherRetrieved =
         otherGrpcContext.call(() -> this.typeClient.get("first").blockingGet());
+    assertTrue(maybeOtherRetrieved.isPresent());
+    EntityType otherRetrieved = maybeOtherRetrieved.get();
     assertSame(otherContextType, otherRetrieved);
     assertNotSame(defaultRetrieved, otherRetrieved);
     verify(this.mockTypeService, times(2)).queryEntityTypes(any(), any());
@@ -155,10 +161,11 @@ class EntityTypeCachingClientTest {
 
     assertSame(
         defaultRetrieved,
-        this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet()));
+        this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet()).get());
 
     assertSame(
-        otherRetrieved, otherGrpcContext.call(() -> this.typeClient.get("first").blockingGet()));
+        otherRetrieved,
+        otherGrpcContext.call(() -> this.typeClient.get("first").blockingGet().get()));
   }
 
   @Test
@@ -172,7 +179,8 @@ class EntityTypeCachingClientTest {
 
     this.responseError = Optional.empty();
     assertSame(
-        this.type1, this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet()));
+        this.type1,
+        this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet().get()));
     verify(this.mockTypeService, times(2)).queryEntityTypes(any(), any());
   }
 

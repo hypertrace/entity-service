@@ -14,6 +14,7 @@ import org.hypertrace.entity.type.service.rxclient.EntityTypeClient;
 import org.hypertrace.entity.type.service.v1.AttributeType;
 
 public class EntityNormalizer {
+
   private final EntityTypeClient entityTypeV2Client;
   private final EntityIdGenerator idGenerator;
   private final IdentifyingAttributeCache identifyingAttributeCache;
@@ -31,8 +32,8 @@ public class EntityNormalizer {
    * Normalizes the entity to a canonical, ready-to-upsert form
    *
    * @param receivedEntity
-   * @throws RuntimeException If entity can not be normalized
    * @return
+   * @throws RuntimeException If entity can not be normalized
    */
   Entity normalize(String tenantId, Entity receivedEntity) {
     if (StringUtils.isEmpty(receivedEntity.getEntityType())) {
@@ -97,11 +98,7 @@ public class EntityNormalizer {
   }
 
   private boolean isV2Type(String entityType) {
-    return this.entityTypeV2Client
-        .get(entityType)
-        .map(unused -> true)
-        .onErrorReturnItem(false)
-        .blockingGet();
+    return this.entityTypeV2Client.get(entityType).map(Optional::isPresent).blockingGet();
   }
 
   private void verifyMatchingIdentifyingAttributes(String tenantId, Entity request) {
