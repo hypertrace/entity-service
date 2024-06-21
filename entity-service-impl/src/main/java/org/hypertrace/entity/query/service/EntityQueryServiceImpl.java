@@ -43,7 +43,6 @@ import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.Key;
-import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
@@ -245,75 +244,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
-  private void streamResponse(
-      final EntityQueryRequest request,
-      final StreamObserver<ResultSetChunk> responseObserver,
-      final CloseableIterator<Document> documentIterator)
-      throws ConversionException {
-    final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
-    ResultSetMetadata resultSetMetadata =
-        this.buildMetadataForSelections(request.getSelectionList());
-
-    if (!documentIterator.hasNext()) {
-      ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
-      resultBuilder.setResultSetMetadata(resultSetMetadata);
-      resultBuilder.setIsLastChunk(true);
-      resultBuilder.setChunkId(0);
-      responseObserver.onNext(resultBuilder.build());
-      responseObserver.onCompleted();
-      return;
-    }
-
-    boolean isNewChunk = true;
-    int chunkId = 0, rowCount = 0;
-    ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
-    while (documentIterator.hasNext()) {
-      // Set metadata for new chunk
-      if (isNewChunk) {
-        resultBuilder.setResultSetMetadata(resultSetMetadata);
-        isNewChunk = false;
-      }
-
-      try {
-        final Row row = rowConverter.convertToRow(documentIterator.next(), resultSetMetadata);
-        resultBuilder.addRow(row);
-        rowCount++;
-      } catch (final Exception e) {
-        responseObserver.onError(new ServiceException(e));
-        return;
-      }
-
-      // current chunk is complete
-      if (rowCount >= CHUNK_SIZE || !documentIterator.hasNext()) {
-        resultBuilder.setChunkId(chunkId++);
-        resultBuilder.setIsLastChunk(!documentIterator.hasNext());
-        responseObserver.onNext(resultBuilder.build());
-        resultBuilder = ResultSetChunk.newBuilder();
-        isNewChunk = true;
-        rowCount = 0;
-      }
-    }
-    responseObserver.onCompleted();
-  }
-
-  private ResultSetChunk convertDocumentsToResultSetChunk(
-      final List<Document> documents, final List<Expression> selections)
-      throws ConversionException {
-    final DocumentConverter documentConverter = injector.getInstance(DocumentConverter.class);
-    final ResultSetMetadata resultSetMetadata = this.buildMetadataForSelections(selections);
-
-    ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
-    // Build metadata
-    resultBuilder.setResultSetMetadata(resultSetMetadata);
-    // Build data
-    for (final Document document : documents) {
-      final Row row = documentConverter.convertToRow(document, resultSetMetadata);
-      resultBuilder.addRow(row);
-    }
-
-    return resultBuilder.build();
-  }
-
   @Override
   public void update(EntityUpdateRequest request, StreamObserver<ResultSetChunk> responseObserver) {
     // Validations
@@ -355,71 +285,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
-  private void doUpdate(RequestContext requestContext, EntityUpdateRequest request)
-      throws Exception {
-    Optional<String> maybeTenantId = requestContext.getTenantId();
-    if (maybeTenantId.isEmpty()) {
-      return;
-    }
-
-    String tenantId = maybeTenantId.get();
-    if (request.getOperation().hasSetAttribute()) {
-      SetAttribute setAttribute = request.getOperation().getSetAttribute();
-      String attributeId = setAttribute.getAttribute().getColumnName();
-
-      String subDocPath =
-          entityAttributeMapping
-              .getDocStorePathByAttributeId(requestContext, attributeId)
-              .orElseThrow(
-                  () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
-
-      JSONDocument jsonDocument = convertToJsonDocument(setAttribute.getValue());
-
-      Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
-      Set<String> entityIdsForChangeNotification = new HashSet<>();
-      boolean shouldSendNotification =
-          this.entityAttributeChangeEvaluator.shouldSendNotification(
-              requestContext, request.getEntityType(), request.getOperation());
-
-      for (String entityId : request.getEntityIdsList()) {
-        Key key =
-            this.entityNormalizer.getEntityDocKey(
-                requestContext.getTenantId().orElseThrow(), request.getEntityType(), entityId);
-        if (entitiesUpdateMap.containsKey(key)) {
-          entitiesUpdateMap.get(key).put(subDocPath, jsonDocument);
-        } else {
-          Map<String, Document> subDocument = new HashMap<>();
-          subDocument.put(subDocPath, jsonDocument);
-          entitiesUpdateMap.put(key, subDocument);
-        }
-        if (shouldSendNotification) {
-          entityIdsForChangeNotification.add(entityId);
-        }
-      }
-      try {
-        List<Entity> existingEntities =
-            this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
-        entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
-
-        List<Entity> updatedEntities =
-            this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
-
-        this.entityCounterMetricSender.sendEntitiesMetrics(
-            requestContext, request.getEntityType(), existingEntities, updatedEntities);
-        this.entityChangeEventGenerator.sendChangeNotification(
-            requestContext, existingEntities, updatedEntities);
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to update entities {}, subDocPath {}, with new doc {}.",
-            entitiesUpdateMap,
-            subDocPath,
-            jsonDocument,
-            e);
-        throw e;
-      }
-    }
-  }
-
   @Override
   public void bulkUpdate(
       BulkEntityUpdateRequest request, StreamObserver<ResultSetChunk> responseObserver) {
@@ -457,14 +322,26 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
+
+    if (StringUtils.isBlank(request.getEntityType())) {
+      LOG.warn("Entity type is missing in bulk update entity array request");
+      responseObserver.onError(
+          Status.INVALID_ARGUMENT
+              .withDescription("Entity type is missing in the request.")
+              .asException());
+      return;
+    }
+
     try {
       Set<Key> keys =
           request.getEntityIdsList().stream()
-              .map(entityId -> new SingleValueKey(tenantId, entityId))
+              .map(
+                  entityId ->
+                      this.entityNormalizer.getEntityDocKey(
+                          tenantId, request.getEntityType(), entityId))
               .collect(Collectors.toCollection(LinkedHashSet::new));
 
       String attributeId = request.getAttribute().getColumnName();
-
       String subDocPath =
           entityAttributeMapping
               .getDocStorePathByAttributeId(requestContext, attributeId)
@@ -506,144 +383,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     } catch (Exception e) {
       responseObserver.onError(e);
     }
-  }
-
-  private BulkArrayValueUpdateRequest.Operation getMatchingOperation(
-      BulkEntityArrayAttributeUpdateRequest.Operation operation) {
-    switch (operation) {
-      case OPERATION_ADD:
-        return BulkArrayValueUpdateRequest.Operation.ADD;
-      case OPERATION_REMOVE:
-        return BulkArrayValueUpdateRequest.Operation.REMOVE;
-      case OPERATION_SET:
-        return BulkArrayValueUpdateRequest.Operation.SET;
-      default:
-        throw new UnsupportedOperationException("Unknow operation " + operation);
-    }
-  }
-
-  @SneakyThrows
-  private JSONDocument convertToJsonDocument(LiteralConstant literalConstant) {
-    // Convert setAttribute LiteralConstant to AttributeValue. Need to be able to store an array
-    // literal constant as an array
-    AttributeValue attributeValue =
-        EntityQueryConverter.convertToAttributeValue(literalConstant).build();
-    String jsonValue = PRINTER.print(attributeValue);
-    return new JSONDocument(jsonValue);
-  }
-
-  private List<Document> getProjectedDocuments(
-      final String tenantId,
-      final Iterable<String> entityIds,
-      final List<Expression> selectionList,
-      final RequestContext requestContext)
-      throws ConversionException, IOException {
-    final List<String> entityIdList = newArrayList(entityIds);
-
-    if (entityIdList.isEmpty()) {
-      return emptyList();
-    }
-
-    final Converter<List<Expression>, Selection> selectionConverter = getSelectionConverter();
-    final Selection selection = selectionConverter.convert(selectionList, requestContext);
-    final Filter filter =
-        Filter.builder()
-            .expression(
-                LogicalExpression.and(
-                    List.of(
-                        RelationalExpression.of(
-                            IdentifierExpression.of(EntityServiceConstants.ENTITY_ID),
-                            IN,
-                            ConstantExpression.ofStrings(entityIdList)),
-                        RelationalExpression.of(
-                            IdentifierExpression.of(EntityServiceConstants.TENANT_ID),
-                            EQ,
-                            ConstantExpression.of(tenantId)))))
-            .build();
-
-    final org.hypertrace.core.documentstore.query.Query query =
-        org.hypertrace.core.documentstore.query.Query.builder()
-            .setSelection(selection)
-            .setFilter(filter)
-            .build();
-    try (final CloseableIterator<Document> documentIterator = entitiesCollection.aggregate(query)) {
-      return newArrayList(documentIterator);
-    }
-  }
-
-  private void doBulkUpdate(
-      RequestContext requestContext, String entityType, Map<String, EntityUpdateInfo> entitiesMap)
-      throws Exception {
-    Optional<String> maybeTenantId = requestContext.getTenantId();
-    if (maybeTenantId.isEmpty()) {
-      return;
-    }
-
-    String tenantId = maybeTenantId.get();
-    Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
-    Set<String> entityIdsForChangeNotification = new HashSet<>();
-    for (String entityId : entitiesMap.keySet()) {
-      List<UpdateOperation> updateOperations = entitiesMap.get(entityId).getUpdateOperationList();
-      Map<String, Document> transformedUpdateOperations =
-          transformUpdateOperations(updateOperations, requestContext);
-      if (transformedUpdateOperations.isEmpty()) {
-        continue;
-      }
-      entitiesUpdateMap.put(
-          new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId),
-          transformedUpdateOperations);
-      boolean shouldSendNotification =
-          this.entityAttributeChangeEvaluator.shouldSendNotification(
-              requestContext, entityType, updateOperations);
-      if (shouldSendNotification) {
-        entityIdsForChangeNotification.add(entityId);
-      }
-    }
-
-    if (entitiesUpdateMap.isEmpty()) {
-      LOG.error("There are no entities to update!");
-      return;
-    }
-
-    try {
-      List<Entity> existingEntities =
-          this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
-      entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
-      List<Entity> updatedEntities =
-          this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
-
-      this.entityCounterMetricSender.sendEntitiesMetrics(
-          requestContext, entityType, existingEntities, updatedEntities);
-      this.entityChangeEventGenerator.sendChangeNotification(
-          requestContext, existingEntities, updatedEntities);
-    } catch (Exception e) {
-      LOG.error("Failed to update entities {}", entitiesMap, e);
-      throw e;
-    }
-  }
-
-  private Map<String, Document> transformUpdateOperations(
-      List<UpdateOperation> updateOperationList, RequestContext requestContext) throws Exception {
-    Map<String, Document> documentMap = new HashMap<>();
-    for (UpdateOperation updateOperation : updateOperationList) {
-      if (!updateOperation.hasSetAttribute()) {
-        continue;
-      }
-      SetAttribute setAttribute = updateOperation.getSetAttribute();
-      String attributeId = setAttribute.getAttribute().getColumnName();
-      String subDocPath =
-          entityAttributeMapping
-              .getDocStorePathByAttributeId(requestContext, attributeId)
-              .orElseThrow(
-                  () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
-      try {
-        documentMap.put(subDocPath, convertToJsonDocument(setAttribute.getValue()));
-      } catch (Exception e) {
-        LOG.error("Failed to put update corresponding to {} in the documentMap", subDocPath, e);
-        throw e;
-      }
-    }
-    return Collections.unmodifiableMap(documentMap);
   }
 
   @Override
@@ -692,7 +431,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
-    if (existingEntities.size() == 0) {
+    if (existingEntities.isEmpty()) {
       LOG.debug("{}. No entities found to delete", request);
       responseObserver.onNext(DeleteEntitiesResponse.newBuilder().build());
       responseObserver.onCompleted();
@@ -800,6 +539,279 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
   }
 
+  private void streamResponse(
+      final EntityQueryRequest request,
+      final StreamObserver<ResultSetChunk> responseObserver,
+      final CloseableIterator<Document> documentIterator)
+      throws ConversionException {
+    final DocumentConverter rowConverter = injector.getInstance(DocumentConverter.class);
+    ResultSetMetadata resultSetMetadata =
+        this.buildMetadataForSelections(request.getSelectionList());
+
+    if (!documentIterator.hasNext()) {
+      ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+      resultBuilder.setResultSetMetadata(resultSetMetadata);
+      resultBuilder.setIsLastChunk(true);
+      resultBuilder.setChunkId(0);
+      responseObserver.onNext(resultBuilder.build());
+      responseObserver.onCompleted();
+      return;
+    }
+
+    boolean isNewChunk = true;
+    int chunkId = 0, rowCount = 0;
+    ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+    while (documentIterator.hasNext()) {
+      // Set metadata for new chunk
+      if (isNewChunk) {
+        resultBuilder.setResultSetMetadata(resultSetMetadata);
+        isNewChunk = false;
+      }
+
+      try {
+        final Row row = rowConverter.convertToRow(documentIterator.next(), resultSetMetadata);
+        resultBuilder.addRow(row);
+        rowCount++;
+      } catch (final Exception e) {
+        responseObserver.onError(new ServiceException(e));
+        return;
+      }
+
+      // current chunk is complete
+      if (rowCount >= CHUNK_SIZE || !documentIterator.hasNext()) {
+        resultBuilder.setChunkId(chunkId++);
+        resultBuilder.setIsLastChunk(!documentIterator.hasNext());
+        responseObserver.onNext(resultBuilder.build());
+        resultBuilder = ResultSetChunk.newBuilder();
+        isNewChunk = true;
+        rowCount = 0;
+      }
+    }
+    responseObserver.onCompleted();
+  }
+
+  private ResultSetChunk convertDocumentsToResultSetChunk(
+      final List<Document> documents, final List<Expression> selections)
+      throws ConversionException {
+    final DocumentConverter documentConverter = injector.getInstance(DocumentConverter.class);
+    final ResultSetMetadata resultSetMetadata = this.buildMetadataForSelections(selections);
+
+    ResultSetChunk.Builder resultBuilder = ResultSetChunk.newBuilder();
+    // Build metadata
+    resultBuilder.setResultSetMetadata(resultSetMetadata);
+    // Build data
+    for (final Document document : documents) {
+      final Row row = documentConverter.convertToRow(document, resultSetMetadata);
+      resultBuilder.addRow(row);
+    }
+
+    return resultBuilder.build();
+  }
+
+  private void doUpdate(RequestContext requestContext, EntityUpdateRequest request)
+      throws Exception {
+    Optional<String> maybeTenantId = requestContext.getTenantId();
+    if (maybeTenantId.isEmpty()) {
+      return;
+    }
+
+    String tenantId = maybeTenantId.get();
+    if (request.getOperation().hasSetAttribute()) {
+      SetAttribute setAttribute = request.getOperation().getSetAttribute();
+      String attributeId = setAttribute.getAttribute().getColumnName();
+
+      String subDocPath =
+          entityAttributeMapping
+              .getDocStorePathByAttributeId(requestContext, attributeId)
+              .orElseThrow(
+                  () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
+
+      JSONDocument jsonDocument = convertToJsonDocument(setAttribute.getValue());
+
+      Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
+      Set<String> entityIdsForChangeNotification = new HashSet<>();
+      boolean shouldSendNotification =
+          this.entityAttributeChangeEvaluator.shouldSendNotification(
+              requestContext, request.getEntityType(), request.getOperation());
+
+      for (String entityId : request.getEntityIdsList()) {
+        Key key =
+            this.entityNormalizer.getEntityDocKey(
+                requestContext.getTenantId().orElseThrow(), request.getEntityType(), entityId);
+        if (entitiesUpdateMap.containsKey(key)) {
+          entitiesUpdateMap.get(key).put(subDocPath, jsonDocument);
+        } else {
+          Map<String, Document> subDocument = new HashMap<>();
+          subDocument.put(subDocPath, jsonDocument);
+          entitiesUpdateMap.put(key, subDocument);
+        }
+        if (shouldSendNotification) {
+          entityIdsForChangeNotification.add(entityId);
+        }
+      }
+      try {
+        List<Entity> existingEntities =
+            this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
+        entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
+
+        List<Entity> updatedEntities =
+            this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
+
+        this.entityCounterMetricSender.sendEntitiesMetrics(
+            requestContext, request.getEntityType(), existingEntities, updatedEntities);
+        this.entityChangeEventGenerator.sendChangeNotification(
+            requestContext, existingEntities, updatedEntities);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to update entities {}, subDocPath {}, with new doc {}.",
+            entitiesUpdateMap,
+            subDocPath,
+            jsonDocument,
+            e);
+        throw e;
+      }
+    }
+  }
+
+  private BulkArrayValueUpdateRequest.Operation getMatchingOperation(
+      BulkEntityArrayAttributeUpdateRequest.Operation operation) {
+    switch (operation) {
+      case OPERATION_ADD:
+        return BulkArrayValueUpdateRequest.Operation.ADD;
+      case OPERATION_REMOVE:
+        return BulkArrayValueUpdateRequest.Operation.REMOVE;
+      case OPERATION_SET:
+        return BulkArrayValueUpdateRequest.Operation.SET;
+      default:
+        throw new UnsupportedOperationException("Unknow operation " + operation);
+    }
+  }
+
+  @SneakyThrows
+  private JSONDocument convertToJsonDocument(LiteralConstant literalConstant) {
+    // Convert setAttribute LiteralConstant to AttributeValue. Need to be able to store an array
+    // literal constant as an array
+    AttributeValue attributeValue =
+        EntityQueryConverter.convertToAttributeValue(literalConstant).build();
+    String jsonValue = PRINTER.print(attributeValue);
+    return new JSONDocument(jsonValue);
+  }
+
+  private List<Document> getProjectedDocuments(
+      final String tenantId,
+      final Iterable<String> entityIds,
+      final List<Expression> selectionList,
+      final RequestContext requestContext)
+      throws ConversionException, IOException {
+    final List<String> entityIdList = newArrayList(entityIds);
+
+    if (entityIdList.isEmpty()) {
+      return emptyList();
+    }
+
+    final Converter<List<Expression>, Selection> selectionConverter = getSelectionConverter();
+    final Selection selection = selectionConverter.convert(selectionList, requestContext);
+    final Filter filter =
+        Filter.builder()
+            .expression(
+                LogicalExpression.and(
+                    List.of(
+                        RelationalExpression.of(
+                            IdentifierExpression.of(EntityServiceConstants.ENTITY_ID),
+                            IN,
+                            ConstantExpression.ofStrings(entityIdList)),
+                        RelationalExpression.of(
+                            IdentifierExpression.of(EntityServiceConstants.TENANT_ID),
+                            EQ,
+                            ConstantExpression.of(tenantId)))))
+            .build();
+
+    final org.hypertrace.core.documentstore.query.Query query =
+        org.hypertrace.core.documentstore.query.Query.builder()
+            .setSelection(selection)
+            .setFilter(filter)
+            .build();
+    try (final CloseableIterator<Document> documentIterator = entitiesCollection.aggregate(query)) {
+      return newArrayList(documentIterator);
+    }
+  }
+
+  private void doBulkUpdate(
+      RequestContext requestContext, String entityType, Map<String, EntityUpdateInfo> entitiesMap)
+      throws Exception {
+    Optional<String> maybeTenantId = requestContext.getTenantId();
+    if (maybeTenantId.isEmpty()) {
+      return;
+    }
+
+    String tenantId = maybeTenantId.get();
+    Map<Key, Map<String, Document>> entitiesUpdateMap = new HashMap<>();
+    Set<String> entityIdsForChangeNotification = new HashSet<>();
+    for (String entityId : entitiesMap.keySet()) {
+      List<UpdateOperation> updateOperations = entitiesMap.get(entityId).getUpdateOperationList();
+      Map<String, Document> transformedUpdateOperations =
+          transformUpdateOperations(updateOperations, requestContext);
+      if (transformedUpdateOperations.isEmpty()) {
+        continue;
+      }
+      entitiesUpdateMap.put(
+          this.entityNormalizer.getEntityDocKey(
+              requestContext.getTenantId().orElseThrow(), entityType, entityId),
+          transformedUpdateOperations);
+      boolean shouldSendNotification =
+          this.entityAttributeChangeEvaluator.shouldSendNotification(
+              requestContext, entityType, updateOperations);
+      if (shouldSendNotification) {
+        entityIdsForChangeNotification.add(entityId);
+      }
+    }
+
+    if (entitiesUpdateMap.isEmpty()) {
+      LOG.error("There are no entities to update!");
+      return;
+    }
+
+    try {
+      List<Entity> existingEntities =
+          this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
+      entitiesCollection.bulkUpdateSubDocs(entitiesUpdateMap);
+      List<Entity> updatedEntities =
+          this.entityFetcher.getEntitiesByEntityIds(tenantId, entityIdsForChangeNotification);
+
+      this.entityCounterMetricSender.sendEntitiesMetrics(
+          requestContext, entityType, existingEntities, updatedEntities);
+      this.entityChangeEventGenerator.sendChangeNotification(
+          requestContext, existingEntities, updatedEntities);
+    } catch (Exception e) {
+      LOG.error("Failed to update entities {}", entitiesMap, e);
+      throw e;
+    }
+  }
+
+  private Map<String, Document> transformUpdateOperations(
+      List<UpdateOperation> updateOperationList, RequestContext requestContext) throws Exception {
+    Map<String, Document> documentMap = new HashMap<>();
+    for (UpdateOperation updateOperation : updateOperationList) {
+      if (!updateOperation.hasSetAttribute()) {
+        continue;
+      }
+      SetAttribute setAttribute = updateOperation.getSetAttribute();
+      String attributeId = setAttribute.getAttribute().getColumnName();
+      String subDocPath =
+          entityAttributeMapping
+              .getDocStorePathByAttributeId(requestContext, attributeId)
+              .orElseThrow(
+                  () -> new IllegalArgumentException("Unknown attribute FQN " + attributeId));
+      try {
+        documentMap.put(subDocPath, convertToJsonDocument(setAttribute.getValue()));
+      } catch (Exception e) {
+        LOG.error("Failed to put update corresponding to {} in the documentMap", subDocPath, e);
+        throw e;
+      }
+    }
+    return Collections.unmodifiableMap(documentMap);
+  }
+
   private BulkUpdateAllMatchingFilterResponse doBulkUpdate(
       final BulkUpdateAllMatchingFilterRequest request, final RequestContext requestContext)
       throws ConversionException, IOException, StatusException {
@@ -820,12 +832,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           queryConverter.convert(entityQueryRequest, requestContext);
       final List<Entity> existingEntities = entityFetcher.query(updateFilterQuery);
 
-      final List<SingleValueKey> keys = getKeysToUpdate(entityType, existingEntities);
-      final List<UpdatedEntity> updatedEntityResponses = buildUpdatedEntityResponse(keys);
+      final List<UpdatedEntity> updatedEntityResponses =
+          buildUpdatedEntityResponse(existingEntities);
       responseBuilder.addSummaries(
           UpdateSummary.newBuilder().addAllUpdatedEntities(updatedEntityResponses));
-
-      if (keys.isEmpty()) {
+      if (updatedEntityResponses.isEmpty()) {
         // Nothing to update
         LOG.debug("No entity found with filter {} for updating", update.getFilter());
         continue;
@@ -856,9 +867,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return responseBuilder.build();
   }
 
-  private List<UpdatedEntity> buildUpdatedEntityResponse(final List<SingleValueKey> keys) {
-    return keys.stream()
-        .map(SingleValueKey::getValue)
+  private List<UpdatedEntity> buildUpdatedEntityResponse(final List<Entity> entities) {
+    return entities.stream()
+        .map(Entity::getEntityId)
         .map(id -> UpdatedEntity.newBuilder().setId(id))
         .map(UpdatedEntity.Builder::build)
         .collect(toUnmodifiableList());
@@ -871,8 +882,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             new TypeLiteral<Converter<AttributeUpdateOperation, SubDocumentUpdate>>() {}));
   }
 
-  private List<SingleValueKey> getKeysToUpdate(
-      final String entityType, final List<Entity> existingEntities) {
+  private List<Key> getKeysToUpdate(
+      final RequestContext requestContext,
+      final String entityType,
+      final List<Entity> existingEntities) {
     final Optional<String> idAttribute =
         entityAttributeMapping.getIdentifierAttributeId(entityType);
 
@@ -881,9 +894,11 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           .withDescription(String.format("Bulk updating %s entities is not supported", entityType))
           .asRuntimeException();
     }
-
     return existingEntities.stream()
-        .map(entity -> new SingleValueKey(entity.getTenantId(), entity.getEntityId()))
+        .map(
+            entity ->
+                this.entityNormalizer.getEntityDocKey(
+                    requestContext.getTenantId().orElseThrow(), entityType, entity.getEntityId()))
         .collect(toUnmodifiableList());
   }
 

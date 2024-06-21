@@ -14,11 +14,9 @@ public class EntityChangeEvaluator {
   public static ChangeResult evaluateChange(
       Collection<Entity> existingEntities, Collection<Entity> updatedEntities) {
     Map<String, Entity> existingEntityMap =
-        existingEntities.stream()
-            .collect(Collectors.toMap(Entity::getEntityId, identity(), (v1, v2) -> v2));
+        existingEntities.stream().collect(Collectors.toMap(Entity::getEntityId, identity()));
     Map<String, Entity> upsertedEntityMap =
-        updatedEntities.stream()
-            .collect(Collectors.toMap(Entity::getEntityId, identity(), (v1, v2) -> v2));
+        updatedEntities.stream().collect(Collectors.toMap(Entity::getEntityId, identity()));
     MapDifference<String, Entity> mapDifference =
         Maps.difference(existingEntityMap, upsertedEntityMap);
 
