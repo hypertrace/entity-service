@@ -10,7 +10,6 @@ import io.reactivex.rxjava3.core.Single;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
@@ -19,12 +18,9 @@ import org.hypertrace.entity.type.service.v2.EntityTypeServiceGrpc;
 import org.hypertrace.entity.type.service.v2.EntityTypeServiceGrpc.EntityTypeServiceStub;
 import org.hypertrace.entity.type.service.v2.QueryEntityTypesRequest;
 import org.hypertrace.entity.type.service.v2.QueryEntityTypesResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class EntityTypeCachingClient implements EntityTypeClient {
 
-  private static final Logger log = LoggerFactory.getLogger(EntityTypeCachingClient.class);
   private final EntityTypeServiceStub entityTypeClient;
   private final LoadingCache<TenantBasedCacheKey, Single<Map<String, EntityType>>> cache;
 
@@ -67,11 +63,5 @@ class EntityTypeCachingClient implements EntityTypeClient {
 
   private Single<Map<String, EntityType>> getOrInvalidate(TenantBasedCacheKey key) {
     return this.cache.getUnchecked(key).doOnError(x -> this.cache.invalidate(key));
-  }
-
-  private NoSuchElementException buildErrorForMissingType(String name) {
-    log.error("No entity type available for name '{}'", name);
-    return new NoSuchElementException(
-        String.format("No entity type available for name '%s'", name));
   }
 }
