@@ -119,9 +119,17 @@ class EntityTypeCachingClientTest {
   }
 
   @Test
-  void throwsErrorIfNoKeyMatch() throws Exception {
+  void returnsEmptyIfNoKeyMatch() throws Exception {
     assertTrue(
         this.grpcTestContext.call(() -> this.typeClient.get("third").blockingGet().isEmpty()));
+  }
+
+  @Test
+  void throwsErrorIfEntityTypeClientIsDown() throws Exception {
+    this.responseError = Optional.of(new UnsupportedOperationException());
+    assertThrows(
+        StatusRuntimeException.class,
+        () -> this.grpcTestContext.call(() -> this.typeClient.get("third").blockingGet()));
   }
 
   @Test
