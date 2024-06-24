@@ -18,14 +18,15 @@ import static org.mockito.Mockito.when;
 import static org.mockito.quality.Strictness.LENIENT;
 
 import com.google.protobuf.util.JsonFormat;
-import io.grpc.Channel;
 import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
+import io.reactivex.rxjava3.core.Single;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -84,7 +85,9 @@ import org.hypertrace.entity.query.service.v1.Value;
 import org.hypertrace.entity.query.service.v1.ValueType;
 import org.hypertrace.entity.service.change.event.api.EntityChangeEventGenerator;
 import org.hypertrace.entity.service.util.DocStoreJsonFormat;
+import org.hypertrace.entity.type.service.rxclient.EntityTypeClient;
 import org.hypertrace.entity.v1.entitytype.EntityType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -109,6 +112,7 @@ public class EntityQueryServiceImplTest {
   @Mock EntityChangeEventGenerator entityChangeEventGenerator;
   @Mock EntityFetcher entityFetcher;
   @Mock EntityAttributeChangeEvaluator entityAttributeChangeEvaluator;
+  @Mock EntityTypeClient entityTypeClient;
 
   private static final String API_ID = "API.id";
   private static final String ATTRIBUTE_ID1 = "Entity.id";
@@ -118,6 +122,12 @@ public class EntityQueryServiceImplTest {
   private static final String EDS_COLUMN_NAME2 = "attributes.status";
   private static final String ATTRIBUTE_ID3 = "Entity.labels";
   private static final String EDS_COLUMN_NAME3 = "attributes.labels";
+
+  @BeforeEach
+  void setup() {
+    when(this.entityTypeClient.get(TEST_ENTITY_TYPE))
+        .thenReturn(Single.error(new NoSuchElementException()));
+  }
 
   @Test
   public void testUpdate_noTenantId() throws Exception {
@@ -136,7 +146,7 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
-                      mock(Channel.class),
+                      entityTypeClient,
                       1,
                       1000,
                       5000);
@@ -167,7 +177,7 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
-                      mock(Channel.class),
+                      entityTypeClient,
                       1,
                       1000,
                       5000);
@@ -199,7 +209,7 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
-                      mock(Channel.class),
+                      entityTypeClient,
                       1,
                       1000,
                       5000);
@@ -233,7 +243,7 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
-                      mock(Channel.class),
+                      entityTypeClient,
                       1,
                       1000,
                       5000);
@@ -296,7 +306,7 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
-                      mock(Channel.class),
+                      entityTypeClient,
                       1,
                       1000,
                       5000);
@@ -334,7 +344,7 @@ public class EntityQueryServiceImplTest {
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
-                        mock(Channel.class),
+                        entityTypeClient,
                         1,
                         1000,
                         5000);
@@ -366,7 +376,7 @@ public class EntityQueryServiceImplTest {
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
-                        mock(Channel.class),
+                        entityTypeClient,
                         1,
                         1000,
                         5000);
@@ -398,7 +408,7 @@ public class EntityQueryServiceImplTest {
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
-                        mock(Channel.class),
+                        entityTypeClient,
                         1,
                         1000,
                         5000);
@@ -439,7 +449,7 @@ public class EntityQueryServiceImplTest {
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
-                        mock(Channel.class),
+                        entityTypeClient,
                         1,
                         1000,
                         5000);
@@ -486,7 +496,7 @@ public class EntityQueryServiceImplTest {
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
-                        mock(Channel.class),
+                        entityTypeClient,
                         1,
                         1000,
                         5000);
@@ -527,7 +537,7 @@ public class EntityQueryServiceImplTest {
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
-                        mock(Channel.class),
+                        entityTypeClient,
                         1,
                         1000,
                         5000);
@@ -561,7 +571,7 @@ public class EntityQueryServiceImplTest {
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
-                        mock(Channel.class),
+                        entityTypeClient,
                         1,
                         1000,
                         5000);
@@ -599,7 +609,7 @@ public class EntityQueryServiceImplTest {
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
-                        mock(Channel.class),
+                        entityTypeClient,
                         1,
                         1000,
                         5000);
@@ -699,7 +709,7 @@ public class EntityQueryServiceImplTest {
                         entityAttributeChangeEvaluator,
                         new EntityCounterMetricSender(),
                         entityFetcher,
-                        mock(Channel.class),
+                        entityTypeClient,
                         1,
                         1000,
                         5000);
@@ -739,7 +749,7 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
-                      mock(Channel.class),
+                      entityTypeClient,
                       1,
                       1000,
                       5000);
@@ -816,7 +826,7 @@ public class EntityQueryServiceImplTest {
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
-                      mock(Channel.class),
+                      entityTypeClient,
                       1,
                       1000,
                       5000);
@@ -908,7 +918,7 @@ public class EntityQueryServiceImplTest {
                       entityChangeEventGenerator,
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
-                      mock(Channel.class),
+                      entityTypeClient,
                       2,
                       1000,
                       5000);
@@ -963,7 +973,7 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
-                      mock(Channel.class),
+                      entityTypeClient,
                       1,
                       1000,
                       5000);
@@ -1037,7 +1047,7 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
-                      mock(Channel.class),
+                      entityTypeClient,
                       100,
                       1000,
                       5000);
@@ -1111,7 +1121,7 @@ public class EntityQueryServiceImplTest {
                       entityAttributeChangeEvaluator,
                       new EntityCounterMetricSender(),
                       entityFetcher,
-                      mock(Channel.class),
+                      entityTypeClient,
                       100,
                       1000,
                       5000);
@@ -1157,7 +1167,7 @@ public class EntityQueryServiceImplTest {
               entityAttributeChangeEvaluator,
               new EntityCounterMetricSender(),
               entityFetcher,
-              mock(Channel.class),
+              entityTypeClient,
               1,
               1000,
               5000);
@@ -1209,7 +1219,7 @@ public class EntityQueryServiceImplTest {
               entityAttributeChangeEvaluator,
               new EntityCounterMetricSender(),
               entityFetcher,
-              mock(Channel.class),
+              entityTypeClient,
               1,
               1000,
               5000);

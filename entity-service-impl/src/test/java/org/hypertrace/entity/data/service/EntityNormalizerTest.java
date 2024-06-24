@@ -8,6 +8,7 @@ import io.reactivex.rxjava3.core.Single;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl.ErrorMessages;
@@ -59,7 +60,7 @@ class EntityNormalizerTest {
     when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
         .thenReturn(List.of(V1_ID_ATTR));
     when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new RuntimeException()));
+        .thenReturn(Single.error(new NoSuchElementException()));
     Entity inputEntity = Entity.newBuilder().setEntityType(V1_ENTITY_TYPE).build();
 
     Exception exception =
@@ -80,7 +81,7 @@ class EntityNormalizerTest {
     when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
         .thenReturn(List.of(V1_ID_ATTR));
     when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new RuntimeException()));
+        .thenReturn(Single.error(new NoSuchElementException()));
     Entity inputEntity =
         Entity.newBuilder()
             .setEntityType(V1_ENTITY_TYPE)
@@ -110,6 +111,17 @@ class EntityNormalizerTest {
   }
 
   @Test
+  void throwsIfEntityTypeClientIsDown() {
+    when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
+        .thenReturn(Single.error(new RuntimeException()));
+    Entity inputEntity = Entity.newBuilder().setEntityType(V2_ENTITY_TYPE).build();
+
+    Exception exception =
+        assertThrows(
+            RuntimeException.class, () -> this.normalizer.normalize(TENANT_ID, inputEntity));
+  }
+
+  @Test
   void normalizesV1EntityWithAttrs() {
     Map<String, AttributeValue> valueMap = buildValueMap(Map.of(V1_ID_ATTR.getName(), "foo-value"));
     when(this.mockIdGenerator.generateEntityId(TENANT_ID, V1_ENTITY_TYPE, valueMap))
@@ -117,7 +129,7 @@ class EntityNormalizerTest {
     when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
         .thenReturn(List.of(V1_ID_ATTR));
     when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new RuntimeException()));
+        .thenReturn(Single.error(new NoSuchElementException()));
     Entity inputEntity =
         Entity.newBuilder()
             .setEntityType(V1_ENTITY_TYPE)
@@ -162,7 +174,7 @@ class EntityNormalizerTest {
   @Test
   void returnsSimpleKeyForV1Entity() {
     when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new RuntimeException()));
+        .thenReturn(Single.error(new NoSuchElementException()));
 
     // Getting a key for a v1 entity when provided with direct id
     assertEquals(
