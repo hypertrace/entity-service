@@ -23,6 +23,7 @@ import io.grpc.stub.StreamObserver;
 import io.reactivex.rxjava3.core.Single;
 import java.io.IOException;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.type.service.v2.EntityType;
@@ -116,18 +117,17 @@ class EntityTypeCachingClientTest {
   }
 
   @Test
-  void throwsErrorIfEntityTypeClientIsDown() throws Exception {
-    this.responseError = Optional.of(new UnsupportedOperationException());
+  void throwsErrorIfNoKeyMatch() {
     assertThrows(
-        StatusRuntimeException.class,
-        () -> this.grpcTestContext.call(() -> this.typeClient.get("third").blockingGet()));
+        NoSuchElementException.class,
+        () -> this.grpcTestContext.run(() -> this.typeClient.get("third").blockingGet()));
   }
 
   @Test
   void lazilyFetchesOnSubscribe() throws Exception {
-    Single<EntityType> maybeType = this.grpcTestContext.call(() -> this.typeClient.get("first"));
+    Single<EntityType> type = this.grpcTestContext.call(() -> this.typeClient.get("first"));
     verifyNoInteractions(this.mockTypeService);
-    maybeType.subscribe();
+    type.subscribe();
     verify(this.mockTypeService, times(1)).queryEntityTypes(any(), any());
   }
 
