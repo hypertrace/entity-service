@@ -103,6 +103,7 @@ entityServiceConfig:
     port: 9012
 
 database:
+  aggregationPipelineMode: "DEFAULT_ALWAYS"
   type: mongo
   mongo:
     authEnabled: true
