@@ -102,7 +102,7 @@ class EntityNormalizerTest {
   @Test
   void throwsOnV2EntityMissingId() {
     when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
-        .thenReturn(Single.just(Optional.of(EntityType.getDefaultInstance())));
+        .thenReturn(Single.just(EntityType.getDefaultInstance()));
     Entity inputEntity = Entity.newBuilder().setEntityType(V2_ENTITY_TYPE).build();
 
     Exception exception =
@@ -150,7 +150,7 @@ class EntityNormalizerTest {
   @Test
   void normalizesV2EntityWithId() {
     when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
-        .thenReturn(Single.just(Optional.of(EntityType.getDefaultInstance())));
+        .thenReturn(Single.just(EntityType.getDefaultInstance()));
     Entity inputEntity =
         Entity.newBuilder().setEntityType(V2_ENTITY_TYPE).setEntityId("input-id").build();
 
@@ -161,7 +161,7 @@ class EntityNormalizerTest {
   @Test
   void returnsV2TypeKeyForV2Entity() {
     when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
-        .thenReturn(Single.just(Optional.of(EntityType.getDefaultInstance())));
+        .thenReturn(Single.just(EntityType.getDefaultInstance()));
 
     assertEquals(
         new EntityV2TypeDocKey(TENANT_ID, V2_ENTITY_TYPE, "id-in"),

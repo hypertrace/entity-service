@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -109,19 +108,11 @@ class EntityTypeCachingClientTest {
   @Test
   void cachesConsecutiveGetAllCallsInSameContext() throws Exception {
     assertSame(
-        this.type1,
-        this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet().get()));
+        this.type1, this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet()));
     verify(this.mockTypeService, times(1)).queryEntityTypes(any(), any());
     verifyNoMoreInteractions(this.mockTypeService);
     assertSame(
-        this.type2,
-        this.grpcTestContext.call(() -> this.typeClient.get("second").blockingGet().get()));
-  }
-
-  @Test
-  void returnsEmptyIfNoKeyMatch() throws Exception {
-    assertTrue(
-        this.grpcTestContext.call(() -> this.typeClient.get("third").blockingGet().isEmpty()));
+        this.type2, this.grpcTestContext.call(() -> this.typeClient.get("second").blockingGet()));
   }
 
   @Test
@@ -134,8 +125,7 @@ class EntityTypeCachingClientTest {
 
   @Test
   void lazilyFetchesOnSubscribe() throws Exception {
-    Single<Optional<EntityType>> maybeType =
-        this.grpcTestContext.call(() -> this.typeClient.get("first"));
+    Single<EntityType> maybeType = this.grpcTestContext.call(() -> this.typeClient.get("first"));
     verifyNoInteractions(this.mockTypeService);
     maybeType.subscribe();
     verify(this.mockTypeService, times(1)).queryEntityTypes(any(), any());
@@ -143,10 +133,8 @@ class EntityTypeCachingClientTest {
 
   @Test
   void supportsMultipleConcurrentCacheKeys() throws Exception {
-    Optional<EntityType> maybeDefaultRetrieved =
+    EntityType defaultRetrieved =
         this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet());
-    assertTrue(maybeDefaultRetrieved.isPresent());
-    EntityType defaultRetrieved = maybeDefaultRetrieved.get();
     assertSame(this.type1, defaultRetrieved);
     verify(this.mockTypeService, times(1)).queryEntityTypes(any(), any());
 
@@ -158,10 +146,8 @@ class EntityTypeCachingClientTest {
 
     this.responseTypes = List.of(otherContextType);
 
-    Optional<EntityType> maybeOtherRetrieved =
+    EntityType otherRetrieved =
         otherGrpcContext.call(() -> this.typeClient.get("first").blockingGet());
-    assertTrue(maybeOtherRetrieved.isPresent());
-    EntityType otherRetrieved = maybeOtherRetrieved.get();
     assertSame(otherContextType, otherRetrieved);
     assertNotSame(defaultRetrieved, otherRetrieved);
     verify(this.mockTypeService, times(2)).queryEntityTypes(any(), any());
@@ -169,11 +155,10 @@ class EntityTypeCachingClientTest {
 
     assertSame(
         defaultRetrieved,
-        this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet()).get());
+        this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet()));
 
     assertSame(
-        otherRetrieved,
-        otherGrpcContext.call(() -> this.typeClient.get("first").blockingGet().get()));
+        otherRetrieved, otherGrpcContext.call(() -> this.typeClient.get("first").blockingGet()));
   }
 
   @Test
@@ -187,8 +172,7 @@ class EntityTypeCachingClientTest {
 
     this.responseError = Optional.empty();
     assertSame(
-        this.type1,
-        this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet().get()));
+        this.type1, this.grpcTestContext.call(() -> this.typeClient.get("first").blockingGet()));
     verify(this.mockTypeService, times(2)).queryEntityTypes(any(), any());
   }
 
