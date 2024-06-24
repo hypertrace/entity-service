@@ -27,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class EntityNormalizerTest {
+
   private static final String TENANT_ID = "tenant";
   private static final String V1_ENTITY_TYPE = "v1-entity";
   private static final String V2_ENTITY_TYPE = "v2-entity";
@@ -68,7 +69,8 @@ class EntityNormalizerTest {
             IllegalArgumentException.class,
             () -> this.normalizer.normalize(TENANT_ID, inputEntity));
     assertEquals(
-        "Received and expected identifying attributes differ. Received: [] . Expected: [required-attr]",
+        "Received and expected identifying attributes differ. Received: [] . Expected: "
+            + "[required-attr]",
         exception.getMessage());
   }
 
@@ -100,7 +102,7 @@ class EntityNormalizerTest {
   @Test
   void throwsOnV2EntityMissingId() {
     when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
-        .thenReturn(Single.just(EntityType.getDefaultInstance()));
+        .thenReturn(Single.just(Optional.of(EntityType.getDefaultInstance())));
     Entity inputEntity = Entity.newBuilder().setEntityType(V2_ENTITY_TYPE).build();
 
     Exception exception =
@@ -148,7 +150,7 @@ class EntityNormalizerTest {
   @Test
   void normalizesV2EntityWithId() {
     when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
-        .thenReturn(Single.just(EntityType.getDefaultInstance()));
+        .thenReturn(Single.just(Optional.of(EntityType.getDefaultInstance())));
     Entity inputEntity =
         Entity.newBuilder().setEntityType(V2_ENTITY_TYPE).setEntityId("input-id").build();
 
@@ -159,7 +161,7 @@ class EntityNormalizerTest {
   @Test
   void returnsV2TypeKeyForV2Entity() {
     when(this.mockEntityTypeClient.get(V2_ENTITY_TYPE))
-        .thenReturn(Single.just(EntityType.getDefaultInstance()));
+        .thenReturn(Single.just(Optional.of(EntityType.getDefaultInstance())));
 
     assertEquals(
         new EntityV2TypeDocKey(TENANT_ID, V2_ENTITY_TYPE, "id-in"),

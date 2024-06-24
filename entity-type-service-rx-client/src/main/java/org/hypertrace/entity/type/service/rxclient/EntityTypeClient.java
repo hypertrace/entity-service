@@ -7,6 +7,7 @@ import io.reactivex.rxjava3.core.Single;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
+import java.util.Optional;
 import javax.annotation.Nonnull;
 import org.hypertrace.core.grpcutils.client.RequestContextClientCallCredsProviderFactory;
 import org.hypertrace.entity.type.service.v2.EntityType;
@@ -16,7 +17,7 @@ public interface EntityTypeClient {
 
   Observable<EntityType> getAll();
 
-  Single<EntityType> get(String name);
+  Single<Optional<EntityType>> get(String name);
 
   static Builder builder(@Nonnull Channel channel) {
     return new Builder(Objects.requireNonNull(channel));
