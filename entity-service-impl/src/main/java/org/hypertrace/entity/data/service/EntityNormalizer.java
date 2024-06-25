@@ -2,8 +2,8 @@ package org.hypertrace.entity.data.service;
 
 import static java.util.function.Predicate.not;
 
+import io.grpc.Status;
 import io.reactivex.rxjava3.core.Single;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -105,7 +105,7 @@ public class EntityNormalizer {
         .map(unused -> true)
         .onErrorResumeNext(
             throwable ->
-                throwable instanceof NoSuchElementException
+                Status.NOT_FOUND.getCode().equals(Status.fromThrowable(throwable).getCode())
                     ? Single.just(false)
                     : Single.error(throwable))
         .blockingGet();

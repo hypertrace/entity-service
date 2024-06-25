@@ -5,12 +5,13 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import io.grpc.CallCredentials;
 import io.grpc.Channel;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
@@ -67,8 +68,9 @@ class EntityTypeCachingClient implements EntityTypeClient {
     return this.cache.getUnchecked(key).doOnError(x -> this.cache.invalidate(key));
   }
 
-  private NoSuchElementException buildErrorForMissingType(String name) {
-    return new NoSuchElementException(
-        String.format("No entity type available for name '%s'", name));
+  private StatusRuntimeException buildErrorForMissingType(String name) {
+    return Status.NOT_FOUND
+        .withDescription("No entity type found with name: " + name)
+        .asRuntimeException();
   }
 }

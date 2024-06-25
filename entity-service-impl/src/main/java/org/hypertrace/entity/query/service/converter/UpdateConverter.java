@@ -56,7 +56,7 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
 
   private static final Joiner DOT_JOINER = Joiner.on(".");
 
-  private static final Multimap<ValueType, AttributeKind> VALUE_TYPE_TO_ATTRIBUTE_KIND_MAP =
+  private static final Multimap<ValueType, AttributeKind> VALUE_TYPE_TO_ATTRIBUTE_KIND_MULTI_MAP =
       new ImmutableMultimap.Builder<ValueType, AttributeKind>()
           .put(entry(STRING, TYPE_STRING))
           .put(entry(LONG, TYPE_INT64))
@@ -147,7 +147,7 @@ public class UpdateConverter implements Converter<AttributeUpdateOperation, SubD
       return;
     }
 
-    if (!VALUE_TYPE_TO_ATTRIBUTE_KIND_MAP.get(valueType).contains(attributeKind)) {
+    if (!VALUE_TYPE_TO_ATTRIBUTE_KIND_MULTI_MAP.get(valueType).contains(attributeKind)) {
       throw new ConversionException(
           String.format(
               "Mismatching value type (%s) for attribute of type %s", valueType, attributeKind));

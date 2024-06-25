@@ -23,7 +23,6 @@ import io.grpc.stub.StreamObserver;
 import io.reactivex.rxjava3.core.Single;
 import java.io.IOException;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import org.hypertrace.core.grpcutils.context.RequestContext;
 import org.hypertrace.entity.type.service.v2.EntityType;
@@ -119,7 +118,7 @@ class EntityTypeCachingClientTest {
   @Test
   void throwsErrorIfNoKeyMatch() {
     assertThrows(
-        NoSuchElementException.class,
+        StatusRuntimeException.class,
         () -> this.grpcTestContext.run(() -> this.typeClient.get("third").blockingGet()));
   }
 

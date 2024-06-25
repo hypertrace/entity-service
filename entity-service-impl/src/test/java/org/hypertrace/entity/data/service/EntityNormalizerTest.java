@@ -4,11 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
+import io.grpc.Status;
 import io.reactivex.rxjava3.core.Single;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.entity.data.service.EntityDataServiceImpl.ErrorMessages;
@@ -61,7 +61,7 @@ class EntityNormalizerTest {
     when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
         .thenReturn(List.of(V1_ID_ATTR));
     when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new NoSuchElementException()));
+        .thenReturn(Single.error(Status.NOT_FOUND.asRuntimeException()));
     Entity inputEntity = Entity.newBuilder().setEntityType(V1_ENTITY_TYPE).build();
 
     Exception exception =
@@ -83,7 +83,7 @@ class EntityNormalizerTest {
     when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
         .thenReturn(List.of(V1_ID_ATTR));
     when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new NoSuchElementException()));
+        .thenReturn(Single.error(Status.NOT_FOUND.asRuntimeException()));
     Entity inputEntity =
         Entity.newBuilder()
             .setEntityType(V1_ENTITY_TYPE)
@@ -131,7 +131,7 @@ class EntityNormalizerTest {
     when(this.mockIdAttrCache.getIdentifyingAttributes(TENANT_ID, V1_ENTITY_TYPE))
         .thenReturn(List.of(V1_ID_ATTR));
     when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new NoSuchElementException()));
+        .thenReturn(Single.error(Status.NOT_FOUND.asRuntimeException()));
     Entity inputEntity =
         Entity.newBuilder()
             .setEntityType(V1_ENTITY_TYPE)
@@ -176,7 +176,7 @@ class EntityNormalizerTest {
   @Test
   void returnsSimpleKeyForV1Entity() {
     when(this.mockEntityTypeClient.get(V1_ENTITY_TYPE))
-        .thenReturn(Single.error(new NoSuchElementException()));
+        .thenReturn(Single.error(Status.NOT_FOUND.asRuntimeException()));
 
     // Getting a key for a v1 entity when provided with direct id
     assertEquals(

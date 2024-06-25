@@ -19,6 +19,7 @@ import static org.mockito.quality.Strictness.LENIENT;
 
 import com.google.protobuf.util.JsonFormat;
 import io.grpc.Context;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import io.reactivex.rxjava3.core.Single;
 import java.io.IOException;
@@ -26,7 +27,6 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -126,7 +126,7 @@ public class EntityQueryServiceImplTest {
   @BeforeEach
   void setup() {
     when(this.entityTypeClient.get(TEST_ENTITY_TYPE))
-        .thenReturn(Single.error(new NoSuchElementException()));
+        .thenReturn(Single.error(Status.NOT_FOUND.asRuntimeException()));
   }
 
   @Test
