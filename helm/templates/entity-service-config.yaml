@@ -12,7 +12,7 @@ data:
         {{- $dst := .Values.database.type }}
         dataStoreType = {{ $dst }}
         appName = {{ .Values.service.name }}
-
+        aggregationPipelineMode = {{ .Values.database.aggregationPipelineMode }}
         {{ $dst }} {
           {{- range $key, $value := (index .Values "database" (printf "%s" $dst)) }}
           {{- if $value }}
