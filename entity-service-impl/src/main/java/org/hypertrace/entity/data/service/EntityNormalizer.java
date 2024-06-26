@@ -2,6 +2,8 @@ package org.hypertrace.entity.data.service;
 
 import static java.util.function.Predicate.not;
 
+import io.grpc.Status;
+import io.reactivex.rxjava3.core.Single;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -14,6 +16,7 @@ import org.hypertrace.entity.type.service.rxclient.EntityTypeClient;
 import org.hypertrace.entity.type.service.v1.AttributeType;
 
 public class EntityNormalizer {
+
   private final EntityTypeClient entityTypeV2Client;
   private final EntityIdGenerator idGenerator;
   private final IdentifyingAttributeCache identifyingAttributeCache;
@@ -31,8 +34,8 @@ public class EntityNormalizer {
    * Normalizes the entity to a canonical, ready-to-upsert form
    *
    * @param receivedEntity
-   * @throws RuntimeException If entity can not be normalized
    * @return
+   * @throws RuntimeException If entity can not be normalized
    */
   Entity normalize(String tenantId, Entity receivedEntity) {
     if (StringUtils.isEmpty(receivedEntity.getEntityType())) {
@@ -100,7 +103,11 @@ public class EntityNormalizer {
     return this.entityTypeV2Client
         .get(entityType)
         .map(unused -> true)
-        .onErrorReturnItem(false)
+        .onErrorResumeNext(
+            throwable ->
+                Status.NOT_FOUND.getCode().equals(Status.fromThrowable(throwable).getCode())
+                    ? Single.just(false)
+                    : Single.error(throwable))
         .blockingGet();
   }
 

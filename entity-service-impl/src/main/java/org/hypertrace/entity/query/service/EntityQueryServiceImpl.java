@@ -43,7 +43,6 @@ import org.hypertrace.core.documentstore.Datastore;
 import org.hypertrace.core.documentstore.Document;
 import org.hypertrace.core.documentstore.JSONDocument;
 import org.hypertrace.core.documentstore.Key;
-import org.hypertrace.core.documentstore.SingleValueKey;
 import org.hypertrace.core.documentstore.expression.impl.ConstantExpression;
 import org.hypertrace.core.documentstore.expression.impl.IdentifierExpression;
 import org.hypertrace.core.documentstore.expression.impl.LogicalExpression;
@@ -155,7 +154,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         entityChangeEventGenerator,
         new EntityAttributeChangeEvaluator(config, entityAttributeMapping),
         entityCounterMetricSender,
-        entityTypeChannel,
+        EntityTypeClient.builder(entityTypeChannel).build(),
         !config.hasPathOrNull(CHUNK_SIZE_CONFIG)
             ? DEFAULT_CHUNK_SIZE
             : config.getInt(CHUNK_SIZE_CONFIG),
@@ -174,7 +173,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityChangeEventGenerator entityChangeEventGenerator,
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
       EntityCounterMetricSender entityCounterMetricSender,
-      Channel entityTypeChannel,
+      EntityTypeClient entityTypeClient,
       int chunkSize,
       int maxEntitiesToDelete,
       int maxStringLengthForUpdate) {
@@ -186,7 +185,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         entityAttributeChangeEvaluator,
         entityCounterMetricSender,
         new EntityFetcher(entitiesCollection, DOCUMENT_PARSER),
-        entityTypeChannel,
+        entityTypeClient,
         chunkSize,
         maxEntitiesToDelete,
         maxStringLengthForUpdate);
@@ -200,7 +199,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       EntityAttributeChangeEvaluator entityAttributeChangeEvaluator,
       EntityCounterMetricSender entityCounterMetricSender,
       EntityFetcher entityFetcher,
-      Channel entityTypeChannel,
+      EntityTypeClient entityTypeClient,
       int chunkSize,
       int maxEntitiesToDelete,
       int maxStringLengthForUpdate) {
@@ -213,7 +212,6 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     this.entityFetcher = entityFetcher;
     this.entityAttributeChangeEvaluator = entityAttributeChangeEvaluator;
     this.entityCounterMetricSender = entityCounterMetricSender;
-    EntityTypeClient entityTypeClient = EntityTypeClient.builder(entityTypeChannel).build();
     IdentifyingAttributeCache identifyingAttributeCache = new IdentifyingAttributeCache(datastore);
     this.entityNormalizer =
         new EntityNormalizer(entityTypeClient, new EntityIdGenerator(), identifyingAttributeCache);
@@ -457,14 +455,26 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       responseObserver.onError(new ServiceException("Tenant id is missing in the request."));
       return;
     }
+
+    if (StringUtils.isBlank(request.getEntityType())) {
+      LOG.warn("Entity type is missing in bulk update entity array request");
+      responseObserver.onError(
+          Status.INVALID_ARGUMENT
+              .withDescription("Entity type is missing in the request.")
+              .asException());
+      return;
+    }
+
     try {
       Set<Key> keys =
           request.getEntityIdsList().stream()
-              .map(entityId -> new SingleValueKey(tenantId, entityId))
+              .map(
+                  entityId ->
+                      this.entityNormalizer.getEntityDocKey(
+                          tenantId, request.getEntityType(), entityId))
               .collect(Collectors.toCollection(LinkedHashSet::new));
 
       String attributeId = request.getAttribute().getColumnName();
-
       String subDocPath =
           entityAttributeMapping
               .getDocStorePathByAttributeId(requestContext, attributeId)
@@ -590,7 +600,8 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
         continue;
       }
       entitiesUpdateMap.put(
-          new SingleValueKey(requestContext.getTenantId().orElseThrow(), entityId),
+          this.entityNormalizer.getEntityDocKey(
+              requestContext.getTenantId().orElseThrow(), entityType, entityId),
           transformedUpdateOperations);
       boolean shouldSendNotification =
           this.entityAttributeChangeEvaluator.shouldSendNotification(
@@ -692,7 +703,7 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
       return;
     }
 
-    if (existingEntities.size() == 0) {
+    if (existingEntities.isEmpty()) {
       LOG.debug("{}. No entities found to delete", request);
       responseObserver.onNext(DeleteEntitiesResponse.newBuilder().build());
       responseObserver.onCompleted();
@@ -820,19 +831,17 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
           queryConverter.convert(entityQueryRequest, requestContext);
       final List<Entity> existingEntities = entityFetcher.query(updateFilterQuery);
 
-      final List<SingleValueKey> keys = getKeysToUpdate(entityType, existingEntities);
-      final List<UpdatedEntity> updatedEntityResponses = buildUpdatedEntityResponse(keys);
+      final List<UpdatedEntity> updatedEntityResponses =
+          buildUpdatedEntityResponse(existingEntities);
       responseBuilder.addSummaries(
           UpdateSummary.newBuilder().addAllUpdatedEntities(updatedEntityResponses));
-
-      if (keys.isEmpty()) {
+      if (updatedEntityResponses.isEmpty()) {
         // Nothing to update
         LOG.debug("No entity found with filter {} for updating", update.getFilter());
         continue;
       }
 
       final List<AttributeUpdateOperation> updateOperations = update.getOperationsList();
-
       final List<SubDocumentUpdate> updates = convertUpdates(requestContext, updateOperations);
 
       final boolean shouldSendNotification =
@@ -856,9 +865,9 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     return responseBuilder.build();
   }
 
-  private List<UpdatedEntity> buildUpdatedEntityResponse(final List<SingleValueKey> keys) {
-    return keys.stream()
-        .map(SingleValueKey::getValue)
+  private List<UpdatedEntity> buildUpdatedEntityResponse(final List<Entity> entities) {
+    return entities.stream()
+        .map(Entity::getEntityId)
         .map(id -> UpdatedEntity.newBuilder().setId(id))
         .map(UpdatedEntity.Builder::build)
         .collect(toUnmodifiableList());
@@ -871,8 +880,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
             new TypeLiteral<Converter<AttributeUpdateOperation, SubDocumentUpdate>>() {}));
   }
 
-  private List<SingleValueKey> getKeysToUpdate(
-      final String entityType, final List<Entity> existingEntities) {
+  private List<Key> getKeysToUpdate(
+      final RequestContext requestContext,
+      final String entityType,
+      final List<Entity> existingEntities) {
     final Optional<String> idAttribute =
         entityAttributeMapping.getIdentifierAttributeId(entityType);
 
@@ -883,7 +894,10 @@ public class EntityQueryServiceImpl extends EntityQueryServiceImplBase {
     }
 
     return existingEntities.stream()
-        .map(entity -> new SingleValueKey(entity.getTenantId(), entity.getEntityId()))
+        .map(
+            entity ->
+                this.entityNormalizer.getEntityDocKey(
+                    requestContext.getTenantId().orElseThrow(), entityType, entity.getEntityId()))
         .collect(toUnmodifiableList());
   }
 
