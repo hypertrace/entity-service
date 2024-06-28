@@ -24,14 +24,29 @@ public class EntityMetricsReporter {
 
   private static final String API_COUNT_METRIC_NAME = "api.entities.count";
   private static final String API_CATEGORY_METRIC_NAME = "api.categories.count";
+  private static final String API_BY_TYPE_AND_LEARNT_METRIC_NAME =
+      "api.entities.by.type.and.learnt";
+  private static final String API_STATUS_CODE_METRIC_NAME = "api.status.code.count";
+  private static final String API_CREATED_TIME_METRIC_NAME = "api.created.time.count";
+  private static final String API_LAST_CALLED_TIME_METRIC_NAME = "api.last.called.time.count";
   private static final String RAW_ENTITIES_COLLECTION = "raw_entities";
   private static final String API_DISCOVERY_STATE_ENTITY_PATH =
       "attributes.api_discovery_state.value.string";
   private static final String API_CATEGORIES_ENTITY_PATH = "attributes.categories.valueList.values";
   private static final String API_CATEGORY_ENTITY_PATH =
       "attributes.categories.valueList.values.value.string";
+  private static final String API_IS_LEARNT_PATH = "attributes.is_learnt.value.boolean";
+  private static final String API_TYPE_PATH = "attributes.displayApiType.value.string";
+  private static final String API_STATUS_CODE_PATH = "attributes.statusCode.value.long";
+  private static final String API_CREATED_TIME_PATH = "createdTime";
+  private static final String API_LAST_CALLED_TIME_PATH =
+      "attributes.last_called_millis.value.long";
   private static final String API_DISCOVERY_STATE = "apiDiscoveryState";
   private static final String API_CATEGORY = "category";
+  private static final String API_IS_LEARNT = "isLearnt";
+  private static final String API_TYPE = "apiType";
+  private static final String API_STATUS_CODE = "statusCode";
+  private static final String API_LAST_CALLED_TIME = "lastCalledTime";
   private static final String TENANT_ID_ENTITY_PATH = "tenantId";
   private static final String ENTITY_TYPE_ENTITY_PATH = "entityType";
   private final DocStoreMetricsRegistry metricsRegistry;
@@ -95,6 +110,88 @@ public class EntityMetricsReporter {
                                   VALUE_KEY)
                               .addAggregation(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
                               .addAggregation(IdentifierExpression.of(API_CATEGORY_ENTITY_PATH))
+                              .build())
+                      .build())
+              .build(),
+          DocStoreCustomMetricReportingConfig.builder()
+              .reportingInterval(Duration.ofHours(1))
+              .config(
+                  CustomMetricConfig.builder()
+                      .metricName(API_BY_TYPE_AND_LEARNT_METRIC_NAME)
+                      .collectionName(RAW_ENTITIES_COLLECTION)
+                      .query(
+                          Query.builder()
+                              .setFilter(getFilter())
+                              .addSelection(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
+                              .addSelection(IdentifierExpression.of(API_TYPE_PATH), API_TYPE)
+                              .addSelection(
+                                  IdentifierExpression.of(API_IS_LEARNT_PATH), API_IS_LEARNT)
+                              .addSelection(
+                                  AggregateExpression.of(COUNT, ConstantExpression.of(1)),
+                                  VALUE_KEY)
+                              .addAggregation(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
+                              .addAggregation(IdentifierExpression.of(API_TYPE_PATH))
+                              .addAggregation(IdentifierExpression.of(API_IS_LEARNT_PATH))
+                              .build())
+                      .build())
+              .build(),
+          DocStoreCustomMetricReportingConfig.builder()
+              .reportingInterval(Duration.ofHours(1))
+              .config(
+                  CustomMetricConfig.builder()
+                      .metricName(API_STATUS_CODE_METRIC_NAME)
+                      .collectionName(RAW_ENTITIES_COLLECTION)
+                      .query(
+                          Query.builder()
+                              .setFilter(getFilter())
+                              .addSelection(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
+                              .addSelection(
+                                  IdentifierExpression.of(API_STATUS_CODE_PATH), API_STATUS_CODE)
+                              .addSelection(
+                                  AggregateExpression.of(COUNT, ConstantExpression.of(1)),
+                                  VALUE_KEY)
+                              .addAggregation(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
+                              .addAggregation(IdentifierExpression.of(API_STATUS_CODE_PATH))
+                              .build())
+                      .build())
+              .build(),
+          DocStoreCustomMetricReportingConfig.builder()
+              .reportingInterval(Duration.ofHours(1))
+              .config(
+                  CustomMetricConfig.builder()
+                      .metricName(API_CREATED_TIME_METRIC_NAME)
+                      .collectionName(RAW_ENTITIES_COLLECTION)
+                      .query(
+                          Query.builder()
+                              .setFilter(getFilter())
+                              .addSelection(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
+                              .addSelection(IdentifierExpression.of(API_CREATED_TIME_PATH))
+                              .addSelection(
+                                  AggregateExpression.of(COUNT, ConstantExpression.of(1)),
+                                  VALUE_KEY)
+                              .addAggregation(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
+                              .addAggregation(IdentifierExpression.of(API_CREATED_TIME_PATH))
+                              .build())
+                      .build())
+              .build(),
+          DocStoreCustomMetricReportingConfig.builder()
+              .reportingInterval(Duration.ofHours(1))
+              .config(
+                  CustomMetricConfig.builder()
+                      .metricName(API_LAST_CALLED_TIME_PATH)
+                      .collectionName(RAW_ENTITIES_COLLECTION)
+                      .query(
+                          Query.builder()
+                              .setFilter(getFilter())
+                              .addSelection(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
+                              .addSelection(
+                                  IdentifierExpression.of(API_LAST_CALLED_TIME_PATH),
+                                  API_LAST_CALLED_TIME)
+                              .addSelection(
+                                  AggregateExpression.of(COUNT, ConstantExpression.of(1)),
+                                  VALUE_KEY)
+                              .addAggregation(IdentifierExpression.of(TENANT_ID_ENTITY_PATH))
+                              .addAggregation(IdentifierExpression.of(API_LAST_CALLED_TIME_PATH))
                               .build())
                       .build())
               .build());
