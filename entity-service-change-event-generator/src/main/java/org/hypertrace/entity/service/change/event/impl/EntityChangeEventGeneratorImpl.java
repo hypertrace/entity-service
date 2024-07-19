@@ -159,8 +159,9 @@ public class EntityChangeEventGeneratorImpl implements EntityChangeEventGenerato
   }
 
   private void populateUserDetails(RequestContext requestContext, Builder builder) {
-    requestContext.getUserId().ifPresent(userId -> builder.setUserId(userId));
-    requestContext.getName().ifPresent(userName -> builder.setUserName(userName));
+    requestContext.getUserId().ifPresent(builder::setUserId);
+    requestContext.getName().ifPresent(builder::setUserName);
+    requestContext.getEmail().ifPresent(builder::setUserEmail);
   }
 
   private EntityChangeEventKey getEntityChangeEventKey(Entity entity) {
