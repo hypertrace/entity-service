@@ -28,7 +28,7 @@ dependencies {
   runtimeOnly("io.grpc:grpc-netty:1.60.0")
 
   // Logging
-  implementation("org.slf4j:slf4j-api:1.7.30")
+  implementation("org.slf4j:slf4j-api:2.0.7")
   runtimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:2.17.1")
 
   // Config

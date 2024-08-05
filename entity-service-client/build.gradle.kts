@@ -15,7 +15,7 @@ dependencies {
   api("com.typesafe:config:1.4.1")
 
   implementation("org.hypertrace.core.grpcutils:grpc-client-utils:0.13.1")
-  implementation("org.slf4j:slf4j-api:1.7.30")
+  implementation("org.slf4j:slf4j-api:2.0.7")
   implementation("org.hypertrace.core.serviceframework:platform-metrics:0.1.71")
 
   testImplementation("io.grpc:grpc-core:1.60.0")

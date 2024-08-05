@@ -13,7 +13,7 @@ dependencies {
   implementation("org.hypertrace.core.eventstore:event-store:0.1.2")
   implementation("org.hypertrace.core.grpcutils:grpc-context-utils:0.13.1")
   implementation("com.google.guava:guava:32.1.2-jre")
-  implementation("org.slf4j:slf4j-api:1.7.30")
+  implementation("org.slf4j:slf4j-api:2.0.7")
 
   constraints {
     implementation("org.glassfish.jersey.core:jersey-common:2.34") {

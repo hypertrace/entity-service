@@ -28,7 +28,7 @@ dependencies {
   implementation("io.reactivex.rxjava3:rxjava:3.0.11")
   implementation("com.google.guava:guava:32.1.2-jre")
 
-  implementation("org.slf4j:slf4j-api:1.7.30")
+  implementation("org.slf4j:slf4j-api:2.0.7")
   implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
